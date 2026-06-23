@@ -223,6 +223,19 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 지사현황 탭 -->
 <div id="screen-branch" class="screen">
   <div style="margin-top:4px">
+
+    <!-- 날짜 네비게이션 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <button onclick="changeBranchDate(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
+      <span style="font-size:14px;font-weight:600;color:#1a1a1a" id="branch-date-label">오늘</span>
+      <button onclick="changeBranchDate(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
+    </div>
+
+    <!-- 심야 알림 배너 -->
+    <div id="night-banner" style="display:none;border-radius:12px;padding:12px 16px;margin-bottom:10px;text-align:center">
+      <div id="night-banner-msg" style="font-size:14px;font-weight:600;line-height:1.6"></div>
+    </div>
+
     <div class="card" id="current-slot-card">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
