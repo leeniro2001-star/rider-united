@@ -573,7 +573,7 @@ function renderWeek(){
               <span style="font-size:13px;color:#888">원</span>
             </div>
           </div>
-          ${rec.delivery?(()=>{const todayTotal=rec.delivery+(achieved?achieved.won:0);return `<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">${todayTotal.toLocaleString()}원</span></div>`;})():''}
+          ${rec.delivery?'<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">'+(rec.delivery+(achieved?achieved.won:0)).toLocaleString()+'원</span></div>':''}
         `:`<div style="font-size:13px;color:#bbb;text-align:center;padding:8px">데이터 없음</div>`}
       </div>
     </div>`);
