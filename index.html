@@ -30,21 +30,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card{background:#fff;border-radius:14px;border:0.5px solid #e8e8e8;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
 .card-title{font-size:11px;color:#999;font-weight:600;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.8px}
 /* 카운터 */
-.counter-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
-.counter-item{border-radius:12px;padding:8px 12px}
+.counter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.counter-item{border-radius:12px;padding:10px 6px}
 .counter-item.c-complete{background:#F0FBF7}
 .counter-item.c-reject{background:#FEF2F2}
 .counter-item.c-cancel{background:#FFFBF0}
-.counter-label{font-size:13px;font-weight:600;color:#555;margin-bottom:10px}
-.counter-row{display:flex;align-items:center;justify-content:space-between}
-.cnt-btn{width:44px;height:44px;border-radius:50%;border:none;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.1s}
+.counter-label{font-size:11px;font-weight:600;color:#555;margin-bottom:6px;text-align:center}
+.counter-row{display:flex;align-items:center;justify-content:center;gap:6px}
+.cnt-btn{width:36px;height:36px;border-radius:50%;border:none;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform 0.1s}
 .cnt-btn:active{transform:scale(0.9)}
 .cnt-btn.minus{background:#e0e0e0;color:#555;font-weight:300}
 .cnt-btn.plus-complete{background:#1D9E75;color:#fff}
 .cnt-btn.plus-reject{background:#E24B4A;color:#fff}
 .cnt-btn.plus-cancel{background:#BA7517;color:#fff}
-.counter-val{font-size:36px;font-weight:700;text-align:center;min-width:60px;line-height:1;
-  background:none;border:none;width:80px;font-family:inherit;cursor:text;border-bottom:2px solid transparent}
+.counter-val{font-size:28px;font-weight:700;text-align:center;min-width:40px;line-height:1;
+  background:none;border:none;width:60px;font-family:inherit;cursor:text;border-bottom:2px solid transparent}
 .counter-val:focus{outline:none;border-bottom:2px solid currentColor}
 .c-complete .counter-val{color:#1D9E75}
 .c-reject .counter-val{color:#E24B4A}
@@ -264,20 +264,18 @@ input[type=number]{-moz-appearance:textfield}
 
     <!-- 연속 달성 -->
     <!-- 연속달성 + 월간보너스 한 카드에 -->
-    <div class="card">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div style="text-align:center;padding:6px 0;border-right:0.5px solid #f0f0f0">
-          <div style="font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">연속 달성</div>
-          <div style="font-size:32px;margin-bottom:4px" id="streak-emoji">🔥</div>
-          <div style="font-size:24px;font-weight:700;color:#E24B4A" id="streak-count">0일</div>
-          <div style="font-size:11px;color:#888;margin-top:4px" id="streak-label">연속 달성 중</div>
-        </div>
-        <div style="text-align:center;padding:6px 0">
-          <div style="font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:6px">이번 달 보너스</div>
-          <div style="font-size:11px;color:#888;margin-bottom:4px" id="monthly-period"></div>
-          <div style="font-size:22px;font-weight:700;color:#1D9E75" id="monthly-bonus">0원</div>
-          <div style="font-size:11px;color:#888;margin-top:4px" id="monthly-days">달성일 0일</div>
-        </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#fff;border-radius:12px;border:0.5px solid #e8e8e8;padding:10px 8px;text-align:center">
+        <div style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">연속 달성</div>
+        <div style="font-size:24px;margin-bottom:2px" id="streak-emoji">🔥</div>
+        <div style="font-size:20px;font-weight:700;color:#E24B4A" id="streak-count">0일</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="streak-label">연속 달성 중</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;border:0.5px solid #e8e8e8;padding:10px 8px;text-align:center">
+        <div style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">이번 달 보너스</div>
+        <div style="font-size:10px;color:#888;margin-bottom:2px" id="monthly-period"></div>
+        <div style="font-size:18px;font-weight:700;color:#1D9E75" id="monthly-bonus">0원</div>
+        <div style="font-size:11px;color:#888;margin-top:2px" id="monthly-days">달성일 0일</div>
       </div>
     </div>
 
