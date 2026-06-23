@@ -240,7 +240,7 @@ input[type=number]{-moz-appearance:textfield}
       <div class="card-title">오늘 슬롯별 현황</div>
       <div id="slot-list"><div class="empty-state"><i class="ti ti-refresh"></i><p>데이터 불러오는 중...</p></div></div>
     </div>
-    <button class="btn-admin" onclick="showAdmin()"><i class="ti ti-settings"></i> 관리자 업데이트</button>
+    <button class="btn-admin" id="admin-btn" onclick="showAdmin()" style="display:none"><i class="ti ti-settings"></i> 관리자 업데이트</button>
   </div>
 </div>
 
@@ -296,7 +296,13 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
-  <button class="tab-btn" onclick="switchTab('branch',this)"><i class="ti ti-building-store"></i>지사현황</button>
+  <button class="tab-btn" onclick="switchTab('branch',this)" 
+    oncontextmenu="showAdminBtn(event)" 
+    ontouchstart="startLongPress(event)" 
+    ontouchend="cancelLongPress()" 
+    ontouchmove="cancelLongPress()">
+    <i class="ti ti-building-store"></i>지사현황
+  </button>
   <button class="tab-btn" onclick="switchTab('stats',this)"><i class="ti ti-chart-bar"></i>통계</button>
   <button class="tab-btn" onclick="switchTab('record',this)"><i class="ti ti-calendar"></i>기록</button>
 </nav>
@@ -887,7 +893,6 @@ function switchTab(name,btn){
   if(name==='record') renderWeek();
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
-  if(name==='stats') renderStats();
 }
 
 // 폭죽
@@ -939,6 +944,35 @@ function closeConfetti(){
   document.getElementById('confetti-msg').classList.remove('show');
   document.getElementById('confetti-overlay').classList.remove('show');
   document.getElementById('confetti-overlay').innerHTML='';
+}
+
+// 관리자 모드 활성화 (지사현황 탭 3초 꾹 누르기)
+let longPressTimer = null;
+
+function startLongPress(e){
+  longPressTimer = setTimeout(()=>{
+    showAdminBtn(e);
+  }, 3000);
+}
+
+function cancelLongPress(){
+  if(longPressTimer){
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function showAdminBtn(e){
+  if(e) e.preventDefault();
+  const btn = document.getElementById('admin-btn');
+  if(!btn) return;
+  if(btn.style.display === 'none'){
+    btn.style.display = 'flex';
+    btn.style.background = '#1D9E75';
+    setTimeout(()=>{ btn.style.background = '#1a3a4a'; }, 500);
+  } else {
+    btn.style.display = 'none';
+  }
 }
 
 // 초기화
