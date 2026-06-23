@@ -293,11 +293,9 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
-  <button class="tab-btn" onclick="switchTab('branch',this)" 
-    oncontextmenu="showAdminBtn(event)" 
-    ontouchstart="startLongPress(event)" 
-    ontouchend="cancelLongPress()" 
-    ontouchmove="cancelLongPress()">
+  <button class="tab-btn" id="branch-tab-btn"
+    onclick="switchTab('branch',this)"
+    oncontextmenu="showAdminBtn(event)">
     <i class="ti ti-building-store"></i>지사현황
   </button>
   <button class="tab-btn" onclick="switchTab('stats',this)"><i class="ti ti-chart-bar"></i>통계</button>
@@ -945,19 +943,7 @@ function closeConfetti(){
 
 // 관리자 모드 활성화 (지사현황 탭 3초 꾹 누르기)
 let longPressTimer = null;
-
-function startLongPress(e){
-  longPressTimer = setTimeout(()=>{
-    showAdminBtn(e);
-  }, 3000);
-}
-
-function cancelLongPress(){
-  if(longPressTimer){
-    clearTimeout(longPressTimer);
-    longPressTimer = null;
-  }
-}
+let longPressActive = false;
 
 function showAdminBtn(e){
   if(e) e.preventDefault();
@@ -972,6 +958,34 @@ function showAdminBtn(e){
   }
 }
 
+// 탭 버튼에 터치 이벤트 별도 등록
+function initLongPress(){
+  const tabBtn = document.getElementById('branch-tab-btn');
+  if(!tabBtn) return;
+  
+  tabBtn.addEventListener('touchstart', function(e){
+    longPressActive = false;
+    longPressTimer = setTimeout(()=>{
+      longPressActive = true;
+      showAdminBtn(null);
+    }, 3000);
+  }, {passive: true});
+
+  tabBtn.addEventListener('touchend', function(e){
+    if(longPressTimer){
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }, {passive: true});
+
+  tabBtn.addEventListener('touchmove', function(e){
+    if(longPressTimer){
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  }, {passive: true});
+}
+
 // 초기화
 function init(){
   const now=toKST(new Date());
@@ -980,6 +994,7 @@ function init(){
     const n=toKST(new Date());
     document.getElementById('live-time').textContent=String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0');
   },1000);
+  initLongPress();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
