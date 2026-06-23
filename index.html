@@ -155,7 +155,7 @@ input[type=number]{-moz-appearance:textfield}
 <body>
 
 <div class="header">
-  <div>
+  <div onclick="adminLogoTap()" style="cursor:pointer;user-select:none">
     <div class="header-title">RIDER UNITED</div>
     <div class="header-sub" id="today-date"></div>
   </div>
@@ -306,9 +306,7 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
-  <button class="tab-btn" id="branch-tab-btn"
-    onclick="switchTab('branch',this)"
-    oncontextmenu="showAdminBtn(event)">
+  <button class="tab-btn" id="branch-tab-btn" onclick="switchTab('branch',this)">
     <i class="ti ti-building-store"></i>지사현황
   </button>
   <button class="tab-btn" onclick="switchTab('stats',this)"><i class="ti ti-chart-bar"></i>통계</button>
@@ -954,50 +952,27 @@ function closeConfetti(){
   document.getElementById('confetti-overlay').innerHTML='';
 }
 
-// 관리자 모드 활성화 (지사현황 탭 3초 꾹 누르기)
-let longPressTimer = null;
-let longPressActive = false;
+// 관리자 모드 활성화 (RIDER UNITED 로고 3번 탭)
+let logoTapCount = 0;
+let logoTapTimer = null;
 
-function showAdminBtn(e){
-  if(e) e.preventDefault();
-  const btn = document.getElementById('admin-btn');
-  if(!btn) return;
-  if(btn.style.display === 'none'){
-    btn.style.display = 'flex';
-    btn.style.background = '#1D9E75';
-    setTimeout(()=>{ btn.style.background = '#1a3a4a'; }, 500);
-  } else {
-    btn.style.display = 'none';
+function adminLogoTap(){
+  logoTapCount++;
+  if(logoTapTimer) clearTimeout(logoTapTimer);
+  logoTapTimer = setTimeout(()=>{ logoTapCount=0; }, 2000);
+  if(logoTapCount >= 3){
+    logoTapCount = 0;
+    const btn = document.getElementById('admin-btn');
+    if(!btn) return;
+    if(btn.style.display === 'none'){
+      btn.style.display = 'flex';
+    } else {
+      btn.style.display = 'none';
+    }
   }
 }
 
-// 탭 버튼에 터치 이벤트 별도 등록
-function initLongPress(){
-  const tabBtn = document.getElementById('branch-tab-btn');
-  if(!tabBtn) return;
-  
-  tabBtn.addEventListener('touchstart', function(e){
-    longPressActive = false;
-    longPressTimer = setTimeout(()=>{
-      longPressActive = true;
-      showAdminBtn(null);
-    }, 5000);
-  }, {passive: true});
-
-  tabBtn.addEventListener('touchend', function(e){
-    if(longPressTimer){
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  }, {passive: true});
-
-  tabBtn.addEventListener('touchmove', function(e){
-    if(longPressTimer){
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  }, {passive: true});
-}
+function initLongPress(){ /* 미사용 */ }
 
 // 초기화
 function init(){
