@@ -567,12 +567,13 @@ function renderWeek(){
             <div style="display:flex;align-items:center;gap:6px">
               <input type="number" placeholder="0" value="${rec.delivery||''}"
                 style="width:100px;padding:4px 8px;border-radius:8px;border:1px solid #ddd;font-size:14px;text-align:right;font-family:inherit"
-                onchange="saveDelivery('${k}',this.value)"
+                data-key="${k}"
+                onchange="saveDelivery(this.dataset.key,this.value)"
                 inputmode="numeric">
               <span style="font-size:13px;color:#888">원</span>
             </div>
           </div>
-          ${rec.delivery?`<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">${(rec.delivery+(${achieved?achieved.won:0})).toLocaleString()}원</span></div>`:''}
+          ${rec.delivery?(()=>{const todayTotal=rec.delivery+(achieved?achieved.won:0);return `<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">${todayTotal.toLocaleString()}원</span></div>`;})():''}
         `:`<div style="font-size:13px;color:#bbb;text-align:center;padding:8px">데이터 없음</div>`}
       </div>
     </div>`);
