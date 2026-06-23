@@ -229,6 +229,23 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
       </div>
+      <!-- 배달수입 입력 -->
+      <div style="margin-top:10px;padding:10px 12px;background:#F0FBF7;border-radius:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:600;color:#0F6E56">💰 오늘 배달수입</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="today-delivery" placeholder="0" inputmode="numeric"
+              style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid #9FE1CB;font-size:16px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
+              onchange="saveTodayDelivery(this.value)"
+              oninput="saveTodayDelivery(this.value)">
+            <span style="font-size:13px;color:#0F6E56;font-weight:500">원</span>
+          </div>
+        </div>
+        <div id="today-income-display" style="display:none;justify-content:space-between;align-items:center;padding-top:6px;border-top:0.5px solid #9FE1CB">
+          <span style="font-size:12px;color:#0F6E56">오늘 총 수입 (배달+보너스)</span>
+          <span id="today-income-val" style="font-size:16px;font-weight:700;color:#0F6E56"></span>
+        </div>
+      </div>
       <button class="btn-reset" onclick="resetToday()">초기화</button>
     </div>
 
@@ -460,9 +477,12 @@ function setVal(type, val){
 function autoSave(){
   const total = cnt.complete + cnt.reject + cnt.cancel;
   const accept = total > 0 ? Math.round(cnt.complete/total*1000)/10 : null;
-  const rec = {...cnt, accept, savedAt: new Date().toISOString()};
+  const delivEl = document.getElementById('today-delivery');
+  const delivery = delivEl ? parseInt(delivEl.value)||0 : 0;
+  const rec = {...cnt, accept, delivery, savedAt: new Date().toISOString()};
   lsSet(todayKey(), rec);
   renderResult(rec);
+  updateTodayIncome(rec);
 }
 
 function resetToday(){
@@ -623,6 +643,31 @@ function saveDelivery(dateKey, val){
   rec.delivery = parseInt(val)||0;
   lsSet(dateKey, rec);
   renderWeek();
+}
+
+function saveTodayDelivery(val){
+  const k = todayKey();
+  let rec = lsGet(k);
+  if(!rec) rec = {complete:cnt.complete, reject:cnt.reject, cancel:cnt.cancel, accept:null, savedAt:new Date().toISOString()};
+  rec.delivery = parseInt(val)||0;
+  lsSet(k, rec);
+  // 오늘 수입 표시 업데이트
+  updateTodayIncome(rec);
+}
+
+function updateTodayIncome(rec){
+  const el = document.getElementById('today-income-display');
+  if(!el) return;
+  const achieved = BONUS_TABLE.find(b=>rec.complete>=b.min);
+  const bonus = achieved ? achieved.won : 0;
+  const delivery = rec.delivery || 0;
+  const total = delivery + bonus;
+  if(total > 0){
+    el.style.display = 'flex';
+    document.getElementById('today-income-val').textContent = total.toLocaleString()+'원';
+  } else {
+    el.style.display = 'none';
+  }
 }
 function changeWeek(dir){ weekOffset+=dir; renderWeek(); }
 
@@ -1101,7 +1146,12 @@ function init(){
     document.getElementById('cnt-complete').value=cnt.complete;
     document.getElementById('cnt-reject').value=cnt.reject;
     document.getElementById('cnt-cancel').value=cnt.cancel;
+    if(saved.delivery){
+      const delivEl = document.getElementById('today-delivery');
+      if(delivEl) delivEl.value = saved.delivery;
+    }
     renderResult(saved);
+    updateTodayIncome(saved);
   }
 }
 init();
