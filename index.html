@@ -183,6 +183,21 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 현황 탭 -->
 <div id="screen-today" class="screen active">
   <div style="margin-top:4px">
+
+    <!-- 공지사항 -->
+    <div id="notice-banner" style="display:none;background:#1a3a4a;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="closeNotice()">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:16px">📢</span>
+          <div>
+            <div style="font-size:11px;color:#9FE1CB;font-weight:600;margin-bottom:3px">지사 공지</div>
+            <div style="font-size:13px;color:#fff;line-height:1.5" id="notice-text"></div>
+          </div>
+        </div>
+        <span style="color:#9FE1CB;font-size:16px;margin-left:8px">✕</span>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title">오늘 입력</div>
       <div class="counter-grid">
@@ -347,6 +362,14 @@ input[type=number]{-moz-appearance:textfield}
       <div style="font-size:13px;color:#666;margin-bottom:14px">슬롯별 현재 완료 건수를 입력하세요</div>
       <div id="admin-slot-inputs"></div>
       <button class="btn-save" onclick="submitAdmin()">저장하기</button>
+      <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
+      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:500">📢 기사님 공지 등록</div>
+      <textarea id="notice-input" placeholder="공지 내용을 입력하세요" 
+        style="width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;font-size:14px;font-family:inherit;resize:none;height:70px;margin-bottom:8px"></textarea>
+      <button onclick="submitNotice(document.getElementById('notice-input').value)" 
+        style="width:100%;padding:12px;background:#1a3a4a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+        공지 올리기
+      </button>
       <button class="btn-reset" onclick="closeAdmin()">닫기</button>
     </div>
   </div>
@@ -505,7 +528,7 @@ function fmtDate(d){ const k=toKST(d); return `${k.getUTCMonth()+1}/${k.getUTCDa
 function renderWeek(){
   const {start,end} = getWeekRange(weekOffset);
   document.getElementById('week-label').textContent = `${fmtDate(start)} ~ ${fmtDate(end)}`;
-  let totC=0,totR=0,totX=0,totBonus=0,mDays=0;
+  let totC=0,totR=0,totX=0,totBonus=0,mDays=0,totDelivery=0;
   const cards=[];
   const todayK=todayKey();
   for(let i=0;i<7;i++){
@@ -515,6 +538,7 @@ function renderWeek(){
     const label=`${kd.getUTCMonth()+1}월 ${kd.getUTCDate()}일(${DAY_KR[kd.getUTCDay()]})`;
     if(rec){
       totC+=rec.complete; totR+=rec.reject||0; totX+=rec.cancel||0;
+      totDelivery+=rec.delivery||0;
       const b=BONUS_TABLE.find(b=>rec.complete>=b.min);
       if(b){totBonus+=b.won;mDays++;}
     }
@@ -538,6 +562,17 @@ function renderWeek(){
           <div class="detail-row"><span>배차취소</span><span style="color:#BA7517">${rec.cancel}건</span></div>
           <div class="detail-row"><span>수락률</span><span style="color:${accColor}">${acc!==null?acc+'%':'-'}</span></div>
           <div class="detail-row"><span>미션보너스</span><span style="color:${achieved?'#1D9E75':'#bbb'}">${achieved?achieved.won.toLocaleString()+'원':'미달성'}</span></div>
+          <div class="detail-row" style="padding-top:8px;border-top:0.5px solid #f0f0f0;margin-top:4px">
+            <span style="color:#888">배달수입 입력</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="number" placeholder="0" value="${rec.delivery||''}"
+                style="width:100px;padding:4px 8px;border-radius:8px;border:1px solid #ddd;font-size:14px;text-align:right;font-family:inherit"
+                onchange="saveDelivery('${k}',this.value)"
+                inputmode="numeric">
+              <span style="font-size:13px;color:#888">원</span>
+            </div>
+          </div>
+          ${rec.delivery?`<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">${(rec.delivery+(${achieved?achieved.won:0})).toLocaleString()}원</span></div>`:''}
         `:`<div style="font-size:13px;color:#bbb;text-align:center;padding:8px">데이터 없음</div>`}
       </div>
     </div>`);
@@ -555,10 +590,20 @@ function renderWeek(){
   const grand=totBonus+attendBonus+wqBonus;
   const wAcc=totC+totR+totX>0?Math.round(totC/(totC+totR+totX)*1000)/10:null;
   const wAccColor=wAcc===null?'#1a1a1a':wAcc>=80?'#1D9E75':wAcc>=60?'#BA7517':'#E24B4A';
+  const totIncome = totDelivery + totBonus + attendBonus + wqBonus;
   document.getElementById('week-summary').innerHTML=`
     <div class="wsum"><div class="wsum-label">주간 완료</div><div class="wsum-val" style="color:#1D9E75">${totC}</div></div>
     <div class="wsum"><div class="wsum-label">수락률</div><div class="wsum-val" style="color:${wAccColor}">${wAcc!==null?wAcc+'%':'-'}</div></div>
     <div class="wsum"><div class="wsum-label">거절+취소</div><div class="wsum-val" style="color:#E24B4A">${totR+totX}</div></div>
+    ${totDelivery>0?`
+    <div class="wsum" style="grid-column:span 3;background:#F0FBF7;border:0.5px solid #9FE1CB;border-radius:10px;padding:10px 14px;margin-top:4px">
+      <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:8px">이번 주 수입 요약</div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>배달 수입</span><span style="font-weight:600;color:#1D9E75">${totDelivery.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>미션 보너스</span><span style="font-weight:600;color:#1D9E75">${totBonus.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>개근 보너스</span><span style="font-weight:600;color:${attendBonus>0?'#1D9E75':'#bbb'}">${attendBonus.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>물량 보너스</span><span style="font-weight:600;color:${wqBonus>0?'#1D9E75':'#bbb'}">${wqBonus.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;padding:8px 0 2px"><span style="color:#0F6E56;font-weight:600">이번 주 총 수입</span><span style="font-weight:700;color:#1D9E75;font-size:20px">${totIncome.toLocaleString()}원</span></div>
+    </div>`:''}
     <div class="wsum" style="grid-column:span 3;background:#F8FDF9;border:0.5px solid #9FE1CB;border-radius:10px;padding:12px 14px;margin-top:4px">
       <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:10px">주간 보너스 내역</div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>일일미션 누적</span><span style="font-weight:600;color:${totBonus>0?'#1D9E75':'#bbb'}">${totBonus.toLocaleString()}원</span></div>
@@ -570,6 +615,14 @@ function renderWeek(){
 }
 
 function toggleDay(id){ document.getElementById(id).classList.toggle('open'); }
+
+function saveDelivery(dateKey, val){
+  const rec = lsGet(dateKey);
+  if(!rec) return;
+  rec.delivery = parseInt(val)||0;
+  lsSet(dateKey, rec);
+  renderWeek();
+}
 function changeWeek(dir){ weekOffset+=dir; renderWeek(); }
 
 // 지사현황
@@ -835,6 +888,38 @@ function submitAdmin(){
 }
 
 
+// ── 공지사항 ────────────────────────────────────────────────
+function loadNotice(){
+  db.ref('notice/latest').once('value').then(snap=>{
+    const data = snap.val();
+    if(!data || !data.text) return;
+    const lastSeen = lsGet('notice_seen');
+    if(lastSeen === data.updatedAt) return; // 이미 본 공지
+    const banner = document.getElementById('notice-banner');
+    const textEl = document.getElementById('notice-text');
+    if(!banner || !textEl) return;
+    textEl.textContent = data.text;
+    banner.style.display = 'block';
+    banner.dataset.ts = data.updatedAt;
+  }).catch(()=>{});
+}
+
+function closeNotice(){
+  const banner = document.getElementById('notice-banner');
+  if(!banner) return;
+  lsSet('notice_seen', banner.dataset.ts);
+  banner.style.display = 'none';
+}
+
+// 관리자 공지 등록 함수
+function submitNotice(text){
+  if(!text || !text.trim()) return;
+  db.ref('notice/latest').set({
+    text: text.trim(),
+    updatedAt: new Date().toISOString()
+  }).then(()=>{ alert('공지 등록 완료!'); }).catch(e=>alert('실패: '+e.message));
+}
+
 // ── 통계 탭 ──────────────────────────────────────────────
 function renderStats(){
   renderStreak();
@@ -1008,6 +1093,7 @@ function init(){
     document.getElementById('live-time').textContent=String(n.getUTCHours()).padStart(2,'0')+':'+String(n.getUTCMinutes()).padStart(2,'0');
   },1000);
   initLongPress();
+  loadNotice();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
