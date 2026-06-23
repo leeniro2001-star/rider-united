@@ -1018,21 +1018,26 @@ function renderWeeklyGrid(){
   const todayK = todayKey();
   const slotNames = ['점심','오후','저녁','심야'];
   const slotKeys = ['lunch','afternoon','evening','night'];
-  const t1 = [{월:22,화:22,수:22,목:22,금:25,토:31,일:32},{월:21,화:21,수:21,목:21,금:22,토:23,일:24},{월:32,화:32,수:32,목:32,금:34,토:38,일:37},{월:25,화:25,수:25,목:25,금:29,토:28,일:27}];
-
-  // 날짜 목록 수집
+  const t1 = [
+    {월:22,화:22,수:22,목:22,금:25,토:31,일:32},
+    {월:21,화:21,수:21,목:21,금:22,토:23,일:24},
+    {월:32,화:32,수:32,목:32,금:34,토:38,일:37},
+    {월:25,화:25,수:25,목:25,금:29,토:28,일:27}
+  ];
   const dates = [];
   for(let i=0;i<7;i++){
-    const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
+    const d=new Date(start);
+    d.setUTCDate(start.getUTCDate()+i);
     dates.push(dateKey(d));
   }
+  const gridEl = document.getElementById('weekly-grid');
+  if(!gridEl) return;
+  gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">불러오는 중...</div>';
 
-  // Firebase에서 이번 주 데이터 모두 가져오기
   const promises = dates.map(k => db.ref('branch/daily/'+k).once('value'));
   Promise.all(promises).then(snaps => {
-    const firebaseData = {};
-    dates.forEach((k,i) => { firebaseData[k] = snaps[i].val(); });
-
+    const fd = {};
+    dates.forEach((k,i) => { fd[k] = snaps[i].val(); });
     let html = '<div class="slot-grid-header"><div class="slot-grid-label"></div>';
     for(let i=0;i<7;i++){
       const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
@@ -1044,20 +1049,27 @@ function renderWeeklyGrid(){
     for(let si=0;si<4;si++){
       html+=`<div class="slot-grid-row"><div class="slot-grid-label" style="color:${SLOTS[si].color}">${slotNames[si]}</div>`;
       for(let di=0;di<7;di++){
+        const k=dates[di];
         const d=new Date(start); d.setUTCDate(start.getUTCDate()+di);
-        const k=dates[di]; const kd=toKST(d); const dayK=DAY_KEY[kd.getUTCDay()]; const isT=k===todayK;
-        const stored=firebaseData[k]; tot++;
-        if(!stored){ html+=`<div class="slot-grid-cell cell-empty ${isT?'cell-today':''}">-</div>`; }
-        else {
-          const val=stored[slotKeys[si]]||0; const target=t1[si][dayK]*9; const ok=val>=target;
-        if(ok) pass++;
-        html+=`<div class="slot-grid-cell ${ok?'cell-pass':'cell-fail'} ${isT?'cell-today':''}">${ok?'✅':'❌'}</div>`;
+        const kd=toKST(d); const dayK=DAY_KEY[kd.getUTCDay()]; const isT=k===todayK;
+        const stored=fd[k]; tot++;
+        if(!stored){
+          html+=`<div class="slot-grid-cell cell-empty ${isT?'cell-today':''}">-</div>`;
+        } else {
+          const val=stored[slotKeys[si]]||0;
+          const target=t1[si][dayK]*9;
+          const ok=val>=target;
+          if(ok) pass++;
+          html+=`<div class="slot-grid-cell ${ok?'cell-pass':'cell-fail'} ${isT?'cell-today':''}">${ok?'✅':'❌'}</div>`;
+        }
       }
+      html+='</div>';
     }
-    html+='</div>';
-  }
-  html+=`<div style="margin-top:10px;text-align:center;font-size:13px;color:#888">달성 <span style="color:#1D9E75;font-weight:700">${pass}</span> / ${tot}슬롯</div>`;
-  document.getElementById('weekly-grid').innerHTML=html;
+    html+=`<div style="margin-top:10px;text-align:center;font-size:13px;color:#888">달성 <span style="color:#1D9E75;font-weight:700">${pass}</span> / ${tot}슬롯</div>`;
+    gridEl.innerHTML = html;
+  }).catch(()=>{
+    gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">데이터를 불러올 수 없습니다</div>';
+  });
 }
 
 // 탭 전환
