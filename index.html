@@ -859,15 +859,9 @@ let adminAuthed = false; // 한번 인증하면 앱 종료 전까지 유지
 
 function showAdmin(){
   document.getElementById('admin-overlay').classList.add('open');
-  if(adminAuthed){
-    // 이미 인증됨 → 바로 입력 화면
-    document.getElementById('admin-login-section').style.display='none';
-    document.getElementById('admin-input-section').style.display='block';
-  } else {
-    document.getElementById('admin-login-section').style.display='block';
-    document.getElementById('admin-input-section').style.display='none';
-    document.getElementById('admin-pw').value='';
-  }
+  // 비번 없이 바로 입력 화면
+  document.getElementById('admin-login-section').style.display='none';
+  document.getElementById('admin-input-section').style.display='block';
   // 기존 저장값 불러오기
   const k = toKST(new Date()).toISOString().slice(0,10);
   db.ref('branch/daily/'+k).once('value').then(snap=>{
