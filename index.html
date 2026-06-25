@@ -454,8 +454,25 @@ const db = firebase.database();
 
 // 유틸
 function toKST(d){ return new Date(d.getTime()+9*60*60*1000); }
-function todayKey(){ return toKST(new Date()).toISOString().slice(0,10); }
-function dateKey(d){ return toKST(d).toISOString().slice(0,10); }
+function todayKey(){
+  const kst = toKST(new Date());
+  // 새벽 0~5시는 전날로 처리 (배달 하루 기준: 06시~다음날 05시)
+  if(kst.getUTCHours() < 6){
+    const prev = new Date(kst);
+    prev.setUTCDate(kst.getUTCDate()-1);
+    return prev.toISOString().slice(0,10);
+  }
+  return kst.toISOString().slice(0,10);
+}
+function dateKey(d){
+  const kst = toKST(d);
+  if(kst.getUTCHours() < 6){
+    const prev = new Date(kst);
+    prev.setUTCDate(kst.getUTCDate()-1);
+    return prev.toISOString().slice(0,10);
+  }
+  return kst.toISOString().slice(0,10);
+}
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem('ru_'+k)||'null'); }catch(e){ return null; } }
 function lsSet(k,v){ try{ localStorage.setItem('ru_'+k,JSON.stringify(v)); }catch(e){} }
 
@@ -863,7 +880,7 @@ function showAdmin(){
   document.getElementById('admin-login-section').style.display='none';
   document.getElementById('admin-input-section').style.display='block';
   // 기존 저장값 불러오기
-  const k = toKST(new Date()).toISOString().slice(0,10);
+  const k = getBranchDateKey(branchDateOffset);
   db.ref('branch/daily/'+k).once('value').then(snap=>{
     const saved = snap.val() || {};
     const todayDayKey = DAY_KEY[toKST(new Date()).getUTCDay()];
@@ -903,7 +920,7 @@ function checkAdmin(){
 }
 
 function submitAdmin(){
-  const k=toKST(new Date()).toISOString().slice(0,10);
+  const k=getBranchDateKey(branchDateOffset);
   const data={updatedAt:new Date().toISOString()};
   SLOTS.forEach(s=>{ data[s.key]=parseInt(document.getElementById('ai-'+s.key).value)||0; });
   db.ref('branch/daily/'+k).set(data)
