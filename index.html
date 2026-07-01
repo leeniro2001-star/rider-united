@@ -205,10 +205,11 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <!-- 마일스톤 -->
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
-          <span id="ms-1000">1000콜<br>💰10만</span>
-          <span id="ms-2000" style="text-align:center">2000콜<br>💰10만</span>
-          <span id="ms-3000" style="text-align:center">3000콜<br>💰10만</span>
-          <span id="ms-5000" style="text-align:right">5000콜<br>💰20만</span>
+          <span id="ms-1000">1000콜<br>💰3만</span>
+          <span id="ms-2000" style="text-align:center">2000콜<br>💰3만</span>
+          <span id="ms-3000" style="text-align:center">3000콜<br>💰3만</span>
+          <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
+          <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
         </div>
         <div id="cumul-input-row" style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF7;border-radius:8px;padding:8px 12px">
           <span style="font-size:12px;color:#0F6E56;font-weight:600">내 누적콜 입력</span>
@@ -851,7 +852,7 @@ function renderCumulCalls(total){
   const cycleNum = Math.floor(total / 5000) + 1;
   
   // 다음 목표
-  const milestones = [1000, 2000, 3000, 5000];
+  const milestones = [1000, 2000, 3000, 4000, 5000];
   let nextTarget = 5000;
   for(const m of milestones){
     if(cyclePos < m){ nextTarget = m; break; }
@@ -874,7 +875,7 @@ function renderCumulCalls(total){
   if(barEl) barEl.style.width = Math.min(pct, 100)+'%';
   
   // 마일스톤 색상
-  const ms = {1000:'ms-1000', 2000:'ms-2000', 3000:'ms-3000', 5000:'ms-5000'};
+  const ms = {1000:'ms-1000', 2000:'ms-2000', 3000:'ms-3000', 4000:'ms-4000', 5000:'ms-5000'};
   for(const [m, id] of Object.entries(ms)){
     const el = document.getElementById(id);
     if(!el) continue;
@@ -892,8 +893,8 @@ function renderCumulCalls(total){
 }
 
 function getReward(m){
-  if(m === 5000) return '20만원';
-  return '10만원';
+  if(m === 5000) return '10만원';
+  return '3만원';
 }
 
 function saveTodayDelivery(val){
