@@ -847,20 +847,28 @@ function saveCumulCalls(val){
 
 function updateCumulTotal(){
   const base = lsGet('cumul_calls_base') || 0;
-  const baseDate = lsGet('cumul_base_date') || todayKey();
+  const baseDate = lsGet('cumul_base_date');
   
-  // 기준날짜 포함 오늘까지 모든 완료건 합산
+  // 기준날짜가 없으면 앱 첫 설치일 기준으로 오늘부터 합산
+  // 기준날짜가 있으면 그 날짜부터 합산
   let added = 0;
   const today = new Date();
-  const baseDateObj = new Date(baseDate.replace('day_',''));
   
-  for(let i=0; i<=365; i++){
-    const d = new Date(baseDateObj);
-    d.setDate(baseDateObj.getDate() + i);
-    if(d > today) break;
-    const key = 'day_' + d.toISOString().slice(0,10);
-    const rec = lsGet(key);
+  if(!baseDate){
+    // 기준값 미입력 → 오늘 완료건만 합산
+    const rec = lsGet(todayKey());
     if(rec && rec.complete) added += rec.complete;
+  } else {
+    // 기준날짜부터 오늘까지 합산
+    const baseDateObj = new Date(baseDate.replace('day_',''));
+    for(let i=0; i<=365; i++){
+      const d = new Date(baseDateObj);
+      d.setDate(baseDateObj.getDate() + i);
+      if(d > today) break;
+      const key = 'day_' + d.toISOString().slice(0,10);
+      const rec = lsGet(key);
+      if(rec && rec.complete) added += rec.complete;
+    }
   }
   
   const total = base + added;
