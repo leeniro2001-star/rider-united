@@ -846,22 +846,19 @@ function saveCumulCalls(val){
 }
 
 function updateCumulTotal(){
-  // 기준값 + 기준날짜 이후 완료건 합산
   const base = lsGet('cumul_calls_base') || 0;
   const baseDate = lsGet('cumul_base_date') || todayKey();
   
-  // 기준날짜부터 오늘까지 완료건 합산
+  // 기준날짜 포함 오늘까지 모든 완료건 합산
   let added = 0;
   const today = new Date();
   const baseDateObj = new Date(baseDate.replace('day_',''));
   
-  // 날짜 순회
   for(let i=0; i<=365; i++){
     const d = new Date(baseDateObj);
     d.setDate(baseDateObj.getDate() + i);
     if(d > today) break;
     const key = 'day_' + d.toISOString().slice(0,10);
-    if(key === baseDate) continue; // 기준날짜는 제외 (이미 base에 포함)
     const rec = lsGet(key);
     if(rec && rec.complete) added += rec.complete;
   }
