@@ -266,6 +266,45 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
+    <!-- 심야 미션 -->
+    <div class="card" id="night-mission-card">
+      <div class="card-title">🌙 심야 미션 (22:00~23:59)</div>
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:13px;color:#555">이번 주 22~23시 완료</span>
+          <span style="font-size:20px;font-weight:700;color:#3B5BDB" id="night-count">0건</span>
+        </div>
+        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
+          <div id="night-bar" style="height:100%;background:linear-gradient(90deg,#3B5BDB,#748FFC);border-radius:6px;width:0%;transition:width 0.5s"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div id="night-ms-10" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF">
+            <div style="font-size:11px;color:#888">주간 15건↑</div>
+            <div style="font-size:16px;font-weight:700;color:#3B5BDB">15,000원</div>
+            <div style="font-size:14px" id="night-check-10">⬜</div>
+          </div>
+          <div id="night-ms-20" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF">
+            <div style="font-size:11px;color:#888">주간 30건↑</div>
+            <div style="font-size:16px;font-weight:700;color:#3B5BDB">30,000원</div>
+            <div style="font-size:14px" id="night-check-20">⬜</div>
+          </div>
+        </div>
+        <div style="background:#F0F4FF;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:11px;color:#3B5BDB;font-weight:600">오늘 22~23시 완료건 입력</div>
+            <div style="font-size:10px;color:#888">매일 입력하면 주간 자동합산</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="night-input" placeholder="0" inputmode="numeric"
+              style="width:60px;padding:4px 8px;border-radius:8px;border:1px solid #748FFC;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#3B5BDB"
+              oninput="saveNightCalls(this.value)">
+            <span style="font-size:12px;color:#3B5BDB">건</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="night-msg"></div>
+      </div>
+    </div>
+
     <!-- 공지사항 -->
     <div id="notice-banner" style="display:none;background:#1a3a4a;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="closeNotice()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -498,7 +537,7 @@ input[type=number]{-moz-appearance:textfield}
 <script>
 const DAY_KR = ['일','월','화','수','목','금','토'];
 const DAY_FULL = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
-const BONUS_TABLE = [{min:70,won:40000},{min:60,won:32000},{min:50,won:24000},{min:40,won:16000},{min:30,won:8000},{min:25,won:4000}];
+const BONUS_TABLE = [{min:70,won:40000},{min:60,won:32000},{min:50,won:24000},{min:40,won:16000},{min:30,won:8000}];
 const CELEBRATION = {
   30:{emoji:'🛵',title:'오늘도 수고하셨습니다!',sub:'꾸준함이 최고입니다',color:'#1D9E75',
       bike:'Honda Cub', bikeDesc:'🛵 혼다 커브', bikeEmoji:'🛵'},
@@ -879,6 +918,68 @@ function updateCumulTotal(){
   
   renderCumulCalls(total);
   return total;
+}
+
+// ── 심야 미션 ────────────────────────────────────────────
+function saveNightCalls(val){
+  const v = parseInt(val)||0;
+  lsSet('night_today_' + todayKey(), v);
+  updateNightTotal();
+}
+
+function updateNightTotal(){
+  const {start} = getWeekRange(0);
+  let total = 0;
+  for(let i=0;i<7;i++){
+    const d = new Date(start);
+    d.setUTCDate(start.getUTCDate()+i);
+    const key = 'night_today_day_' + d.toISOString().slice(0,10);
+    const v = lsGet(key) || 0;
+    total += parseInt(v)||0;
+  }
+  
+  const countEl = document.getElementById('night-count');
+  const barEl = document.getElementById('night-bar');
+  const check10 = document.getElementById('night-check-10');
+  const check20 = document.getElementById('night-check-20');
+  const ms10 = document.getElementById('night-ms-10');
+  const ms20 = document.getElementById('night-ms-20');
+  const msgEl = document.getElementById('night-msg');
+  const inputEl = document.getElementById('night-input');
+  
+  if(countEl) countEl.textContent = total + '건';
+  
+  const target = total >= 20 ? 20 : 10;
+  const pct = Math.min(total / target * 100, 100);
+  if(barEl) barEl.style.width = pct + '%';
+  
+  if(total >= 20){
+    if(check10) check10.textContent = '✅';
+    if(check20) check20.textContent = '✅';
+    if(ms10) ms10.style.background = '#D3F9D8';
+    if(ms20) ms20.style.background = '#D3F9D8';
+    if(msgEl) msgEl.textContent = '🎉 20건 달성! 심야보너스 20,000원!';
+  } else if(total >= 10){
+    if(check10) check10.textContent = '✅';
+    if(check20) check20.textContent = '⬜';
+    if(ms10) ms10.style.background = '#D3F9D8';
+    if(ms20) ms20.style.background = '#F0F4FF';
+    if(msgEl) msgEl.textContent = `20건까지 ${20-total}건 남음! 추가 10,000원!`;
+  } else {
+    if(check10) check10.textContent = '⬜';
+    if(check20) check20.textContent = '⬜';
+    if(ms10) ms10.style.background = '#F0F4FF';
+    if(ms20) ms20.style.background = '#F0F4FF';
+    if(msgEl) msgEl.textContent = `10건까지 ${10-total}건 남음!`;
+  }
+  
+  // 오늘 입력값 표시
+  const todayNight = parseInt(lsGet('night_today_' + todayKey()))||0;
+  if(inputEl) inputEl.value = todayNight || '';
+}
+
+function loadNightCalls(){
+  updateNightTotal();
 }
 
 function loadCumulCalls(){
@@ -1452,6 +1553,7 @@ function init(){
   initLongPress();
   loadNotice();
   loadCumulCalls();
+  loadNightCalls();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
