@@ -184,6 +184,84 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-today" class="screen active">
   <div style="margin-top:4px">
 
+    <!-- 누적콜 현황 -->
+    <div class="card" id="cumul-card">
+      <div class="card-title">🏆 내 누적콜 현황</div>
+      <div id="cumul-display">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="cumul-total">0콜</div>
+            <div style="font-size:12px;color:#888;margin-top:2px" id="cumul-cycle">현재 사이클</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:#888">다음 목표</div>
+            <div style="font-size:16px;font-weight:700;color:#E24B4A" id="cumul-next">1000콜</div>
+            <div style="font-size:12px;color:#888" id="cumul-remain">1000콜 남음</div>
+          </div>
+        </div>
+        <!-- 진행바 -->
+        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
+          <div id="cumul-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;transition:width 0.5s;width:0%"></div>
+        </div>
+        <!-- 마일스톤 -->
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
+          <span id="ms-1000">1000콜<br>💰10만</span>
+          <span id="ms-2000" style="text-align:center">2000콜<br>💰10만</span>
+          <span id="ms-3000" style="text-align:center">3000콜<br>💰10만</span>
+          <span id="ms-5000" style="text-align:right">5000콜<br>💰20만</span>
+        </div>
+        <div id="cumul-input-row" style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF7;border-radius:8px;padding:8px 12px">
+          <span style="font-size:12px;color:#0F6E56;font-weight:600">내 누적콜 입력</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="cumul-input" placeholder="0" inputmode="numeric"
+              style="width:80px;padding:4px 8px;border-radius:8px;border:1px solid #9FE1CB;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
+              oninput="saveCumulCalls(this.value)">
+            <span style="font-size:12px;color:#0F6E56">콜</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 예상 보너스 계산기 -->
+    <div class="card">
+      <div class="card-title">💰 이번 주 예상 보너스</div>
+      <div id="bonus-calc-display">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div style="background:#F8F9FA;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#999;margin-bottom:4px">일미션</div>
+            <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
+          </div>
+          <div style="background:#F8F9FA;border-radius:10px;padding:10px;text-align:center">
+            <div style="font-size:10px;color:#999;margin-bottom:4px">개근+물량</div>
+            <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
+          </div>
+        </div>
+        <div style="background:#1D9E75;border-radius:10px;padding:10px;text-align:center;margin-bottom:8px">
+          <div style="font-size:11px;color:#9FE1CB;margin-bottom:2px">이번 주 예상 보너스</div>
+          <div style="font-size:24px;font-weight:700;color:#fff" id="calc-total">0원</div>
+        </div>
+        <div style="font-size:11px;color:#888;text-align:center" id="calc-next-tip"></div>
+      </div>
+    </div>
+
+    <!-- 오늘 목표 달성 현황 -->
+    <div class="card">
+      <div class="card-title">🎯 오늘 미션 현황</div>
+      <div id="daily-goal-display">
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:12px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
+            <span style="font-size:12px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
+          </div>
+          <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden">
+            <div id="goal-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;width:0%;transition:width 0.5s"></div>
+          </div>
+        </div>
+        <div id="goal-milestones" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px"></div>
+        <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="goal-message"></div>
+      </div>
+    </div>
+
     <!-- 공지사항 -->
     <div id="notice-banner" style="display:none;background:#1a3a4a;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="closeNotice()">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
@@ -416,7 +494,7 @@ input[type=number]{-moz-appearance:textfield}
 <script>
 const DAY_KR = ['일','월','화','수','목','금','토'];
 const DAY_FULL = ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'];
-const BONUS_TABLE = [{min:70,won:40000},{min:60,won:32000},{min:50,won:24000},{min:40,won:16000},{min:30,won:8000}];
+const BONUS_TABLE = [{min:70,won:40000},{min:60,won:32000},{min:50,won:24000},{min:40,won:16000},{min:30,won:8000},{min:25,won:4000}];
 const CELEBRATION = {
   30:{emoji:'🛵',title:'오늘도 수고하셨습니다!',sub:'꾸준함이 최고입니다',color:'#1D9E75',
       bike:'Honda Cub', bikeDesc:'🛵 혼다 커브', bikeEmoji:'🛵'},
@@ -496,10 +574,20 @@ function autoSave(){
   const accept = total > 0 ? Math.round(cnt.complete/total*1000)/10 : null;
   const delivEl = document.getElementById('today-delivery');
   const delivery = delivEl ? parseInt(delivEl.value)||0 : 0;
-  const rec = {...cnt, accept, delivery, savedAt: new Date().toISOString()};
+  // 오늘이 몇 번째 운행일인지 (주간 기록 기반)
+  const {start} = getWeekRange(0);
+  let workDays = 0;
+  for(let i=0;i<7;i++){
+    const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
+    const r=lsGet(dateKey(d));
+    if(r && r.complete>0) workDays++;
+  }
+  if(cnt.complete > 0) workDays = Math.max(workDays, 1);
+  const rec = {...cnt, accept, delivery, workDays, savedAt: new Date().toISOString()};
   lsSet(todayKey(), rec);
   renderResult(rec);
   updateTodayIncome(rec);
+  updateBonusCalc(rec);
 }
 
 function resetToday(){
@@ -508,6 +596,87 @@ function resetToday(){
   ['complete','reject','cancel'].forEach(t => document.getElementById('cnt-'+t).textContent=0);
   document.getElementById('today-result').style.display = 'none';
   localStorage.removeItem('ru_'+todayKey());
+}
+
+function updateBonusCalc(rec){
+  if(!rec) return;
+  const wc = rec.complete || 0;
+  const days = rec.workDays || 1;
+  const daily = wc / days;
+
+  // 일미션
+  let dm = 0;
+  if(daily >= 70) dm = 40000;
+  else if(daily >= 60) dm = 32000;
+  else if(daily >= 50) dm = 24000;
+  else if(daily >= 40) dm = 16000;
+  else if(daily >= 30) dm = 8000;
+  else if(daily >= 25) dm = 4000;
+
+  const mission = dm * days;
+
+  // 개근+물량
+  const attend = days >= 6 ? 20000 : (days >= 5 ? 10000 : 0);
+  const vol = wc >= 400 ? 30000 : (wc >= 350 ? 20000 : 0);
+  const extra = attend + vol;
+  const total = mission + extra;
+
+  // 다음 목표 팁
+  let tip = '';
+  const nextMile = [25,30,40,50,60,70].find(m => daily < m);
+  if(nextMile){
+    const need = Math.ceil(nextMile * days - wc);
+    const nextBonus = (nextMile>=70?40000:nextMile>=60?32000:nextMile>=50?24000:nextMile>=40?16000:nextMile>=30?8000:4000)*days;
+    tip = `${need}건 더 타면 일미션 ${nextBonus.toLocaleString()}원으로 상승! 🔥`;
+  }
+
+  const mEl = document.getElementById('calc-mission');
+  const aEl = document.getElementById('calc-attend');
+  const tEl = document.getElementById('calc-total');
+  const tipEl = document.getElementById('calc-next-tip');
+  if(mEl) mEl.textContent = mission.toLocaleString()+'원';
+  if(aEl) aEl.textContent = extra.toLocaleString()+'원';
+  if(tEl) tEl.textContent = total.toLocaleString()+'원';
+  if(tipEl) tipEl.textContent = tip;
+
+  // 오늘 미션 현황
+  const todayC = rec.complete || 0;
+  const GOALS = [25,30,40,50,70];
+  const achieved = GOALS.filter(g => daily >= g);
+  const nextGoal = GOALS.find(g => daily < g) || 70;
+  const pct = Math.min(daily / nextGoal * 100, 100);
+
+  const curEl = document.getElementById('goal-current');
+  const tarEl = document.getElementById('goal-target');
+  const barEl = document.getElementById('goal-bar');
+  const msEl = document.getElementById('goal-milestones');
+  const msgEl = document.getElementById('goal-message');
+
+  if(curEl) curEl.textContent = Math.round(daily);
+  if(tarEl) tarEl.textContent = nextGoal;
+  if(barEl) barEl.style.width = pct+'%';
+
+  if(msEl){
+    const labels = [{g:25,w:'4천'},{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:70,w:'4만'}];
+    msEl.innerHTML = labels.map(({g,w}) => {
+      const done = daily >= g;
+      return `<div style="text-align:center;padding:6px 2px;border-radius:8px;background:${done?'#1D9E75':'#F0F0F0'}">
+        <div style="font-size:10px;color:${done?'#fff':'#aaa'}">${g}건</div>
+        <div style="font-size:11px;font-weight:700;color:${done?'#fff':'#bbb'}">${w}</div>
+        <div style="font-size:14px">${done?'✅':'⬜'}</div>
+      </div>`;
+    }).join('');
+  }
+
+  if(msgEl){
+    if(daily >= 70) msgEl.textContent = '🎉 최고 미션 달성! 대단해요!';
+    else if(daily >= 60) msgEl.textContent = `70건까지 ${Math.ceil(70*days-wc)}건 남았어요!`;
+    else if(daily >= 50) msgEl.textContent = `60건까지 ${Math.ceil(60*days-wc)}건 남았어요!`;
+    else if(daily >= 40) msgEl.textContent = `50건까지 ${Math.ceil(50*days-wc)}건 남았어요!`;
+    else if(daily >= 30) msgEl.textContent = `40건까지 ${Math.ceil(40*days-wc)}건 남았어요!`;
+    else if(daily >= 25) msgEl.textContent = `30건까지 ${Math.ceil(30*days-wc)}건 남았어요!`;
+    else msgEl.textContent = `25건까지 ${Math.ceil(25*days-wc)}건 남았어요! 화이팅!`;
+  }
 }
 
 function renderResult(rec){
@@ -660,6 +829,71 @@ function saveDelivery(dateKey, val){
   rec.delivery = parseInt(val)||0;
   lsSet(dateKey, rec);
   renderWeek();
+}
+
+// ── 누적콜 현황 ──────────────────────────────────────────
+function saveCumulCalls(val){
+  const v = parseInt(val)||0;
+  lsSet('cumul_calls', v);
+  renderCumulCalls(v);
+}
+
+function loadCumulCalls(){
+  const v = lsGet('cumul_calls') || 0;
+  const el = document.getElementById('cumul-input');
+  if(el) el.value = v || '';
+  renderCumulCalls(v);
+}
+
+function renderCumulCalls(total){
+  // 5000콜 사이클 계산
+  const cyclePos = total % 5000;
+  const cycleNum = Math.floor(total / 5000) + 1;
+  
+  // 다음 목표
+  const milestones = [1000, 2000, 3000, 5000];
+  let nextTarget = 5000;
+  for(const m of milestones){
+    if(cyclePos < m){ nextTarget = m; break; }
+  }
+  
+  const remain = nextTarget - cyclePos;
+  const pct = (cyclePos / nextTarget * 100).toFixed(0);
+  
+  // 업데이트
+  const totalEl = document.getElementById('cumul-total');
+  const cycleEl = document.getElementById('cumul-cycle');
+  const nextEl = document.getElementById('cumul-next');
+  const remainEl = document.getElementById('cumul-remain');
+  const barEl = document.getElementById('cumul-bar');
+  
+  if(totalEl) totalEl.textContent = total.toLocaleString()+'콜';
+  if(cycleEl) cycleEl.textContent = cycleNum+'번째 사이클 ('+cyclePos+'콜)';
+  if(nextEl) nextEl.textContent = nextTarget.toLocaleString()+'콜 ('+getReward(nextTarget)+')';
+  if(remainEl) remainEl.textContent = remain.toLocaleString()+'콜 남음';
+  if(barEl) barEl.style.width = Math.min(pct, 100)+'%';
+  
+  // 마일스톤 색상
+  const ms = {1000:'ms-1000', 2000:'ms-2000', 3000:'ms-3000', 5000:'ms-5000'};
+  for(const [m, id] of Object.entries(ms)){
+    const el = document.getElementById(id);
+    if(!el) continue;
+    if(cyclePos >= parseInt(m)){
+      el.style.color = '#1D9E75';
+      el.style.fontWeight = '700';
+    } else if(parseInt(m) === nextTarget){
+      el.style.color = '#E24B4A';
+      el.style.fontWeight = '700';
+    } else {
+      el.style.color = '#bbb';
+      el.style.fontWeight = 'normal';
+    }
+  }
+}
+
+function getReward(m){
+  if(m === 5000) return '20만원';
+  return '10만원';
 }
 
 function saveTodayDelivery(val){
@@ -1177,6 +1411,7 @@ function init(){
   },1000);
   initLongPress();
   loadNotice();
+  loadCumulCalls();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
@@ -1189,6 +1424,7 @@ function init(){
     }
     renderResult(saved);
     updateTodayIncome(saved);
+    updateBonusCalc(saved);
   }
 }
 init();
