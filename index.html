@@ -212,7 +212,10 @@ input[type=number]{-moz-appearance:textfield}
           <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
         </div>
         <div id="cumul-input-row" style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF7;border-radius:8px;padding:8px 12px">
-          <span style="font-size:12px;color:#0F6E56;font-weight:600">내 누적콜 입력</span>
+          <div>
+            <div style="font-size:12px;color:#0F6E56;font-weight:600">내 누적콜 입력</div>
+            <div style="font-size:10px;color:#888">오늘부터 자동으로 누적됩니다</div>
+          </div>
           <div style="display:flex;align-items:center;gap:6px">
             <input type="number" id="cumul-input" placeholder="0" inputmode="numeric"
               style="width:80px;padding:4px 8px;border-radius:8px;border:1px solid #9FE1CB;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
@@ -589,6 +592,7 @@ function autoSave(){
   renderResult(rec);
   updateTodayIncome(rec);
   updateBonusCalc(rec);
+  updateCumulTotal();
 }
 
 function resetToday(){
@@ -834,16 +838,46 @@ function saveDelivery(dateKey, val){
 
 // ── 누적콜 현황 ──────────────────────────────────────────
 function saveCumulCalls(val){
+  // 수동 입력 시: 기준값으로 저장
   const v = parseInt(val)||0;
-  lsSet('cumul_calls', v);
-  renderCumulCalls(v);
+  lsSet('cumul_calls_base', v);  // 수동 입력한 기준값
+  lsSet('cumul_base_date', todayKey()); // 기준 날짜
+  updateCumulTotal();
+}
+
+function updateCumulTotal(){
+  // 기준값 + 기준날짜 이후 완료건 합산
+  const base = lsGet('cumul_calls_base') || 0;
+  const baseDate = lsGet('cumul_base_date') || todayKey();
+  
+  // 기준날짜부터 오늘까지 완료건 합산
+  let added = 0;
+  const today = new Date();
+  const baseDateObj = new Date(baseDate.replace('day_',''));
+  
+  // 날짜 순회
+  for(let i=0; i<=365; i++){
+    const d = new Date(baseDateObj);
+    d.setDate(baseDateObj.getDate() + i);
+    if(d > today) break;
+    const key = 'day_' + d.toISOString().slice(0,10);
+    if(key === baseDate) continue; // 기준날짜는 제외 (이미 base에 포함)
+    const rec = lsGet(key);
+    if(rec && rec.complete) added += rec.complete;
+  }
+  
+  const total = base + added;
+  lsSet('cumul_calls', total);
+  
+  const el = document.getElementById('cumul-input');
+  if(el) el.value = base || '';
+  
+  renderCumulCalls(total);
+  return total;
 }
 
 function loadCumulCalls(){
-  const v = lsGet('cumul_calls') || 0;
-  const el = document.getElementById('cumul-input');
-  if(el) el.value = v || '';
-  renderCumulCalls(v);
+  updateCumulTotal();
 }
 
 function renderCumulCalls(total){
