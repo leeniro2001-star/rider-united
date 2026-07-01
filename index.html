@@ -626,7 +626,7 @@ function autoSave(){
     if(r && r.complete>0) workDays++;
   }
   if(cnt.complete > 0) workDays = Math.max(workDays, 1);
-  const rec = {...cnt, accept, delivery, workDays, savedAt: new Date().toISOString()};
+  const rec = {...cnt, accept, delivery, workDays, todayComplete: cnt.complete, savedAt: new Date().toISOString()};
   lsSet(todayKey(), rec);
   renderResult(rec);
   updateTodayIncome(rec);
@@ -644,11 +644,14 @@ function resetToday(){
 
 function updateBonusCalc(rec){
   if(!rec) return;
-  const wc = rec.complete || 0;
+  const wc = rec.complete || 0;  // 주간 총 완료건
   const days = rec.workDays || 1;
-  const daily = wc / days;
+  const daily = wc / days;       // 주간 하루 평균
 
-  // 일미션
+  // 오늘 하루 완료건 (오늘 미션현황용)
+  const todayComplete = rec.todayComplete || wc; // 오늘만의 건수
+
+  // 일미션 (주간 평균 기준)
   let dm = 0;
   if(daily >= 70) dm = 40000;
   else if(daily >= 60) dm = 32000;
@@ -682,12 +685,11 @@ function updateBonusCalc(rec){
   if(tEl) tEl.textContent = total.toLocaleString()+'원';
   if(tipEl) tipEl.textContent = tip;
 
-  // 오늘 미션 현황
-  const todayC = rec.complete || 0;
-  const GOALS = [25,30,40,50,70];
-  const achieved = GOALS.filter(g => daily >= g);
-  const nextGoal = GOALS.find(g => daily < g) || 70;
-  const pct = Math.min(daily / nextGoal * 100, 100);
+  // 오늘 미션현황 - 오늘 완료건 기준
+  const todayC = todayComplete;
+  const GOALS = [30,40,50,60,70];
+  const nextGoal = GOALS.find(g => todayC < g) || 70;
+  const pct = Math.min(todayC / nextGoal * 100, 100);
 
   const curEl = document.getElementById('goal-current');
   const tarEl = document.getElementById('goal-target');
@@ -695,14 +697,14 @@ function updateBonusCalc(rec){
   const msEl = document.getElementById('goal-milestones');
   const msgEl = document.getElementById('goal-message');
 
-  if(curEl) curEl.textContent = Math.round(daily);
+  if(curEl) curEl.textContent = todayC;
   if(tarEl) tarEl.textContent = nextGoal;
   if(barEl) barEl.style.width = pct+'%';
 
   if(msEl){
     const labels = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
     msEl.innerHTML = labels.map(({g,w}) => {
-      const done = daily >= g;
+      const done = todayC >= g;
       return `<div style="text-align:center;padding:6px 2px;border-radius:8px;background:${done?'#1D9E75':'#F0F0F0'}">
         <div style="font-size:10px;color:${done?'#fff':'#aaa'}">${g}건</div>
         <div style="font-size:11px;font-weight:700;color:${done?'#fff':'#bbb'}">${w}</div>
@@ -712,12 +714,12 @@ function updateBonusCalc(rec){
   }
 
   if(msgEl){
-    if(daily >= 70) msgEl.textContent = '🎉 최고 미션 달성! 대단해요!';
-    else if(daily >= 60) msgEl.textContent = `70건까지 ${Math.ceil(70*days-wc)}건 남았어요!`;
-    else if(daily >= 50) msgEl.textContent = `60건까지 ${Math.ceil(60*days-wc)}건 남았어요!`;
-    else if(daily >= 40) msgEl.textContent = `50건까지 ${Math.ceil(50*days-wc)}건 남았어요!`;
-    else if(daily >= 30) msgEl.textContent = `40건까지 ${Math.ceil(40*days-wc)}건 남았어요!`;
-    else msgEl.textContent = `25건까지 ${Math.ceil(25*days-wc)}건 남았어요! 화이팅!`;
+    if(todayC >= 70) msgEl.textContent = '🎉 최고 미션 달성! 대단해요!';
+    else if(todayC >= 60) msgEl.textContent = `70건까지 ${70-todayC}건 남았어요!`;
+    else if(todayC >= 50) msgEl.textContent = `60건까지 ${60-todayC}건 남았어요!`;
+    else if(todayC >= 40) msgEl.textContent = `50건까지 ${50-todayC}건 남았어요!`;
+    else if(todayC >= 30) msgEl.textContent = `40건까지 ${40-todayC}건 남았어요!`;
+    else msgEl.textContent = `30건까지 ${30-todayC}건 남았어요! 화이팅!`;
   }
 }
 
