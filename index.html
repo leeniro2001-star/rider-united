@@ -816,9 +816,10 @@ function renderWeek(){
             <span style="color:#888">배달수입 입력</span>
             <div style="display:flex;align-items:center;gap:6px">
               <input type="number" placeholder="0" value="${rec.delivery||''}"
-                style="width:100px;padding:4px 8px;border-radius:8px;border:1px solid #ddd;font-size:14px;text-align:right;font-family:inherit"
+                style="width:100px;padding:4px 8px;border-radius:8px;border:1px solid #9FE1CB;font-size:14px;text-align:right;font-family:inherit;color:#0F6E56"
                 data-key="${k}"
                 onchange="saveDelivery(this.dataset.key,this.value)"
+                oninput="saveDelivery(this.dataset.key,this.value)"
                 inputmode="numeric">
               <span style="font-size:13px;color:#888">원</span>
             </div>
@@ -869,11 +870,29 @@ function toggleDay(id){ document.getElementById(id).classList.toggle('open'); }
 
 function saveDelivery(dateKey, val){
   const rec = lsGet(dateKey);
-  if(!rec) return;
-  rec.delivery = parseInt(val)||0;
-  lsSet(dateKey, rec);
-  renderWeek();
+  if(!rec){
+    // 기록 없으면 새로 생성
+    const newRec = {complete:0, reject:0, cancel:0, delivery:parseInt(val)||0, savedAt:new Date().toISOString()};
+    lsSet(dateKey, newRec);
+  } else {
+    rec.delivery = parseInt(val)||0;
+    lsSet(dateKey, rec);
+  }
+  // renderWeek 대신 해당 행만 업데이트 (포커스 유지)
+  const totalDeliveryEl = document.getElementById('week-total-delivery');
+  if(totalDeliveryEl){
+    let tot = 0;
+    const {start} = getWeekRange(weekOffset);
+    for(let i=0;i<7;i++){
+      const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
+      const k=dateKey2(d); const r=lsGet(k);
+      if(r && r.delivery) tot += r.delivery;
+    }
+    totalDeliveryEl.textContent = tot.toLocaleString()+'원';
+  }
 }
+
+function dateKey2(d){ return dateKey(d); }
 
 // ── 누적콜 현황 ──────────────────────────────────────────
 function saveCumulCalls(val){
@@ -890,25 +909,32 @@ function updateCumulTotal(){
   const base = parseInt(lsGet('cumul_calls_base'))||0;
   const baseDate = lsGet('cumul_base_date');
   
-  // 기준날짜 다음날부터 오늘까지 완료건 합산
   let added = 0;
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0,10);
+  const todayK = todayKey(); // 오늘 키 (day_YYYY-MM-DD)
 
   if(!baseDate){
     // 기준값 미입력 → 오늘 완료건만
-    const rec = lsGet(todayKey());
+    const rec = lsGet(todayK);
     if(rec && rec.complete) added += parseInt(rec.complete)||0;
   } else {
+    // 기준날짜 다음날부터 오늘까지 합산
     const baseDateObj = new Date(baseDate.replace('day_',''));
-    for(let i=0; i<=365; i++){
+    const todayObj = new Date(todayK.replace('day_',''));
+    for(let i=1; i<=365; i++){
       const d = new Date(baseDateObj);
       d.setDate(baseDateObj.getDate() + i);
-      const dStr = d.toISOString().slice(0,10);
-      if(dStr > todayStr) break;
+      if(d > todayObj) break;
+      const kst = toKST(d);
+      const dStr = kst.toISOString().slice(0,10);
       const key = 'day_' + dStr;
       const rec = lsGet(key);
       if(rec && rec.complete) added += parseInt(rec.complete)||0;
+    }
+    // 오늘 완료건 항상 포함
+    const todayRec = lsGet(todayK);
+    if(todayRec && todayRec.complete){
+      const alreadyCounted = baseDateObj < new Date(todayK.replace('day_',''));
+      if(!alreadyCounted) added += parseInt(todayRec.complete)||0;
     }
   }
   
