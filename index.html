@@ -930,47 +930,17 @@ function confirmDelivery(dk){
 function saveCumulCalls(val){
   const v = parseInt(val)||0;
   lsSet('cumul_calls_base', v);
-  // 기준날짜를 어제로 저장 → 오늘부터 완료건 자동합산
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  lsSet('cumul_base_date', 'day_' + yesterday.toISOString().slice(0,10));
   updateCumulTotal();
 }
 
 function updateCumulTotal(){
   const base = parseInt(lsGet('cumul_calls_base'))||0;
-  const baseDate = lsGet('cumul_base_date');
   
-  let added = 0;
-  const todayK = todayKey(); // 오늘 키 (day_YYYY-MM-DD)
-
-  if(!baseDate){
-    // 기준값 미입력 → 오늘 완료건만
-    const rec = lsGet(todayK);
-    if(rec && rec.complete) added += parseInt(rec.complete)||0;
-  } else {
-    // 기준날짜 다음날부터 오늘까지 합산
-    const baseDateObj = new Date(baseDate.replace('day_',''));
-    const todayObj = new Date(todayK.replace('day_',''));
-    for(let i=1; i<=365; i++){
-      const d = new Date(baseDateObj);
-      d.setDate(baseDateObj.getDate() + i);
-      if(d > todayObj) break;
-      const kst = toKST(d);
-      const dStr = kst.toISOString().slice(0,10);
-      const key = 'day_' + dStr;
-      const rec = lsGet(key);
-      if(rec && rec.complete) added += parseInt(rec.complete)||0;
-    }
-    // 오늘 완료건 항상 포함
-    const todayRec = lsGet(todayK);
-    if(todayRec && todayRec.complete){
-      const alreadyCounted = baseDateObj < new Date(todayK.replace('day_',''));
-      if(!alreadyCounted) added += parseInt(todayRec.complete)||0;
-    }
-  }
+  // 오늘 완료건 직접 가져오기 (가장 단순한 방법)
+  const todayRec = lsGet(todayKey());
+  const todayComplete = (todayRec && todayRec.complete) ? parseInt(todayRec.complete)||0 : 0;
   
-  const total = base + added;
+  const total = base + todayComplete;
   lsSet('cumul_calls', total);
   
   const el = document.getElementById('cumul-input');
