@@ -236,7 +236,7 @@ input[type=number]{-moz-appearance:textfield}
             <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
           </div>
           <div style="background:#F8F9FA;border-radius:10px;padding:10px;text-align:center">
-            <div style="font-size:10px;color:#999;margin-bottom:4px">개근+물량</div>
+            <div style="font-size:10px;color:#999;margin-bottom:4px">개근+물량보너스</div>
             <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
           </div>
         </div>
@@ -663,7 +663,7 @@ function updateBonusCalc(rec){
 
   // 개근+물량
   const attend = days >= 6 ? 20000 : (days >= 5 ? 10000 : 0);
-  const vol = wc >= 400 ? 30000 : (wc >= 350 ? 20000 : 0);
+  const vol = wc >= 450 ? 50000 : (wc >= 400 ? 30000 : (wc >= 350 ? 20000 : 0));
   const extra = attend + vol;
   const total = mission + extra;
 
@@ -672,8 +672,14 @@ function updateBonusCalc(rec){
   const nextMile = [30,40,50,60,70].find(m => daily < m);
   if(nextMile){
     const need = Math.ceil(nextMile * days - wc);
-    const nextBonus = (nextMile>=70?40000:nextMile>=60?32000:nextMile>=50?24000:nextMile>=40?16000:nextMile>=30?8000:4000)*days;
+    const nextBonus = (nextMile>=70?40000:nextMile>=60?32000:nextMile>=50?24000:nextMile>=40?16000:30000)*days;
     tip = `${need}건 더 타면 일미션 ${nextBonus.toLocaleString()}원으로 상승! 🔥`;
+  }
+  // 물량 보너스 팁
+  const nextVol = wc < 350 ? 350 : wc < 400 ? 400 : wc < 450 ? 450 : 0;
+  const volBonus = nextVol === 350 ? 20000 : nextVol === 400 ? 30000 : nextVol === 450 ? 50000 : 0;
+  if(nextVol > 0 && wc >= 120){
+    tip += (tip?' · ':'')+`${nextVol-wc}건 더 타면 물량보너스 ${volBonus.toLocaleString()}원 추가!`;
   }
 
   const mEl = document.getElementById('calc-mission');
@@ -831,7 +837,8 @@ function renderWeek(){
   else{attendLabel=`${mDays}일 달성 (5일↑ 보너스)`;}
   // 주간물량보너스
   let wqBonus=0,wqLabel='';
-  if(totC>=400){wqBonus=30000;wqLabel=`${totC}건`;}
+  if(totC>=450){wqBonus=50000;wqLabel=`${totC}건`;}
+  else if(totC>=400){wqBonus=30000;wqLabel=`${totC}건`;}
   else if(totC>=350){wqBonus=20000;wqLabel=`${totC}건`;}
   else{wqLabel=`${totC}건 (350건↑ 보너스)`;}
   const grand=totBonus+attendBonus+wqBonus;
