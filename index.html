@@ -834,14 +834,14 @@ function renderWeek(){
         `:`<div style="font-size:13px;color:#bbb;text-align:center;padding:8px">데이터 없음</div>
           <div class="detail-row" style="padding-top:8px;border-top:0.5px solid #f0f0f0;margin-top:4px">
             <span style="color:#888">배달수입</span>
-            <button onclick="openDeliveryModal(\`${k}\`, 0)"
+            <button onclick="openDeliveryModal('${k}', 0)"
               style="padding:6px 14px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:14px;font-weight:600;cursor:pointer">
               입력하기 +
             </button>
           </div>
         \`}
       </div>
-    </div>`);
+    </div>\`);
   }
   // 개근보너스
   let attendBonus=0,attendLabel='';
