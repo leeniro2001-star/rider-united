@@ -211,10 +211,15 @@ input[type=number]{-moz-appearance:textfield}
           <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
           <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
         </div>
+        <!-- 오늘 완료건 표시 -->
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#E8F8F2;border-radius:8px;padding:8px 12px;margin-bottom:8px">
+          <span style="font-size:12px;color:#0F6E56;font-weight:600">오늘 완료건</span>
+          <span style="font-size:16px;font-weight:700;color:#1D9E75" id="cumul-today-count">0건</span>
+        </div>
         <div id="cumul-input-row" style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF7;border-radius:8px;padding:8px 12px">
           <div>
-            <div style="font-size:12px;color:#0F6E56;font-weight:600">내 누적콜 입력</div>
-            <div style="font-size:10px;color:#888">오늘부터 자동으로 누적됩니다</div>
+            <div style="font-size:12px;color:#0F6E56;font-weight:600">기존 누적콜 입력</div>
+            <div style="font-size:10px;color:#888">오늘 이전까지의 누적콜</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             <input type="number" id="cumul-input" placeholder="0" inputmode="numeric"
@@ -936,15 +941,22 @@ function saveCumulCalls(val){
 function updateCumulTotal(){
   const base = parseInt(lsGet('cumul_calls_base'))||0;
   
-  // 오늘 완료건 직접 가져오기 (가장 단순한 방법)
-  const todayRec = lsGet(todayKey());
-  const todayComplete = (todayRec && todayRec.complete) ? parseInt(todayRec.complete)||0 : 0;
+  // cnt.complete: 현재 세션 완료건 (가장 신뢰할 수 있는 값)
+  // 저장된 오늘 완료건도 함께 확인
+  const sessionComplete = (typeof cnt !== 'undefined') ? (cnt.complete||0) : 0;
+  const savedRec = lsGet(todayKey());
+  const savedComplete = (savedRec && savedRec.complete) ? parseInt(savedRec.complete)||0 : 0;
+  const todayComplete = Math.max(sessionComplete, savedComplete);
   
   const total = base + todayComplete;
-  lsSet('cumul_calls', total);
   
+  // UI 업데이트
   const el = document.getElementById('cumul-input');
   if(el) el.value = base || '';
+  
+  // 오늘 완료건 표시
+  const todayEl = document.getElementById('cumul-today-count');
+  if(todayEl) todayEl.textContent = todayComplete + '건';
   
   renderCumulCalls(total);
   return total;
