@@ -1128,10 +1128,12 @@ function updateNightTotal(){
       const month = kstD.getUTCMonth()+1;
       const day = kstD.getUTCDate();
       const dow = DAY_KR[kstD.getUTCDay()];
+      const btnId = 'nhe-'+dateStr;
       histHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #eee;">'
           + '<span style="font-size:12px;color:'+(today?'#3B5BDB':'#555')+';font-weight:'+(today?'700':'normal')+'">'
           + month+'/'+day+'('+dow+')'+(today?' ★오늘':'')+'</span>'
-          + '<button onclick="openNightEdit(\''+dateStr+'\','+v+')" '
+          + '<button id="'+btnId+'" data-date="'+dateStr+'" data-val="'+v+'" '
+          + 'onclick="openNightEdit(this.dataset.date,parseInt(this.dataset.val))" '
           + 'style="padding:3px 10px;border-radius:6px;border:1px solid '+(v>0?'#748FFC':'#ddd')+';background:'+(v>0?'#F0F4FF':'#f8f8f8')+';color:'+(v>0?'#3B5BDB':'#999')+';font-size:12px;font-weight:600;cursor:pointer;">'
           + (v>0 ? v+'건 ✏️' : '+ 입력') + '</button>'
           + '</div>';
