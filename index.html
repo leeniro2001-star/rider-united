@@ -190,44 +190,66 @@ input[type=number]{-moz-appearance:textfield}
       <div id="notice-text" style="font-size:12px;color:#533f03"></div>
     </div>
 
-    <!-- 오늘 입력 + 현황 통합 -->
-    <div class="card" style="padding:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;font-weight:600;color:#333">오늘 입력</span>
-        <span style="font-size:11px;color:#888" id="accept-label">수락률 -</span>
+    <!-- 오늘 입력 카드 -->
+    <div class="card" style="padding:10px">
+
+      <!-- 수락률 우상단 -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:#333">오늘 입력</span>
+        <span style="font-size:12px;font-weight:600" id="accept-label">수락률 -</span>
       </div>
 
-      <!-- 카운터 1행 3열 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-        <div class="counter-box" style="padding:6px">
-          <div class="counter-label complete" style="font-size:10px;margin-bottom:4px">완료</div>
-          <div class="counter-row" style="gap:4px">
-            <button class="cnt-btn minus-complete" onclick="adjust('complete',-1)" style="width:32px;height:32px;font-size:16px">−</button>
-            <input type="number" class="counter-val" id="cnt-complete" value="0" min="0" inputmode="numeric"
+      <!-- 카운터 3열 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
+        <div style="background:#F0FBF7;border-radius:8px;padding:6px;text-align:center">
+          <div style="font-size:10px;color:#888;margin-bottom:4px">완료</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+            <button onclick="adjust('complete',-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+            <input type="number" id="cnt-complete" value="0" min="0" inputmode="numeric"
               onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)"
-              style="font-size:24px;font-weight:700;flex:1;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75;min-width:0">
-            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)" style="width:32px;height:32px;font-size:16px;background:#1D9E75;color:#fff">+</button>
+              style="width:36px;font-size:20px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75;padding:0">
+            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)" style="width:26px;height:26px;border-radius:50%;border:none;background:#1D9E75;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
         </div>
-        <div class="counter-box" style="padding:6px">
-          <div class="counter-label reject" style="font-size:10px;margin-bottom:4px">거절</div>
-          <div class="counter-row" style="gap:4px">
-            <button class="cnt-btn" onclick="adjust('reject',-1)" style="width:28px;height:28px;font-size:14px">−</button>
-            <input type="number" class="counter-val" id="cnt-reject" value="0" min="0" inputmode="numeric"
+        <div style="background:#FFF5F5;border-radius:8px;padding:6px;text-align:center">
+          <div style="font-size:10px;color:#888;margin-bottom:4px">거절</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+            <button onclick="adjust('reject',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+            <input type="number" id="cnt-reject" value="0" min="0" inputmode="numeric"
               onchange="setVal('reject',this.value)" oninput="setVal('reject',this.value)"
-              style="font-size:20px;font-weight:700;flex:1;text-align:center;border:none;background:none;font-family:inherit;color:#E24B4A;min-width:0">
-            <button class="cnt-btn" onclick="adjust('reject',1)" style="width:28px;height:28px;font-size:14px">+</button>
+              style="width:32px;font-size:18px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#E24B4A;padding:0">
+            <button onclick="adjust('reject',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
         </div>
-        <div class="counter-box" style="padding:6px">
-          <div class="counter-label cancel" style="font-size:10px;margin-bottom:4px">배차취소</div>
-          <div class="counter-row" style="gap:4px">
-            <button class="cnt-btn" onclick="adjust('cancel',-1)" style="width:28px;height:28px;font-size:14px">−</button>
-            <input type="number" class="counter-val" id="cnt-cancel" value="0" min="0" inputmode="numeric"
+        <div style="background:#FFFBF0;border-radius:8px;padding:6px;text-align:center">
+          <div style="font-size:10px;color:#888;margin-bottom:4px">배차취소</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
+            <button onclick="adjust('cancel',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
+            <input type="number" id="cnt-cancel" value="0" min="0" inputmode="numeric"
               onchange="setVal('cancel',this.value)" oninput="setVal('cancel',this.value)"
-              style="font-size:20px;font-weight:700;flex:1;text-align:center;border:none;background:none;font-family:inherit;color:#BA7517;min-width:0">
-            <button class="cnt-btn" onclick="adjust('cancel',1)" style="width:28px;height:28px;font-size:14px">+</button>
+              style="width:32px;font-size:18px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#BA7517;padding:0">
+            <button onclick="adjust('cancel',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
+        </div>
+      </div>
+
+      <!-- 완료/수락률/거절/배차취소 요약 (작게) -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
+          <div style="font-size:9px;color:#aaa">완료</div>
+          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
+          <div style="font-size:9px;color:#aaa">수락률</div>
+          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
+          <div style="font-size:9px;color:#aaa">거절</div>
+          <div style="font-size:15px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
+          <div style="font-size:9px;color:#aaa">배차취소</div>
+          <div style="font-size:15px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
         </div>
       </div>
 
@@ -236,71 +258,52 @@ input[type=number]{-moz-appearance:textfield}
         <span style="font-size:12px;font-weight:600;color:#0F6E56">💰 배달수입</span>
         <div style="display:flex;align-items:center;gap:4px">
           <input type="number" id="today-delivery" placeholder="0" inputmode="numeric"
-            style="width:100px;padding:4px 8px;border-radius:6px;border:1px solid #9FE1CB;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
+            style="width:100px;padding:4px 6px;border-radius:6px;border:1px solid #9FE1CB;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
             onchange="saveTodayDelivery(this.value)" oninput="saveTodayDelivery(this.value)">
-          <span style="font-size:12px;color:#0F6E56">원</span>
+          <span style="font-size:11px;color:#0F6E56">원</span>
         </div>
       </div>
-      <div id="today-income-display" style="font-size:11px;color:#888;text-align:right"></div>
-      <div id="today-result" style="display:none;margin-top:8px">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          <div style="text-align:center;background:#F0FBF7;border-radius:8px;padding:8px">
-            <div style="font-size:10px;color:#888;margin-bottom:2px">완료</div>
-            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
-          </div>
-          <div style="text-align:center;background:#F0FBF7;border-radius:8px;padding:8px">
-            <div style="font-size:10px;color:#888;margin-bottom:2px">수락률</div>
-            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
-          </div>
-          <div style="text-align:center;background:#F8F9FA;border-radius:8px;padding:8px">
-            <div style="font-size:10px;color:#888;margin-bottom:2px">거절</div>
-            <div style="font-size:18px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
-          </div>
-          <div style="text-align:center;background:#F8F9FA;border-radius:8px;padding:8px">
-            <div style="font-size:10px;color:#888;margin-bottom:2px">배차취소</div>
-            <div style="font-size:18px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
-          </div>
-        </div>
-      </div>
-      <div id="bonus-result" style="margin-top:6px"></div>
+      <div id="today-income-display" style="font-size:10px;color:#888;text-align:right"></div>
+      <div id="today-result" style="display:none"></div>
+      <div id="bonus-result" style="margin-top:4px"></div>
     </div>
 
     <!-- 오늘 미션 현황 -->
-    <div class="card" style="padding:12px">
-      <div style="font-size:13px;font-weight:600;color:#333;margin-bottom:8px">🎯 오늘 미션 현황</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-        <span style="font-size:12px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
-        <span style="font-size:12px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
+    <div class="card" style="padding:10px">
+      <div style="font-size:12px;font-weight:600;color:#333;margin-bottom:6px">🎯 오늘 미션 현황</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:11px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
+        <span style="font-size:11px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
       </div>
-      <div style="background:#eee;border-radius:6px;height:8px;overflow:hidden;margin-bottom:8px">
+      <div style="background:#eee;border-radius:6px;height:7px;overflow:hidden;margin-bottom:6px">
         <div id="goal-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;width:0%;transition:width 0.5s"></div>
       </div>
       <div id="goal-milestones" style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px"></div>
-      <div style="margin-top:6px;text-align:center;font-size:11px;color:#888" id="goal-message"></div>
+      <div style="margin-top:5px;text-align:center;font-size:11px;color:#888" id="goal-message"></div>
     </div>
 
     <!-- 예상보너스 -->
-    <div class="card" style="padding:12px;background:linear-gradient(135deg,#F0FBF7,#E8F8F2);border:1px solid #9FE1CB">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:13px;font-weight:600;color:#0F6E56">💰 이번 주 예상 보너스</span>
+    <div class="card" style="padding:10px;background:linear-gradient(135deg,#F0FBF7,#E8F8F2);border:1px solid #9FE1CB">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:12px;font-weight:600;color:#0F6E56">💰 이번 주 예상 보너스</span>
         <button onclick="switchTab('mission',document.querySelectorAll('.tab-btn')[1])"
-          style="font-size:10px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:6px;padding:2px 6px;cursor:pointer">미션탭 →</button>
+          style="font-size:10px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:5px;padding:2px 6px;cursor:pointer">미션탭 →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        <div style="background:#fff;border-radius:8px;padding:8px;text-align:center">
+        <div style="background:#fff;border-radius:8px;padding:7px;text-align:center">
           <div style="font-size:10px;color:#999;margin-bottom:2px">일미션</div>
-          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
+          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
         </div>
-        <div style="background:#fff;border-radius:8px;padding:8px;text-align:center">
+        <div style="background:#fff;border-radius:8px;padding:7px;text-align:center">
           <div style="font-size:10px;color:#999;margin-bottom:2px">개근+물량</div>
-          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
+          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
         </div>
       </div>
       <div style="background:#1D9E75;border-radius:10px;padding:8px;text-align:center">
         <div style="font-size:10px;color:#9FE1CB;margin-bottom:1px">주간 예상 보너스</div>
-        <div style="font-size:22px;font-weight:700;color:#fff" id="calc-total">0원</div>
+        <div style="font-size:20px;font-weight:700;color:#fff" id="calc-total">0원</div>
       </div>
-      <div style="font-size:10px;color:#666;text-align:center;margin-top:6px" id="calc-next-tip"></div>
+      <div style="font-size:10px;color:#666;text-align:center;margin-top:5px" id="calc-next-tip"></div>
     </div>
 
   </div>
@@ -642,6 +645,40 @@ function autoSave(){
   updateTodayIncome(rec);
   updateBonusCalc(rec);
   updateCumulTotal();
+  // 오늘 미션현황 즉시 업데이트
+  const todayC2 = rec.todayComplete || rec.complete || 0;
+  const days2 = rec.workDays || 1;
+  const daily2 = todayC2;
+  const GOALS2 = [30,40,50,60,70];
+  const nextGoal2 = GOALS2.find(g => daily2 < g) || 70;
+  const pct2 = Math.min(daily2/nextGoal2*100,100);
+  const curEl2 = document.getElementById('goal-current');
+  const tarEl2 = document.getElementById('goal-target');
+  const barEl2 = document.getElementById('goal-bar');
+  if(curEl2) curEl2.textContent = daily2;
+  if(tarEl2) tarEl2.textContent = nextGoal2;
+  if(barEl2) barEl2.style.width = pct2+'%';
+  const msEl2 = document.getElementById('goal-milestones');
+  if(msEl2){
+    const labels2 = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
+    msEl2.innerHTML = labels2.map(({g,w})=>{
+      const done = daily2>=g;
+      const bg=done?'#1D9E75':'#F0F0F0'; const tc=done?'#fff':'#aaa'; const tc2=done?'#fff':'#bbb';
+      return '<div style="text-align:center;padding:5px 2px;border-radius:6px;background:'+bg+'">'
+        +'<div style="font-size:10px;color:'+tc+'">'+g+'건</div>'
+        +'<div style="font-size:11px;font-weight:700;color:'+tc2+'">'+w+'</div>'
+        +'<div style="font-size:12px">'+(done?'✅':'⬜')+'</div></div>';
+    }).join('');
+  }
+  const msgEl2 = document.getElementById('goal-message');
+  if(msgEl2){
+    if(daily2>=70) msgEl2.textContent='🎉 최고 미션 달성!';
+    else if(daily2>=60) msgEl2.textContent='70건까지 '+(70-daily2)+'건 남았어요!';
+    else if(daily2>=50) msgEl2.textContent='60건까지 '+(60-daily2)+'건 남았어요!';
+    else if(daily2>=40) msgEl2.textContent='50건까지 '+(50-daily2)+'건 남았어요!';
+    else if(daily2>=30) msgEl2.textContent='40건까지 '+(40-daily2)+'건 남았어요!';
+    else msgEl2.textContent='30건까지 '+(30-daily2)+'건 남았어요! 화이팅!';
+  }
 }
 
 function resetToday(){
