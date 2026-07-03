@@ -282,28 +282,37 @@ input[type=number]{-moz-appearance:textfield}
       <div style="margin-top:5px;text-align:center;font-size:11px;color:#888" id="goal-message"></div>
     </div>
 
-    <!-- 예상보너스 -->
-    <div class="card" style="padding:10px;background:linear-gradient(135deg,#F0FBF7,#E8F8F2);border:1px solid #9FE1CB">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:#0F6E56">💰 이번 주 예상 보너스</span>
-        <button onclick="switchTab('mission',document.querySelectorAll('.tab-btn')[1])"
-          style="font-size:10px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:5px;padding:2px 6px;cursor:pointer">미션탭 →</button>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-        <div style="background:#fff;border-radius:8px;padding:7px;text-align:center">
-          <div style="font-size:10px;color:#999;margin-bottom:2px">일미션</div>
-          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
+
+    <!-- 🎟️ 오늘의 행운 추첨 -->
+    <div class="card" id="lottery-card" style="padding:0;overflow:hidden;border:1.5px solid #FFD54F">
+      <!-- 헤더 -->
+      <div style="background:linear-gradient(135deg,#FF8F00,#FF6F00);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff">🎟️ 오늘의 행운 추첨</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.8);margin-top:1px">매일 오후 2시 추첨 · ☕ 메가커피 아이스 아메리카노</div>
         </div>
-        <div style="background:#fff;border-radius:8px;padding:7px;text-align:center">
-          <div style="font-size:10px;color:#999;margin-bottom:2px">개근+물량</div>
-          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
+        <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;text-align:center">
+          <div style="font-size:10px;color:#fff">추첨까지</div>
+          <div style="font-size:14px;font-weight:700;color:#fff" id="lottery-countdown">-</div>
         </div>
       </div>
-      <div style="background:#1D9E75;border-radius:10px;padding:8px;text-align:center">
-        <div style="font-size:10px;color:#9FE1CB;margin-bottom:1px">주간 예상 보너스</div>
-        <div style="font-size:20px;font-weight:700;color:#fff" id="calc-total">0원</div>
+
+      <div style="padding:12px">
+        <!-- 당첨자 표시 -->
+        <div id="lottery-result" style="background:#FFF8E1;border-radius:12px;padding:12px;text-align:center;margin-bottom:10px;min-height:64px;display:flex;align-items:center;justify-content:center;border:1px solid #FFD54F">
+          <div style="color:#bbb;font-size:13px">불러오는 중...</div>
+        </div>
+
+        <!-- 내 응모 상태 -->
+        <div id="lottery-my-status" style="margin-bottom:10px"></div>
+
+        <!-- 응모 버튼 -->
+        <button id="lottery-btn" onclick="enterLottery()"
+          style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(255,111,0,0.3)">
+          🍀 오늘 응모하기
+        </button>
+        <div style="font-size:10px;color:#888;text-align:center;margin-top:6px" id="lottery-msg">매일 1회 응모 · 당첨 시 카카오톡으로 쿠폰 발송</div>
       </div>
-      <div style="font-size:10px;color:#666;text-align:center;margin-top:5px" id="calc-next-tip"></div>
     </div>
 
   </div>
@@ -539,6 +548,12 @@ input[type=number]{-moz-appearance:textfield}
       <div id="admin-slot-inputs"></div>
       <button class="btn-save" onclick="submitAdmin()">저장하기</button>
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
+      <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
+      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:500">🎰 오늘의 행운 추첨</div>
+      <button onclick="drawLotteryWinner()"
+        style="width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:14px">
+        🎯 지금 당첨자 추첨하기
+      </button>
       <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:500">📢 기사님 공지 등록</div>
       <textarea id="notice-input" placeholder="공지 내용을 입력하세요" 
         style="width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;font-size:14px;font-family:inherit;resize:none;height:70px;margin-bottom:8px"></textarea>
@@ -1545,6 +1560,213 @@ function showAdmin(){
   });
 }
 
+// ── 복권 시스템 ────────────────────────────────────────
+const LOTTERY_RIDERS = [
+  '강철윤','권태우','김도형','김상훈','김새롬','김성권','김성진','김용운',
+  '김정열','김정우','김주연','김진수','도보경','도재권','박덕정','박상현',
+  '박성호','박이진','박준영','배광수','송상호','신강식','신정기','안대성',
+  '양종주','윤상식','윤준영','이도헌','이상규','이승형','이재진','이종건',
+  '이형곤','정교진','정덕종','정은자','조형기','한경호','함정재','허준혁','황윤철'
+];
+
+function getLotteryDateKey(){
+  const kst = toKST(new Date());
+  // 오후 2시(14시) 이전이면 전날 날짜 기준
+  if(kst.getUTCHours() < 14){
+    const prev = new Date(kst);
+    prev.setUTCDate(kst.getUTCDate()-1);
+    return prev.toISOString().slice(0,10);
+  }
+  return kst.toISOString().slice(0,10);
+}
+
+function getLotteryWinner(dateKey){
+  // 날짜를 시드로 매일 같은 당첨자 결정
+  // Firebase에서 응모자 중 추첨
+  return db.ref('lottery/'+dateKey).once('value');
+}
+
+function enterLottery(){
+  const btn = document.getElementById('lottery-btn');
+  const msg = document.getElementById('lottery-msg');
+  const dateKey = getLotteryDateKey();
+  const myKey = lsGet('lottery_name_key') || '';
+
+  // 이름 입력 모달
+  const existing = document.getElementById('lottery-name-modal');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'lottery-name-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:20px;padding:24px;width:100%;max-width:300px;text-align:center';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:24px;margin-bottom:8px';
+  title.textContent = '🍀';
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px';
+  sub.textContent = '오늘의 행운 추첨 응모';
+
+  const desc = document.createElement('div');
+  desc.style.cssText = 'font-size:12px;color:#888;margin-bottom:16px';
+  desc.textContent = '이름을 선택하고 응모하세요!';
+
+  // 이름 선택 드롭다운
+  const select = document.createElement('select');
+  select.id = 'lottery-name-select';
+  select.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:2px solid #FFD54F;font-size:15px;font-weight:600;font-family:inherit;color:#333;margin-bottom:14px;background:#FFF8E1;outline:none';
+  
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = '-- 이름 선택 --';
+  select.appendChild(defaultOpt);
+  
+  LOTTERY_RIDERS.forEach(name => {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    if(name === myKey) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.style.cssText = 'flex:1;padding:11px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:14px;font-weight:600;cursor:pointer';
+  cancelBtn.textContent = '취소';
+  cancelBtn.onclick = () => overlay.remove();
+
+  const applyBtn = document.createElement('button');
+  applyBtn.style.cssText = 'flex:2;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:14px;font-weight:700;cursor:pointer';
+  applyBtn.textContent = '🍀 응모하기';
+  applyBtn.onclick = () => {
+    const name = select.value;
+    if(!name){ alert('이름을 선택해주세요!'); return; }
+    lsSet('lottery_name_key', name);
+    // Firebase에 응모 등록
+    const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name);
+    entryRef.set({name, time: new Date().toISOString()}).then(()=>{
+      overlay.remove();
+      lsSet('lottery_entered_'+dateKey, name);
+      loadLottery();
+      showConfetti(0, 0);
+    });
+  };
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(applyBtn);
+  box.appendChild(title);
+  box.appendChild(sub);
+  box.appendChild(desc);
+  box.appendChild(select);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+
+function updateLotteryCountdown(){
+  const kst = toKST(new Date());
+  const h = kst.getUTCHours();
+  const m = kst.getUTCMinutes();
+  const s = kst.getUTCSeconds();
+  const el = document.getElementById('lottery-countdown');
+  if(!el) return;
+
+  if(h < 14){
+    // 오늘 오후 2시까지
+    const totalSec = (14-h-1)*3600 + (60-m-1)*60 + (60-s);
+    const rh = Math.floor(totalSec/3600);
+    const rm = Math.floor((totalSec%3600)/60);
+    el.textContent = rh+'시간 '+rm+'분';
+  } else {
+    el.textContent = '추첨완료';
+  }
+}
+
+// 카운트다운 1분마다 업데이트
+setInterval(updateLotteryCountdown, 60000);
+
+function loadLottery(){
+  updateLotteryCountdown();
+  const dateKey = getLotteryDateKey();
+  const resultEl = document.getElementById('lottery-result');
+  const btnEl = document.getElementById('lottery-btn');
+  const msgEl = document.getElementById('lottery-msg');
+  const myStatusEl = document.getElementById('lottery-my-status');
+  if(!resultEl) return;
+
+  const enteredName = lsGet('lottery_entered_'+dateKey);
+
+  // 내 응모 상태 표시
+  if(myStatusEl){
+    if(enteredName){
+      myStatusEl.innerHTML = '<div style="background:#E8F8F2;border-radius:8px;padding:6px 12px;text-align:center;font-size:12px;color:#1D9E75;font-weight:600">✅ '+enteredName+' 기사님 응모 완료!</div>';
+      if(btnEl){ btnEl.textContent = '✅ 응모 완료'; btnEl.style.background = '#aaa'; btnEl.disabled = true; }
+    } else {
+      myStatusEl.innerHTML = '';
+      if(btnEl){ btnEl.textContent = '🍀 오늘 응모하기'; btnEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)'; btnEl.disabled = false; }
+    }
+  }
+
+  // 당첨자 확인
+  db.ref('lottery/'+dateKey+'/winner').once('value').then(snap=>{
+    const winner = snap.val();
+    if(winner){
+      const isMe = winner.name === enteredName;
+      resultEl.style.background = isMe ? 'linear-gradient(135deg,#FFF3E0,#FFE0B2)' : '#FFF8E1';
+      resultEl.innerHTML = '<div style="width:100%">'
+        +'<div style="font-size:11px;color:#888;margin-bottom:6px">🏆 오늘의 당첨자</div>'
+        +'<div style="font-size:22px;margin-bottom:4px">'+(isMe?'🎊':'☕')+'</div>'
+        +'<div style="font-size:17px;font-weight:700;color:'+(isMe?'#E65100':'#333')+'">'+winner.name+' 기사님</div>'
+        +'<div style="font-size:12px;color:#FF8F00;font-weight:600;margin-top:3px">메가커피 아이스 아메리카노 ☕</div>'
+        +(isMe
+          ?'<div style="margin-top:8px;background:#E65100;border-radius:8px;padding:6px 10px;display:inline-block"><span style="color:#fff;font-size:12px;font-weight:700">🎉 당첨! 사장님께 연락하세요!</span></div>'
+          :'<div style="font-size:11px;color:#888;margin-top:4px">내일 또 도전하세요! 🍀</div>'
+        )
+        +'</div>';
+      if(isMe) setTimeout(()=>showConfetti(0,0), 300);
+    } else {
+      // 당첨자 미발표
+      db.ref('lottery/'+dateKey+'/entries').once('value').then(eSnap=>{
+        const entries = eSnap.val();
+        const count = entries ? Object.keys(entries).length : 0;
+        const kstNow = toKST(new Date());
+        const isPast14 = kstNow.getUTCHours() >= 14;
+        resultEl.innerHTML = '<div style="text-align:center;width:100%">'
+          +'<div style="font-size:22px;margin-bottom:4px">'+(isPast14?'⏳':'🎰')+'</div>'
+          +'<div style="font-size:13px;font-weight:700;color:#333">'+(isPast14?'추첨 준비 중...':'오후 2시 추첨 예정')+'</div>'
+          +'<div style="font-size:12px;color:#FF8F00;font-weight:600;margin-top:3px">응모자 <span style="font-size:15px">'+count+'</span>명 참여중</div>'
+          +'<div style="font-size:10px;color:#aaa;margin-top:3px">☕ 메가커피 아이스 아메리카노</div>'
+          +'</div>';
+      });
+    }
+  });
+}
+
+// 관리자 - 당첨자 추첨
+function drawLotteryWinner(){
+  const dateKey = getLotteryDateKey();
+  db.ref('lottery/'+dateKey+'/entries').once('value').then(snap=>{
+    const entries = snap.val();
+    if(!entries || Object.keys(entries).length === 0){
+      alert('응모자가 없습니다!');
+      return;
+    }
+    const names = Object.keys(entries);
+    const winner = names[Math.floor(Math.random()*names.length)];
+    db.ref('lottery/'+dateKey+'/winner').set({name:winner, drawnAt:new Date().toISOString()}).then(()=>{
+      alert('🎉 당첨자: ' + winner + ' 기사님!\n☕ 메가커피 아이스 아메리카노 쿠폰을 카카오톡으로 보내주세요!');
+      loadLottery();
+    });
+  });
+}
+
 function closeAdmin(){ 
   const el = document.getElementById('admin-overlay');
   if(el) el.classList.remove('open'); 
@@ -2045,6 +2267,7 @@ function init(){
   loadCumulCalls();
   loadNightCalls();
   loadSetCount();
+  loadLottery();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
