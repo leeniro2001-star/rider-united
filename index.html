@@ -159,10 +159,10 @@ input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 input[type=number]{-moz-appearance:textfield}
 .particle{position:fixed;pointer-events:none;z-index:998;border-radius:2px}
 
-.slot-grid-header{display:grid;grid-template-columns:60px repeat(7,1fr);gap:3px;margin-bottom:4px}
-.slot-grid-row{display:grid;grid-template-columns:60px repeat(7,1fr);gap:3px;margin-bottom:3px}
-.slot-grid-cell{height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600}
-.slot-grid-label{font-size:10px;color:#888;display:flex;align-items:center;font-weight:600}
+.slot-grid-header{display:grid;grid-template-columns:36px repeat(7,1fr);gap:2px;margin-bottom:3px}
+.slot-grid-row{display:grid;grid-template-columns:36px repeat(7,1fr);gap:2px;margin-bottom:2px}
+.slot-grid-cell{height:44px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer}
+.slot-grid-label{font-size:11px;color:#888;display:flex;align-items:center;font-weight:600}
 .slot-grid-day{font-size:11px;color:#888;text-align:center;font-weight:600;padding:4px 0}
 .cell-pass{background:#E1F5EE;color:#0F6E56}
 .cell-fail{background:#FEF2F2;color:#E24B4A}
@@ -1869,9 +1869,6 @@ function renderWeeklyGrid(){
         }
         shtml+='</div>';
       }
-      shtml+=`<div style="margin-top:8px;background:#F0FBF7;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center">`
-        +`<span style="font-size:11px;color:#555;font-weight:600">이번 주 초과보너스</span>`
-        +`<span style="font-size:14px;font-weight:700;color:#1D9E75">${totalBonus.toLocaleString()}원</span></div>`;
       statsGridEl.innerHTML = shtml;
     }
   }).catch(()=>{
@@ -1955,7 +1952,7 @@ function adminLogoTap(){
   logoTapCount++;
   if(logoTapTimer) clearTimeout(logoTapTimer);
   logoTapTimer = setTimeout(()=>{ logoTapCount=0; }, 2000);
-  if(logoTapCount >= 3){
+  if(logoTapCount >= 5){
     logoTapCount = 0;
     const btn = document.getElementById('admin-btn');
     if(!btn) return;
