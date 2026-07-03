@@ -436,8 +436,11 @@ input[type=number]{-moz-appearance:textfield}
       <div class="card-title">오늘 슬롯별 현황</div>
       <div id="slot-list"><div class="empty-state"><i class="ti ti-refresh"></i><p>데이터 불러오는 중...</p></div></div>
     </div>
-    <div class="card">
-      <div class="card-title">이번 주 28슬롯 현황</div>
+    <div class="card" id="weekly-grid-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="card-title" style="margin:0">이번 주 28슬롯 현황</div>
+        <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
+      </div>
       <div style="overflow-x:auto">
         <div id="weekly-grid" style="min-width:280px"></div>
       </div>
@@ -1836,7 +1839,41 @@ function renderWeeklyGrid(){
       + `<span style="font-size:16px;font-weight:700;color:#1D9E75">${totalBonus.toLocaleString()}원</span></div>`;
 
     if(gridEl) gridEl.innerHTML = html;
-    if(statsGridEl) statsGridEl.innerHTML = html;
+
+    // 통계탭용 - 퍼센트만 표시 (금액 없음, 작게)
+    if(statsGridEl){
+      let shtml = '<div class="slot-grid-header"><div class="slot-grid-label" style="font-size:10px"></div>';
+      for(let i=0;i<7;i++){
+        const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
+        const kd=toKST(d); const isT=dates[i]===todayK;
+        shtml+=`<div class="slot-grid-day" style="font-size:9px;${isT?'color:#1D9E75;font-weight:700':''}">${kd.getUTCMonth()+1}/${kd.getUTCDate()}<br>${DAY_KR[kd.getUTCDay()]}</div>`;
+      }
+      shtml+='</div>';
+      for(let si=0;si<4;si++){
+        shtml+=`<div class="slot-grid-row"><div class="slot-grid-label" style="font-size:10px;color:${SLOTS[si].color}">${slotNames[si]}</div>`;
+        for(let di=0;di<7;di++){
+          const k=dates[di];
+          const d=new Date(start); d.setUTCDate(start.getUTCDate()+di);
+          const kd=toKST(d); const dayK=DAY_KEY[kd.getUTCDay()]; const isT=k===todayK;
+          const target=t1[si][dayK]*9;
+          const fbVal=fd[k]?(fd[k][slotKeys[si]]||0):0;
+          const localVal=parseInt(lsGet('slot_processed_'+k+'_'+slotKeys[si]))||0;
+          const processed=localVal>0?localVal:fbVal;
+          const r=calcSlotBonus(processed,target);
+          const rateStr=processed>0?Math.round(r.rate)+'%':'-';
+          const bgColor=r.rate>=150?'#0a7a5a':r.rate>=140?'#1D9E75':r.rate>=130?'#2EC4A0':r.rate>=120?'#7EDEC8':r.rate>=110?'#B2EDE3':r.rate>=100?'#D6F5EE':'#f5f5f5';
+          const textColor=r.rate>=120?'#fff':r.rate>=100?'#0a7a5a':'#bbb';
+          const borderStyle=isT?'border:1.5px solid #1D9E75;':'';
+          shtml+=`<div class="slot-grid-cell" style="background:${bgColor};color:${textColor};${borderStyle}padding:3px 1px;">`
+            +`<div style="font-size:11px;font-weight:700">${rateStr}</div></div>`;
+        }
+        shtml+='</div>';
+      }
+      shtml+=`<div style="margin-top:8px;background:#F0FBF7;border-radius:8px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center">`
+        +`<span style="font-size:11px;color:#555;font-weight:600">이번 주 초과보너스</span>`
+        +`<span style="font-size:14px;font-weight:700;color:#1D9E75">${totalBonus.toLocaleString()}원</span></div>`;
+      statsGridEl.innerHTML = shtml;
+    }
   }).catch(()=>{
     if(gridEl) gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">데이터를 불러올 수 없습니다</div>';
   });
@@ -1922,10 +1959,14 @@ function adminLogoTap(){
     logoTapCount = 0;
     const btn = document.getElementById('admin-btn');
     if(!btn) return;
+    const wCard = document.getElementById('weekly-grid-card');
     if(btn.style.display === 'none'){
       btn.style.display = 'flex';
+      if(wCard) wCard.style.display = 'block';
+      renderWeeklyGrid();
     } else {
       btn.style.display = 'none';
+      if(wCard) wCard.style.display = 'none';
     }
   }
 }
