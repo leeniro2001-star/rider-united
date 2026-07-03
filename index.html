@@ -273,7 +273,7 @@ input[type=number]{-moz-appearance:textfield}
 
     <!-- 심야 미션 -->
     <div class="card" id="night-mission-card">
-      <div class="card-title">🌙 심야 미션 (22:00~23:59)</div>
+      <div class="card-title">🌙 주간 심야 미션 (22:00~23:59)</div>
       <div style="margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;color:#555">이번 주 22~23시 완료</span>
@@ -302,7 +302,9 @@ input[type=number]{-moz-appearance:textfield}
           <div style="display:flex;align-items:center;gap:6px">
             <input type="number" id="night-input" placeholder="0" inputmode="numeric"
               style="width:60px;padding:4px 8px;border-radius:8px;border:1px solid #748FFC;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#3B5BDB"
-              oninput="saveNightCalls(this.value)">
+              onkeydown="if(event.key==='Enter'){saveNightCalls(this.value);this.blur();showNightSaved();}">
+            <button onclick="saveNightCalls(document.getElementById('night-input').value);showNightSaved();"
+              style="padding:4px 10px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">확인</button>
             <span style="font-size:12px;color:#3B5BDB">건</span>
           </div>
         </div>
@@ -974,6 +976,16 @@ function updateCumulTotal(){
 }
 
 // ── 심야 미션 ────────────────────────────────────────────
+function showNightSaved(){
+  const msg = document.getElementById('night-msg');
+  if(msg){
+    const prev = msg.textContent;
+    msg.textContent = '✅ 저장됐습니다!';
+    msg.style.color = '#3B5BDB';
+    setTimeout(()=>{ updateNightTotal(); }, 1500);
+  }
+}
+
 function saveNightCalls(val){
   const v = parseInt(val)||0;
   lsSet('night_today_' + todayKey(), v);
@@ -990,43 +1002,34 @@ function updateNightTotal(){
     const v = lsGet(key) || 0;
     total += parseInt(v)||0;
   }
-  
+
   const countEl = document.getElementById('night-count');
   const barEl = document.getElementById('night-bar');
-  const check10 = document.getElementById('night-check-10');
-  const check20 = document.getElementById('night-check-20');
   const ms10 = document.getElementById('night-ms-10');
   const ms20 = document.getElementById('night-ms-20');
   const msgEl = document.getElementById('night-msg');
   const inputEl = document.getElementById('night-input');
-  
+
   if(countEl) countEl.textContent = total + '건';
-  
-  const target = total >= 20 ? 20 : 10;
+
+  const target = total >= 30 ? 30 : 15;
   const pct = Math.min(total / target * 100, 100);
   if(barEl) barEl.style.width = pct + '%';
-  
-  if(total >= 20){
-    if(check10) check10.textContent = '✅';
-    if(check20) check20.textContent = '✅';
-    if(ms10) ms10.style.background = '#D3F9D8';
-    if(ms20) ms20.style.background = '#D3F9D8';
-    if(msgEl) msgEl.textContent = '🎉 20건 달성! 심야보너스 20,000원!';
-  } else if(total >= 10){
-    if(check10) check10.textContent = '✅';
-    if(check20) check20.textContent = '⬜';
-    if(ms10) ms10.style.background = '#D3F9D8';
-    if(ms20) ms20.style.background = '#F0F4FF';
-    if(msgEl) msgEl.textContent = `20건까지 ${20-total}건 남음! 추가 10,000원!`;
+
+  if(total >= 30){
+    if(ms10){ ms10.style.background='#1D9E75'; ms10.style.border='1.5px solid #1D9E75'; ms10.innerHTML='<div style="font-size:11px;color:#fff">주간 15건↑</div><div style="font-size:15px;font-weight:700;color:#fff">15,000원</div><div style="font-size:16px">✅ 달성!</div>'; }
+    if(ms20){ ms20.style.background='#1D9E75'; ms20.style.border='1.5px solid #1D9E75'; ms20.innerHTML='<div style="font-size:11px;color:#fff">주간 30건↑</div><div style="font-size:15px;font-weight:700;color:#fff">30,000원</div><div style="font-size:16px">✅ 달성!</div>'; }
+    if(msgEl){ msgEl.textContent='🎉 30건 달성! 심야보너스 30,000원 지급!'; msgEl.style.color='#1D9E75'; msgEl.style.fontWeight='700'; }
+  } else if(total >= 15){
+    if(ms10){ ms10.style.background='#1D9E75'; ms10.style.border='1.5px solid #1D9E75'; ms10.innerHTML='<div style="font-size:11px;color:#fff">주간 15건↑</div><div style="font-size:15px;font-weight:700;color:#fff">15,000원</div><div style="font-size:16px">✅ 달성!</div>'; }
+    if(ms20){ ms20.style.background='#F0F4FF'; ms20.style.border='0.5px solid #748FFC'; ms20.innerHTML='<div style="font-size:11px;color:#888">주간 30건↑</div><div style="font-size:15px;font-weight:700;color:#3B5BDB">30,000원</div><div style="font-size:16px">⬜</div>'; }
+    if(msgEl){ msgEl.textContent='🌙 15건 달성! 15,000원 지급! '+' 30건까지 '+(30-total)+'건 남음!'; msgEl.style.color='#1D9E75'; msgEl.style.fontWeight='700'; }
   } else {
-    if(check10) check10.textContent = '⬜';
-    if(check20) check20.textContent = '⬜';
-    if(ms10) ms10.style.background = '#F0F4FF';
-    if(ms20) ms20.style.background = '#F0F4FF';
-    if(msgEl) msgEl.textContent = `10건까지 ${10-total}건 남음!`;
+    if(ms10){ ms10.style.background='#F0F4FF'; ms10.style.border='0.5px solid #748FFC'; ms10.innerHTML='<div style="font-size:11px;color:#888">주간 15건↑</div><div style="font-size:15px;font-weight:700;color:#3B5BDB">15,000원</div><div style="font-size:16px">⬜</div>'; }
+    if(ms20){ ms20.style.background='#F0F4FF'; ms20.style.border='0.5px solid #748FFC'; ms20.innerHTML='<div style="font-size:11px;color:#888">주간 30건↑</div><div style="font-size:15px;font-weight:700;color:#3B5BDB">30,000원</div><div style="font-size:16px">⬜</div>'; }
+    if(msgEl){ msgEl.textContent='15건까지 '+(15-total)+'건 남음!'; msgEl.style.color='#888'; msgEl.style.fontWeight='normal'; }
   }
-  
-  // 오늘 입력값 표시
+
   const todayNight = parseInt(lsGet('night_today_' + todayKey()))||0;
   if(inputEl) inputEl.value = todayNight || '';
 }
