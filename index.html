@@ -481,8 +481,13 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
-    <!-- 주간 28슬롯 현황판 -->
-
+    <!-- 주간 현황판 -->
+    <div class="card">
+      <div class="card-title">📊 이번 주 주간 현황판</div>
+      <div style="overflow-x:auto">
+        <div id="stats-weekly-grid" style="min-width:280px"></div>
+      </div>
+    </div>
 
   </div>
 </div>
@@ -1614,8 +1619,10 @@ function renderWeeklyGrid(){
     dates.push(dateKey(d));
   }
   const gridEl = document.getElementById('weekly-grid');
-  if(!gridEl) return;
-  gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">불러오는 중...</div>';
+  const statsGridEl = document.getElementById('stats-weekly-grid');
+  if(!gridEl && !statsGridEl) return;
+  if(gridEl) gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">불러오는 중...</div>';
+  if(statsGridEl) statsGridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">불러오는 중...</div>';
 
   const promises = dates.map(k => db.ref('branch/daily/'+k).once('value'));
   Promise.all(promises).then(snaps => {
@@ -1649,7 +1656,8 @@ function renderWeeklyGrid(){
       html+='</div>';
     }
     html+=`<div style="margin-top:10px;text-align:center;font-size:13px;color:#888">달성 <span style="color:#1D9E75;font-weight:700">${pass}</span> / ${tot}슬롯</div>`;
-    gridEl.innerHTML = html;
+    if(gridEl) gridEl.innerHTML = html;
+    if(statsGridEl) statsGridEl.innerHTML = html;
   }).catch(()=>{
     gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">데이터를 불러올 수 없습니다</div>';
   });
