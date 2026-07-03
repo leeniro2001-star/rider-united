@@ -1058,14 +1058,12 @@ function updateNightTotal(){
       const month = kstD.getUTCMonth()+1;
       const day = kstD.getUTCDate();
       const dow = DAY_KR[kstD.getUTCDay()];
-      if(v > 0 || today){
-        histHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:0.5px solid #eee;">'
-          + '<span style="font-size:12px;color:'+(today?'#3B5BDB':'#666')+';font-weight:'+(today?'600':'normal')+'">'
-          + month+'/'+day+'('+dow+')'+(today?' 오늘':'')+'</span>'
-          + '<span style="font-size:13px;font-weight:600;color:'+(v>0?'#3B5BDB':'#bbb')+'">'
+      histHTML += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid #eee;">'
+          + '<span style="font-size:12px;color:'+(today?'#3B5BDB':'#555')+';font-weight:'+(today?'700':'normal')+'">'
+          + month+'/'+day+'('+dow+')'+(today?' ★오늘':'')+'</span>'
+          + '<span style="font-size:13px;font-weight:700;color:'+(v>0?'#3B5BDB':'#ccc')+'">'
           + (v>0 ? v+'건' : '-') + '</span>'
           + '</div>';
-      }
     }
     histEl.innerHTML = histHTML || '<div style="font-size:12px;color:#bbb;text-align:center">기록 없음</div>';
   }
