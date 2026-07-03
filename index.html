@@ -988,7 +988,9 @@ function showNightSaved(){
 
 function saveNightCalls(val){
   const v = parseInt(val)||0;
-  lsSet('night_today_' + todayKey(), v);
+  const kst = toKST(new Date());
+  const dateStr = kst.toISOString().slice(0,10);
+  lsSet('night_' + dateStr, v);
   updateNightTotal();
 }
 
@@ -998,7 +1000,8 @@ function updateNightTotal(){
   for(let i=0;i<7;i++){
     const d = new Date(start);
     d.setUTCDate(start.getUTCDate()+i);
-    const key = 'night_today_day_' + d.toISOString().slice(0,10);
+    const kstD = toKST(d);
+    const key = 'night_' + kstD.toISOString().slice(0,10);
     const v = lsGet(key) || 0;
     total += parseInt(v)||0;
   }
@@ -1030,7 +1033,8 @@ function updateNightTotal(){
     if(msgEl){ msgEl.textContent='15건까지 '+(15-total)+'건 남음!'; msgEl.style.color='#888'; msgEl.style.fontWeight='normal'; }
   }
 
-  const todayNight = parseInt(lsGet('night_today_' + todayKey()))||0;
+  const kstNow = toKST(new Date());
+  const todayNight = parseInt(lsGet('night_' + kstNow.toISOString().slice(0,10)))||0;
   if(inputEl) inputEl.value = todayNight || '';
 }
 
