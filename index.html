@@ -193,16 +193,19 @@ input[type=number]{-moz-appearance:textfield}
     <!-- 오늘 입력 -->
     <div class="card">
       <div class="card-title">오늘 입력</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-        <div class="counter-box">
-          <div class="counter-label complete">완료</div>
-          <div class="counter-row">
-            <button class="cnt-btn minus-complete" onclick="adjust('complete',-1)">−</button>
-            <input type="number" class="counter-val" id="cnt-complete" value="0" min="0" inputmode="numeric"
-              onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)">
-            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)">+</button>
-          </div>
+      <!-- 완료 (크게) -->
+      <div class="counter-box" style="margin-bottom:8px">
+        <div class="counter-label complete">완료</div>
+        <div class="counter-row">
+          <button class="cnt-btn minus-complete" onclick="adjust('complete',-1)" style="width:44px;height:44px;font-size:22px">−</button>
+          <input type="number" class="counter-val" id="cnt-complete" value="0" min="0" inputmode="numeric"
+            onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)"
+            style="font-size:36px;font-weight:700;flex:1;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75">
+          <button class="cnt-btn plus-complete" onclick="adjust('complete',1)" style="width:44px;height:44px;font-size:22px;background:#1D9E75;color:#fff">+</button>
         </div>
+      </div>
+      <!-- 거절 + 배차취소 (2열) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
         <div class="counter-box">
           <div class="counter-label reject">거절</div>
           <div class="counter-row">
@@ -240,10 +243,14 @@ input[type=number]{-moz-appearance:textfield}
     <div class="card">
       <div class="card-title">오늘 현황</div>
       <div id="today-result">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
-          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="text-align:center;background:#F0FBF7;border-radius:10px;padding:12px 4px">
             <div style="font-size:11px;color:#888;margin-bottom:4px">완료</div>
-            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
+            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
+          </div>
+          <div style="text-align:center;background:#F0FBF7;border-radius:10px;padding:12px 4px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">수락률</div>
+            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
           </div>
           <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
             <div style="font-size:11px;color:#888;margin-bottom:4px">거절</div>
@@ -252,10 +259,6 @@ input[type=number]{-moz-appearance:textfield}
           <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
             <div style="font-size:11px;color:#888;margin-bottom:4px">배차취소</div>
             <div style="font-size:22px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
-          </div>
-          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
-            <div style="font-size:11px;color:#888;margin-bottom:4px">수락률</div>
-            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
           </div>
         </div>
         <div id="bonus-result"></div>
