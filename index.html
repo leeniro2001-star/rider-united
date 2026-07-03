@@ -184,6 +184,116 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-today" class="screen active">
   <div style="margin-top:4px">
 
+    <!-- 공지사항 -->
+    <div id="notice-banner" style="display:none;background:#FFF3CD;border-radius:10px;padding:10px 14px;margin-bottom:10px;border:1px solid #FFE082">
+      <div style="font-size:12px;font-weight:600;color:#856404;margin-bottom:2px">📢 공지사항</div>
+      <div id="notice-text" style="font-size:13px;color:#533f03"></div>
+    </div>
+
+    <!-- 오늘 입력 -->
+    <div class="card">
+      <div class="card-title">오늘 입력</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div class="counter-box">
+          <div class="counter-label complete">완료</div>
+          <div class="counter-row">
+            <button class="cnt-btn minus-complete" onclick="adjust('complete',-1)">−</button>
+            <input type="number" class="counter-val" id="cnt-complete" value="0" min="0" inputmode="numeric"
+              onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)">
+            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)">+</button>
+          </div>
+        </div>
+        <div class="counter-box">
+          <div class="counter-label reject">거절</div>
+          <div class="counter-row">
+            <button class="cnt-btn" onclick="adjust('reject',-1)">−</button>
+            <input type="number" class="counter-val" id="cnt-reject" value="0" min="0" inputmode="numeric"
+              onchange="setVal('reject',this.value)" oninput="setVal('reject',this.value)">
+            <button class="cnt-btn" onclick="adjust('reject',1)">+</button>
+          </div>
+        </div>
+        <div class="counter-box">
+          <div class="counter-label cancel">배차취소</div>
+          <div class="counter-row">
+            <button class="cnt-btn" onclick="adjust('cancel',-1)">−</button>
+            <input type="number" class="counter-val" id="cnt-cancel" value="0" min="0" inputmode="numeric"
+              onchange="setVal('cancel',this.value)" oninput="setVal('cancel',this.value)">
+            <button class="cnt-btn" onclick="adjust('cancel',1)">+</button>
+          </div>
+        </div>
+      </div>
+      <!-- 배달수입 -->
+      <div style="margin-top:10px;padding:10px 12px;background:#F0FBF7;border-radius:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;font-weight:600;color:#0F6E56">💰 오늘 배달수입</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" id="today-delivery" placeholder="0" inputmode="numeric"
+              style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid #9FE1CB;font-size:16px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
+              onchange="saveTodayDelivery(this.value)"
+              oninput="saveTodayDelivery(this.value)">
+            <span style="font-size:13px;color:#0F6E56;font-weight:500">원</span>
+          </div>
+        </div>
+        <div id="today-income-display" style="font-size:12px;color:#888"></div>
+      </div>
+    </div>
+
+    <!-- 오늘 현황 -->
+    <div class="card">
+      <div class="card-title">오늘 현황</div>
+      <div id="today-result"></div>
+    </div>
+
+    <!-- 이번주 예상보너스 요약 -->
+    <div class="card" style="background:linear-gradient(135deg,#F0FBF7,#E8F8F2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div class="card-title" style="margin:0">💰 이번 주 예상 보너스</div>
+        <button onclick="switchTab('mission',document.querySelectorAll('.tab-btn')[1])"
+          style="font-size:11px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:6px;padding:3px 8px;cursor:pointer">자세히 →</button>
+      </div>
+      <div id="bonus-calc-display">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="background:#fff;border-radius:10px;padding:8px;text-align:center">
+            <div style="font-size:10px;color:#999;margin-bottom:2px">일미션</div>
+            <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
+          </div>
+          <div style="background:#fff;border-radius:10px;padding:8px;text-align:center">
+            <div style="font-size:10px;color:#999;margin-bottom:2px">개근+물량</div>
+            <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
+          </div>
+        </div>
+        <div style="background:#1D9E75;border-radius:10px;padding:8px;text-align:center">
+          <div style="font-size:10px;color:#9FE1CB;margin-bottom:2px">주간 예상 보너스</div>
+          <div style="font-size:22px;font-weight:700;color:#fff" id="calc-total">0원</div>
+        </div>
+        <div style="font-size:11px;color:#888;text-align:center;margin-top:6px" id="calc-next-tip"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="screen-mission" class="screen">
+  <div style="margin-top:4px">
+
+    <!-- 오늘 미션 현황 -->
+    <div class="card">
+      <div class="card-title">🎯 오늘 미션 현황</div>
+      <div id="daily-goal-display">
+        <div style="margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-size:12px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
+            <span style="font-size:12px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
+          </div>
+          <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden">
+            <div id="goal-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;width:0%;transition:width 0.5s"></div>
+          </div>
+        </div>
+        <div id="goal-milestones" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px"></div>
+        <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="goal-message"></div>
+      </div>
+    </div>
+
     <!-- 누적콜 현황 -->
     <div class="card" id="cumul-card">
       <div class="card-title">🏆 내 누적콜 현황</div>
@@ -199,11 +309,9 @@ input[type=number]{-moz-appearance:textfield}
             <div style="font-size:12px;color:#888" id="cumul-remain">1000콜 남음</div>
           </div>
         </div>
-        <!-- 진행바 -->
         <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
           <div id="cumul-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;transition:width 0.5s;width:0%"></div>
         </div>
-        <!-- 마일스톤 -->
         <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
           <span id="ms-1000">1000콜<br>💰3만</span>
           <span id="ms-2000" style="text-align:center">2000콜<br>💰3만</span>
@@ -211,7 +319,6 @@ input[type=number]{-moz-appearance:textfield}
           <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
           <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
         </div>
-        <!-- 오늘 완료건 표시 -->
         <div style="display:flex;justify-content:space-between;align-items:center;background:#E8F8F2;border-radius:8px;padding:8px 12px;margin-bottom:8px">
           <span style="font-size:12px;color:#0F6E56;font-weight:600">오늘 완료건</span>
           <span style="font-size:16px;font-weight:700;color:#1D9E75" id="cumul-today-count">0건</span>
@@ -231,50 +338,10 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
-    <!-- 예상 보너스 계산기 -->
-    <div class="card">
-      <div class="card-title">💰 이번 주 예상 보너스</div>
-      <div id="bonus-calc-display">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div style="background:#F8F9FA;border-radius:10px;padding:10px;text-align:center">
-            <div style="font-size:10px;color:#999;margin-bottom:4px">일미션</div>
-            <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
-          </div>
-          <div style="background:#F8F9FA;border-radius:10px;padding:10px;text-align:center">
-            <div style="font-size:10px;color:#999;margin-bottom:4px">개근+물량보너스</div>
-            <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
-          </div>
-        </div>
-        <div style="background:#1D9E75;border-radius:10px;padding:10px;text-align:center;margin-bottom:8px">
-          <div style="font-size:11px;color:#9FE1CB;margin-bottom:2px">이번 주 예상 보너스</div>
-          <div style="font-size:24px;font-weight:700;color:#fff" id="calc-total">0원</div>
-        </div>
-        <div style="font-size:11px;color:#888;text-align:center" id="calc-next-tip"></div>
-      </div>
-    </div>
-
-    <!-- 오늘 목표 달성 현황 -->
-    <div class="card">
-      <div class="card-title">🎯 오늘 미션 현황</div>
-      <div id="daily-goal-display">
-        <div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-            <span style="font-size:12px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
-            <span style="font-size:12px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
-          </div>
-          <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden">
-            <div id="goal-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;width:0%;transition:width 0.5s"></div>
-          </div>
-        </div>
-        <div id="goal-milestones" style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px"></div>
-        <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="goal-message"></div>
-      </div>
-    </div>
-
-    <!-- 심야 미션 -->
+    <!-- 주간 심야 미션 -->
     <div class="card" id="night-mission-card">
       <div class="card-title">🌙 주간 심야 미션 (22:00~23:59)</div>
-      <div style="margin-bottom:10px">
+      <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
           <span style="font-size:13px;color:#555">이번 주 22~23시 완료</span>
           <span style="font-size:20px;font-weight:700;color:#3B5BDB" id="night-count">0건</span>
@@ -283,15 +350,15 @@ input[type=number]{-moz-appearance:textfield}
           <div id="night-bar" style="height:100%;background:linear-gradient(90deg,#3B5BDB,#748FFC);border-radius:6px;width:0%;transition:width 0.5s"></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div id="night-ms-10" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF">
+          <div id="night-ms-10" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF;border:0.5px solid #748FFC">
             <div style="font-size:11px;color:#888">주간 15건↑</div>
-            <div style="font-size:16px;font-weight:700;color:#3B5BDB">15,000원</div>
-            <div style="font-size:14px" id="night-check-10">⬜</div>
+            <div style="font-size:15px;font-weight:700;color:#3B5BDB">15,000원</div>
+            <div style="font-size:16px">⬜</div>
           </div>
-          <div id="night-ms-20" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF">
+          <div id="night-ms-20" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF;border:0.5px solid #748FFC">
             <div style="font-size:11px;color:#888">주간 30건↑</div>
-            <div style="font-size:16px;font-weight:700;color:#3B5BDB">30,000원</div>
-            <div style="font-size:14px" id="night-check-20">⬜</div>
+            <div style="font-size:15px;font-weight:700;color:#3B5BDB">30,000원</div>
+            <div style="font-size:16px">⬜</div>
           </div>
         </div>
         <div style="background:#F0F4FF;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
@@ -309,8 +376,6 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
         <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="night-msg"></div>
-
-        <!-- 날짜별 기록 -->
         <div style="margin-top:10px;background:#F8F9FF;border-radius:8px;padding:8px 12px;">
           <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:600">이번 주 일별 기록</div>
           <div id="night-history"></div>
@@ -318,93 +383,9 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
-    <!-- 공지사항 -->
-    <div id="notice-banner" style="display:none;background:#1a3a4a;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer" onclick="closeNotice()">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="display:flex;align-items:center;gap:8px;flex:1">
-          <span style="font-size:16px">📢</span>
-          <div>
-            <div style="font-size:11px;color:#9FE1CB;font-weight:600;margin-bottom:3px">지사 공지</div>
-            <div style="font-size:13px;color:#fff;line-height:1.5" id="notice-text"></div>
-          </div>
-        </div>
-        <span style="color:#9FE1CB;font-size:16px;margin-left:8px">✕</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">오늘 입력</div>
-      <div class="counter-grid">
-        <div class="counter-item c-complete">
-          <div class="counter-label">✅ 완료</div>
-          <div class="counter-row">
-            <button class="cnt-btn minus" onclick="adjust('complete',-1)">−</button>
-            <input type="number" class="counter-val" id="cnt-complete" value="0" min="0" inputmode="numeric"
-              onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)">
-            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)">+</button>
-          </div>
-        </div>
-        <div class="counter-item c-reject">
-          <div class="counter-label">❌ 거절</div>
-          <div class="counter-row">
-            <button class="cnt-btn minus" onclick="adjust('reject',-1)">−</button>
-            <input type="number" class="counter-val" id="cnt-reject" value="0" min="0" inputmode="numeric"
-              onchange="setVal('reject',this.value)" oninput="setVal('reject',this.value)">
-            <button class="cnt-btn plus-reject" onclick="adjust('reject',1)">+</button>
-          </div>
-        </div>
-        <div class="counter-item c-cancel">
-          <div class="counter-label">🚫 배차취소</div>
-          <div class="counter-row">
-            <button class="cnt-btn minus" onclick="adjust('cancel',-1)">−</button>
-            <input type="number" class="counter-val" id="cnt-cancel" value="0" min="0" inputmode="numeric"
-              onchange="setVal('cancel',this.value)" oninput="setVal('cancel',this.value)">
-            <button class="cnt-btn plus-cancel" onclick="adjust('cancel',1)">+</button>
-          </div>
-        </div>
-      </div>
-      <!-- 배달수입 입력 -->
-      <div style="margin-top:10px;padding:10px 12px;background:#F0FBF7;border-radius:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <span style="font-size:13px;font-weight:600;color:#0F6E56">💰 오늘 배달수입</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="today-delivery" placeholder="0" inputmode="numeric"
-              style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid #9FE1CB;font-size:16px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
-              onchange="saveTodayDelivery(this.value)"
-              oninput="saveTodayDelivery(this.value)">
-            <span style="font-size:13px;color:#0F6E56;font-weight:500">원</span>
-          </div>
-        </div>
-        <div id="today-income-display" style="display:none;justify-content:space-between;align-items:center;padding-top:6px;border-top:0.5px solid #9FE1CB">
-          <span style="font-size:12px;color:#0F6E56">오늘 총 수입 (배달+보너스)</span>
-          <span id="today-income-val" style="font-size:16px;font-weight:700;color:#0F6E56"></span>
-        </div>
-      </div>
-      <button class="btn-reset" onclick="resetToday()">초기화</button>
-    </div>
-
-    <div class="card" id="today-result" style="display:none">
-      <div class="card-title">오늘 현황</div>
-      <div class="stat-grid">
-        <div class="stat"><div class="stat-label">완료</div><div class="stat-value" style="color:#1D9E75" id="res-complete">0</div></div>
-        <div class="stat"><div class="stat-label">수락률</div><div class="stat-value" id="res-accept">-</div></div>
-        <div class="stat"><div class="stat-label">거절</div><div class="stat-value" style="color:#E24B4A" id="res-reject">0</div></div>
-        <div class="stat"><div class="stat-label">배차취소</div><div class="stat-value" style="color:#BA7517" id="res-cancel">0</div></div>
-      </div>
-      <div class="accept-wrap">
-        <div class="accept-label-row"><span>수락률</span><span id="accept-label">-</span></div>
-        <div class="accept-bar"><div class="accept-fill" id="accept-fill" style="width:0%"></div></div>
-      </div>
-      <div class="bonus-wrap">
-        <div class="card-title" style="margin-bottom:10px">일일 미션 보너스</div>
-        <div id="bonus-rows"></div>
-        <div id="bonus-result"></div>
-      </div>
-    </div>
   </div>
 </div>
 
-<!-- 지사현황 탭 -->
 <div id="screen-branch" class="screen">
   <div style="margin-top:4px">
 
@@ -490,6 +471,7 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
+  <button class="tab-btn" onclick="switchTab('mission',this)"><i class="ti ti-trophy"></i>미션</button>
   <button class="tab-btn" id="branch-tab-btn" onclick="switchTab('branch',this)">
     <i class="ti ti-building-store"></i>지사현황
   </button>
@@ -1558,6 +1540,11 @@ function switchTab(name,btn){
   if(name==='record') renderWeek();
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
+  if(name==='mission'){ loadCumulCalls(); loadNightCalls(); updateBonusCalc(loadTodayRec()); }
+}
+
+function loadTodayRec(){
+  return lsGet(todayKey()) || {complete:0,reject:0,cancel:0};
 }
 
 // 폭죽
