@@ -1601,6 +1601,163 @@ function renderMonthlyBonus(){
   document.getElementById('monthly-days').textContent = `미션 달성일 ${days}일 / ${daysInMonth}일`;
 }
 
+function calcSlotBonus(processed, target) {
+  // 처리건수와 발주건수로 초과보너스 계산
+  if(!processed || !target || processed <= 0) return {bonus:0, rate:0, detail:[]};
+  const rate = processed / target * 100;
+  const detail = [];
+  let bonus = 0;
+
+  // 100%까지: 기본단가 (지사수입이므로 보너스 계산 제외)
+  const tiers = [
+    {from:100, to:110, price:315},
+    {from:110, to:120, price:280},
+    {from:120, to:130, price:245},
+    {from:130, to:140, price:210},
+    {from:140, to:150, price:175},
+  ];
+
+  for(const tier of tiers) {
+    const fromCnt = Math.ceil(target * tier.from / 100);
+    const toCnt = Math.ceil(target * tier.to / 100);
+    if(processed <= fromCnt) break;
+    const cnt = Math.min(processed, toCnt) - fromCnt;
+    if(cnt <= 0) continue;
+    const tierBonus = cnt * tier.price;
+    bonus += tierBonus;
+    detail.push({range:`${tier.from}~${tier.to}%`, cnt, price:tier.price, amt:tierBonus});
+  }
+
+  // 150% 초과분: 미지급
+  const over150 = Math.max(0, processed - Math.ceil(target * 1.5));
+  if(over150 > 0) {
+    detail.push({range:'150% 초과', cnt:over150, price:0, amt:0, unpaid:true});
+  }
+
+  return {bonus, rate, detail};
+}
+
+function saveSlotProcessed(dateKey, slotKey, val) {
+  const v = parseInt(val)||0;
+  lsSet('slot_processed_' + dateKey + '_' + slotKey, v);
+  renderWeeklyGrid();
+}
+
+function openSlotInput(dateStr, slotKey, slotName, target) {
+  const existing = document.getElementById('slot-input-modal');
+  if(existing) existing.remove();
+
+  const stored = parseInt(lsGet('slot_processed_' + dateStr + '_' + slotKey))||0;
+  const result = calcSlotBonus(stored, target);
+
+  const overlay = document.createElement('div');
+  overlay.id = 'slot-input-modal';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
+
+  const box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:16px;padding:20px;width:100%;max-width:340px;max-height:90vh;overflow-y:auto';
+
+  const d = new Date(dateStr);
+  const kstD = toKST(d);
+  const month = kstD.getUTCMonth()+1;
+  const day = kstD.getUTCDate();
+  const dow = DAY_KR[kstD.getUTCDay()];
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-size:15px;font-weight:700;color:#1a1a1a;margin-bottom:4px';
+  title.textContent = month+'/'+day+'('+dow+') · '+slotName;
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'font-size:12px;color:#888;margin-bottom:14px';
+  sub.textContent = '발주 '+target+'건';
+
+  const inputRow = document.createElement('div');
+  inputRow.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:14px';
+
+  const label = document.createElement('span');
+  label.style.cssText = 'font-size:13px;color:#555;white-space:nowrap';
+  label.textContent = '처리건수';
+
+  const inp = document.createElement('input');
+  inp.type = 'number';
+  inp.id = 'slot-inp';
+  inp.value = stored || '';
+  inp.placeholder = '0';
+  inp.setAttribute('inputmode','numeric');
+  inp.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:2px solid #1D9E75;font-size:18px;font-weight:700;text-align:right;font-family:inherit;color:#1D9E75;outline:none';
+
+  const unit = document.createElement('span');
+  unit.style.cssText = 'font-size:13px;color:#555';
+  unit.textContent = '건';
+
+  inputRow.appendChild(label);
+  inputRow.appendChild(inp);
+  inputRow.appendChild(unit);
+
+  // 결과 표시 영역
+  const resultArea = document.createElement('div');
+  resultArea.id = 'slot-result-area';
+  resultArea.style.cssText = 'background:#F0FBF7;border-radius:10px;padding:10px;margin-bottom:14px';
+
+  function updateResult() {
+    const v = parseInt(inp.value)||0;
+    const r = calcSlotBonus(v, target);
+    const rateColor = r.rate >= 150 ? '#E24B4A' : r.rate >= 130 ? '#1D9E75' : r.rate >= 100 ? '#1D9E75' : '#888';
+
+    let html = '<div style="display:flex;justify-content:space-between;margin-bottom:6px">'
+      + '<span style="font-size:12px;color:#888">달성률</span>'
+      + '<span style="font-size:16px;font-weight:700;color:'+rateColor+'">'+r.rate.toFixed(0)+'%</span></div>';
+
+    if(r.detail.length > 0) {
+      html += '<div style="font-size:11px;color:#888;margin-bottom:4px;border-top:0.5px solid #ddd;padding-top:6px">구간별 초과보너스</div>';
+      for(const d of r.detail) {
+        html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px">'
+          + '<span style="color:'+(d.unpaid?'#E24B4A':'#555')+'">'+d.range+' ('+d.cnt+'건×'+d.price+'원)</span>'
+          + '<span style="font-weight:600;color:'+(d.unpaid?'#E24B4A':'#1D9E75')+'">'+( d.unpaid?'미지급':d.amt.toLocaleString()+'원')+'</span></div>';
+      }
+      html += '<div style="display:flex;justify-content:space-between;margin-top:6px;padding-top:6px;border-top:0.5px solid #ddd">'
+        + '<span style="font-size:13px;font-weight:600;color:#333">초과보너스 합계</span>'
+        + '<span style="font-size:15px;font-weight:700;color:#1D9E75">'+r.bonus.toLocaleString()+'원</span></div>';
+    } else {
+      html += '<div style="font-size:12px;color:#888;text-align:center">초과 없음</div>';
+    }
+    resultArea.innerHTML = html;
+  }
+
+  inp.addEventListener('input', updateResult);
+  updateResult();
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.style.cssText = 'flex:1;padding:10px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;font-size:14px;font-weight:600;cursor:pointer';
+  cancelBtn.textContent = '취소';
+  cancelBtn.onclick = () => overlay.remove();
+
+  const saveBtn = document.createElement('button');
+  saveBtn.style.cssText = 'flex:2;padding:10px;border-radius:10px;border:none;background:#1D9E75;color:#fff;font-size:14px;font-weight:600;cursor:pointer';
+  saveBtn.textContent = '저장';
+  saveBtn.onclick = () => {
+    saveSlotProcessed(dateStr, slotKey, inp.value);
+    overlay.remove();
+  };
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(saveBtn);
+
+  box.appendChild(title);
+  box.appendChild(sub);
+  box.appendChild(inputRow);
+  box.appendChild(resultArea);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', e => { if(e.target===overlay) overlay.remove(); });
+  setTimeout(() => { inp.focus(); inp.select(); }, 100);
+}
+
 function renderWeeklyGrid(){
   const {start} = getWeekRange(0);
   const todayK = todayKey();
@@ -1628,6 +1785,8 @@ function renderWeeklyGrid(){
   Promise.all(promises).then(snaps => {
     const fd = {};
     dates.forEach((k,i) => { fd[k] = snaps[i].val(); });
+
+    // 헤더
     let html = '<div class="slot-grid-header"><div class="slot-grid-label"></div>';
     for(let i=0;i<7;i++){
       const d=new Date(start); d.setUTCDate(start.getUTCDate()+i);
@@ -1635,34 +1794,55 @@ function renderWeeklyGrid(){
       html+=`<div class="slot-grid-day" style="${isT?'color:#1D9E75;font-weight:700':''}">${kd.getUTCMonth()+1}/${kd.getUTCDate()}<br>${DAY_KR[kd.getUTCDay()]}</div>`;
     }
     html+='</div>';
-    let pass=0, tot=0;
+
+    let totalBonus = 0;
+
     for(let si=0;si<4;si++){
       html+=`<div class="slot-grid-row"><div class="slot-grid-label" style="color:${SLOTS[si].color}">${slotNames[si]}</div>`;
       for(let di=0;di<7;di++){
         const k=dates[di];
         const d=new Date(start); d.setUTCDate(start.getUTCDate()+di);
         const kd=toKST(d); const dayK=DAY_KEY[kd.getUTCDay()]; const isT=k===todayK;
-        const stored=fd[k]; tot++;
-        if(!stored){
-          html+=`<div class="slot-grid-cell cell-empty ${isT?'cell-today':''}">-</div>`;
-        } else {
-          const val=stored[slotKeys[si]]||0;
-          const target=t1[si][dayK]*9;
-          const ok=val>=target;
-          if(ok) pass++;
-          html+=`<div class="slot-grid-cell ${ok?'cell-pass':'cell-fail'} ${isT?'cell-today':''}">${ok?'✅':'❌'}</div>`;
-        }
+        const target = t1[si][dayK] * 9;
+
+        // Firebase 데이터
+        const fbVal = fd[k] ? (fd[k][slotKeys[si]]||0) : 0;
+        // 로컬 처리건수 (직접 입력)
+        const localVal = parseInt(lsGet('slot_processed_'+k+'_'+slotKeys[si]))||0;
+        const processed = localVal > 0 ? localVal : fbVal;
+
+        const r = calcSlotBonus(processed, target);
+        totalBonus += r.bonus;
+
+        const rateStr = processed > 0 ? Math.round(r.rate)+'%' : '-';
+        const bonusStr = r.bonus > 0 ? '+'+Math.round(r.bonus/1000)+'천' : '';
+        const bgColor = r.rate >= 150 ? '#0a7a5a' : r.rate >= 140 ? '#1D9E75' : r.rate >= 130 ? '#2EC4A0' : r.rate >= 120 ? '#7EDEC8' : r.rate >= 110 ? '#B2EDE3' : r.rate >= 100 ? '#D6F5EE' : '#f5f5f5';
+        const textColor = r.rate >= 120 ? '#fff' : r.rate >= 100 ? '#0a7a5a' : '#bbb';
+        const borderStyle = isT ? 'border:2px solid #1D9E75;' : '';
+
+        html += `<div class="slot-grid-cell ${isT?'cell-today':''}" `
+          + `style="background:${bgColor};color:${textColor};${borderStyle}cursor:pointer;padding:4px 2px;" `
+          + `onclick="openSlotInput('${k}','${slotKeys[si]}','${slotNames[si]}',${target})">`
+          + `<div style="font-size:12px;font-weight:700">${rateStr}</div>`
+          + `<div style="font-size:10px">${bonusStr}</div>`
+          + `</div>`;
       }
       html+='</div>';
     }
-    html+=`<div style="margin-top:10px;text-align:center;font-size:13px;color:#888">달성 <span style="color:#1D9E75;font-weight:700">${pass}</span> / ${tot}슬롯</div>`;
+
+    // 주간 총 초과보너스
+    html += `<div style="margin-top:10px;background:#F0FBF7;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">`
+      + `<span style="font-size:12px;color:#555;font-weight:600">이번 주 초과보너스 합계</span>`
+      + `<span style="font-size:16px;font-weight:700;color:#1D9E75">${totalBonus.toLocaleString()}원</span></div>`;
+
     if(gridEl) gridEl.innerHTML = html;
     if(statsGridEl) statsGridEl.innerHTML = html;
   }).catch(()=>{
-    gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">데이터를 불러올 수 없습니다</div>';
+    if(gridEl) gridEl.innerHTML = '<div style="text-align:center;color:#bbb;padding:20px">데이터를 불러올 수 없습니다</div>';
   });
 }
 
+// 탭 전환
 // 탭 전환
 function switchTab(name,btn){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
