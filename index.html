@@ -395,7 +395,7 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="night-msg"></div>
         <div style="margin-top:10px;background:#F8F9FF;border-radius:8px;padding:8px 12px;">
-          <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:600">이번 주 일별 기록</div>
+          <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:600">이번 주 심야 기록</div>
           <div id="night-history"></div>
         </div>
       </div>
@@ -781,18 +781,17 @@ function updateBonusCalc(rec){
 }
 
 function renderResult(rec){
-  document.getElementById('today-result').style.display = 'block';
-  document.getElementById('res-complete').textContent = rec.complete;
-  document.getElementById('res-reject').textContent = rec.reject;
-  document.getElementById('res-cancel').textContent = rec.cancel;
+  const trEl = document.getElementById('today-result');
+  if(trEl) trEl.style.display = 'block';
+  const rcEl = document.getElementById('res-complete'); if(rcEl) rcEl.textContent = rec.complete;
+  const rrEl = document.getElementById('res-reject'); if(rrEl) rrEl.textContent = rec.reject;
+  const rxEl = document.getElementById('res-cancel'); if(rxEl) rxEl.textContent = rec.cancel;
   const acc = rec.accept;
   const aEl = document.getElementById('res-accept');
-  aEl.textContent = acc !== null ? acc+'%' : '-';
-  aEl.style.color = acc===null?'#1a1a1a':acc>=80?'#1D9E75':acc>=60?'#BA7517':'#E24B4A';
-  document.getElementById('accept-label').textContent = acc!==null?acc+'%':'-';
+  if(aEl){ aEl.textContent = acc !== null ? acc+'%' : '-'; aEl.style.color = acc===null?'#1a1a1a':acc>=80?'#1D9E75':acc>=60?'#BA7517':'#E24B4A'; }
+  const alEl = document.getElementById('accept-label'); if(alEl) alEl.textContent = acc!==null?'수락률 '+acc+'%':'수락률 -';
   const fill = document.getElementById('accept-fill');
-  fill.style.width = acc!==null?Math.min(acc,100)+'%':'0%';
-  fill.style.background = acc===null?'#1D9E75':acc>=80?'#1D9E75':acc>=60?'#EF9F27':'#E24B4A';
+  if(fill){ fill.style.width = acc!==null?Math.min(acc,100)+'%':'0%'; fill.style.background = acc===null?'#1D9E75':acc>=80?'#1D9E75':acc>=60?'#EF9F27':'#E24B4A'; }
   const achieved = BONUS_TABLE.find(b=>rec.complete>=b.min);
   const rows = [...BONUS_TABLE].reverse().map(b=>{
     const ok=rec.complete>=b.min;
@@ -802,7 +801,7 @@ function renderResult(rec){
       <span class="bonus-amount">${b.won.toLocaleString()}원</span>
     </div>`;
   }).join('');
-  document.getElementById('bonus-rows').innerHTML = rows;
+  const brEl = document.getElementById('bonus-rows'); if(brEl) brEl.innerHTML = rows;
   if(achieved){
     document.getElementById('bonus-result').innerHTML=`
       <div class="bonus-achieved" onclick="showConfetti(${achieved.won},${rec.complete})">
