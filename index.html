@@ -1613,25 +1613,15 @@ function enterLottery(){
 
   const desc = document.createElement('div');
   desc.style.cssText = 'font-size:12px;color:#888;margin-bottom:16px';
-  desc.textContent = '이름을 선택하고 응모하세요!';
+  desc.textContent = '이름을 입력하고 응모하세요!';
 
   // 이름 선택 드롭다운
-  const select = document.createElement('select');
+  const select = document.createElement('input');
   select.id = 'lottery-name-select';
-  select.style.cssText = 'width:100%;padding:10px;border-radius:10px;border:2px solid #FFD54F;font-size:15px;font-weight:600;font-family:inherit;color:#333;margin-bottom:14px;background:#FFF8E1;outline:none';
-  
-  const defaultOpt = document.createElement('option');
-  defaultOpt.value = '';
-  defaultOpt.textContent = '-- 이름 선택 --';
-  select.appendChild(defaultOpt);
-  
-  LOTTERY_RIDERS.forEach(name => {
-    const opt = document.createElement('option');
-    opt.value = name;
-    opt.textContent = name;
-    if(name === myKey) opt.selected = true;
-    select.appendChild(opt);
-  });
+  select.type = 'text';
+  select.placeholder = '이름 입력 (예: 홍길동)';
+  select.value = myKey || '';
+  select.style.cssText = 'width:100%;padding:12px;border-radius:10px;border:2px solid #FFD54F;font-size:16px;font-weight:600;font-family:inherit;color:#333;margin-bottom:14px;background:#FFF8E1;outline:none;box-sizing:border-box;text-align:center';
 
   const btnRow = document.createElement('div');
   btnRow.style.cssText = 'display:flex;gap:8px';
@@ -1646,13 +1636,14 @@ function enterLottery(){
   applyBtn.textContent = '🍀 응모하기';
   applyBtn.onclick = () => {
     const name = select.value;
-    if(!name){ alert('이름을 선택해주세요!'); return; }
-    lsSet('lottery_name_key', name);
+    if(!name || name.trim().length < 2){ alert('이름을 입력해주세요! (2글자 이상)'); return; }
+    const name2 = name.trim();
+    lsSet('lottery_name_key', name2);
     // Firebase에 응모 등록
-    const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name);
-    entryRef.set({name, time: new Date().toISOString()}).then(()=>{
+    const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name2);
+    entryRef.set({name:name2, time: new Date().toISOString()}).then(()=>{
       overlay.remove();
-      lsSet('lottery_entered_'+dateKey, name);
+      lsSet('lottery_entered_'+dateKey, name2);
       loadLottery();
       showConfetti(0, 0);
     });
