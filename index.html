@@ -193,7 +193,7 @@ input[type=number]{-moz-appearance:textfield}
     <!-- 오늘 입력 -->
     <div class="card">
       <div class="card-title">오늘 입력</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
         <div class="counter-box">
           <div class="counter-label complete">완료</div>
           <div class="counter-row">
@@ -222,52 +222,68 @@ input[type=number]{-moz-appearance:textfield}
           </div>
         </div>
       </div>
-      <!-- 배달수입 -->
-      <div style="margin-top:10px;padding:10px 12px;background:#F0FBF7;border-radius:10px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+      <div style="padding:10px 12px;background:#F0FBF7;border-radius:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
           <span style="font-size:13px;font-weight:600;color:#0F6E56">💰 오늘 배달수입</span>
           <div style="display:flex;align-items:center;gap:6px">
             <input type="number" id="today-delivery" placeholder="0" inputmode="numeric"
               style="width:110px;padding:6px 10px;border-radius:8px;border:1px solid #9FE1CB;font-size:16px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
-              onchange="saveTodayDelivery(this.value)"
-              oninput="saveTodayDelivery(this.value)">
-            <span style="font-size:13px;color:#0F6E56;font-weight:500">원</span>
+              onchange="saveTodayDelivery(this.value)" oninput="saveTodayDelivery(this.value)">
+            <span style="font-size:13px;color:#0F6E56">원</span>
           </div>
         </div>
-        <div id="today-income-display" style="font-size:12px;color:#888"></div>
+        <div id="today-income-display" style="font-size:12px;color:#888;margin-top:4px"></div>
       </div>
     </div>
 
     <!-- 오늘 현황 -->
     <div class="card">
       <div class="card-title">오늘 현황</div>
-      <div id="today-result"></div>
+      <div id="today-result">
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
+          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">완료</div>
+            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
+          </div>
+          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">거절</div>
+            <div style="font-size:22px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
+          </div>
+          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">배차취소</div>
+            <div style="font-size:22px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
+          </div>
+          <div style="text-align:center;background:#F8F9FA;border-radius:10px;padding:10px 4px">
+            <div style="font-size:11px;color:#888;margin-bottom:4px">수락률</div>
+            <div style="font-size:22px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
+          </div>
+        </div>
+        <div id="bonus-result"></div>
+      </div>
     </div>
 
-    <!-- 이번주 예상보너스 요약 -->
-    <div class="card" style="background:linear-gradient(135deg,#F0FBF7,#E8F8F2)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <!-- 이번주 예상보너스 -->
+    <div class="card" style="background:linear-gradient(135deg,#F0FBF7,#E8F8F2);border:1px solid #9FE1CB">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div class="card-title" style="margin:0">💰 이번 주 예상 보너스</div>
         <button onclick="switchTab('mission',document.querySelectorAll('.tab-btn')[1])"
-          style="font-size:11px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:6px;padding:3px 8px;cursor:pointer">자세히 →</button>
+          style="font-size:11px;color:#1D9E75;background:none;border:1px solid #1D9E75;border-radius:6px;padding:3px 8px;cursor:pointer">미션탭 →</button>
       </div>
-      <div id="bonus-calc-display">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-          <div style="background:#fff;border-radius:10px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#999;margin-bottom:2px">일미션</div>
-            <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
-          </div>
-          <div style="background:#fff;border-radius:10px;padding:8px;text-align:center">
-            <div style="font-size:10px;color:#999;margin-bottom:2px">개근+물량</div>
-            <div style="font-size:16px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
-          </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee">
+          <div style="font-size:11px;color:#999;margin-bottom:4px">일미션</div>
+          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-mission">0원</div>
         </div>
-        <div style="background:#1D9E75;border-radius:10px;padding:8px;text-align:center">
-          <div style="font-size:10px;color:#9FE1CB;margin-bottom:2px">주간 예상 보너스</div>
-          <div style="font-size:22px;font-weight:700;color:#fff" id="calc-total">0원</div>
+        <div style="background:#fff;border-radius:10px;padding:10px;text-align:center;border:1px solid #eee">
+          <div style="font-size:11px;color:#999;margin-bottom:4px">개근+물량</div>
+          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="calc-attend">0원</div>
         </div>
-        <div style="font-size:11px;color:#888;text-align:center;margin-top:6px" id="calc-next-tip"></div>
       </div>
+      <div style="background:#1D9E75;border-radius:12px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:#9FE1CB;margin-bottom:2px">주간 예상 보너스</div>
+        <div style="font-size:26px;font-weight:700;color:#fff" id="calc-total">0원</div>
+      </div>
+      <div style="font-size:11px;color:#666;text-align:center;margin-top:8px;padding:6px;background:#fff;border-radius:8px" id="calc-next-tip"></div>
     </div>
 
   </div>
