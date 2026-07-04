@@ -724,7 +724,7 @@ function autoSave(){
   if(msEl2){
     const labels2 = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
     msEl2.innerHTML = labels2.map(({g,w})=>{
-      const done = daily2>=g;
+      const done = todayC2>=g;
       const bg=done?'#1D9E75':'#F0F0F0'; const tc=done?'#fff':'#aaa'; const tc2=done?'#fff':'#bbb';
       return '<div style="text-align:center;padding:5px 2px;border-radius:6px;background:'+bg+'">'
         +'<div style="font-size:10px;color:'+tc+'">'+g+'건</div>'
@@ -734,12 +734,12 @@ function autoSave(){
   }
   const msgEl2 = document.getElementById('goal-message');
   if(msgEl2){
-    if(daily2>=70) msgEl2.textContent='🎉 최고 미션 달성!';
-    else if(daily2>=60) msgEl2.textContent='70건까지 '+(70-daily2)+'건 남았어요!';
-    else if(daily2>=50) msgEl2.textContent='60건까지 '+(60-daily2)+'건 남았어요!';
-    else if(daily2>=40) msgEl2.textContent='50건까지 '+(50-daily2)+'건 남았어요!';
-    else if(daily2>=30) msgEl2.textContent='40건까지 '+(40-daily2)+'건 남았어요!';
-    else msgEl2.textContent='30건까지 '+(30-daily2)+'건 남았어요! 화이팅!';
+    if(todayC2>=70) msgEl2.textContent='🎉 최고 미션 달성!';
+    else if(todayC2>=60) msgEl2.textContent='70건까지 '+(70-todayC2)+'건 남았어요!';
+    else if(todayC2>=50) msgEl2.textContent='60건까지 '+(60-todayC2)+'건 남았어요!';
+    else if(todayC2>=40) msgEl2.textContent='50건까지 '+(50-todayC2)+'건 남았어요!';
+    else if(todayC2>=30) msgEl2.textContent='40건까지 '+(40-todayC2)+'건 남았어요!';
+    else msgEl2.textContent='30건까지 '+(30-todayC2)+'건 남았어요! 화이팅!';
   }
 }
 
