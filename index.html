@@ -164,6 +164,9 @@ input[type=number]{-moz-appearance:textfield}
 .slot-grid-cell{height:44px;border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;font-weight:600;cursor:pointer}
 .slot-grid-label{font-size:11px;color:#888;display:flex;align-items:center;font-weight:600}
 .slot-grid-day{font-size:11px;color:#888;text-align:center;font-weight:600;padding:4px 0}
+@keyframes marquee{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+.marquee-wrap{overflow:hidden;white-space:nowrap;width:100%}
+.marquee-text{display:inline-block;animation:marquee 12s linear infinite;font-size:13px;color:#533f03;font-weight:500;padding-left:100%}
 .cell-pass{background:#E1F5EE;color:#0F6E56}
 .cell-fail{background:#FEF2F2;color:#E24B4A}
 .cell-empty{background:#F5F5F5;color:#ccc}
@@ -185,9 +188,13 @@ input[type=number]{-moz-appearance:textfield}
   <div style="margin-top:4px">
 
     <!-- 공지사항 -->
-    <div id="notice-banner" style="display:none;background:#FFF3CD;border-radius:8px;padding:8px 12px;margin-bottom:8px;border:1px solid #FFE082">
-      <div style="font-size:11px;font-weight:600;color:#856404;margin-bottom:1px">📢 공지사항</div>
-      <div id="notice-text" style="font-size:12px;color:#533f03"></div>
+    <div id="notice-banner" style="display:none;background:#FFF3CD;border-radius:8px;padding:7px 12px;margin-bottom:8px;border:1px solid #FFE082">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:11px;font-weight:700;color:#856404;white-space:nowrap">📢</span>
+        <div class="marquee-wrap">
+          <span class="marquee-text" id="notice-text"></span>
+        </div>
+      </div>
     </div>
 
     <!-- 오늘 입력 카드 -->
@@ -561,10 +568,16 @@ input[type=number]{-moz-appearance:textfield}
       <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:500">📢 기사님 공지 등록</div>
       <textarea id="notice-input" placeholder="공지 내용을 입력하세요" 
         style="width:100%;padding:10px;border-radius:10px;border:1px solid #ddd;font-size:14px;font-family:inherit;resize:none;height:70px;margin-bottom:8px"></textarea>
-      <button onclick="submitNotice(document.getElementById('notice-input').value)" 
-        style="width:100%;padding:12px;background:#1a3a4a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
-        공지 올리기
-      </button>
+      <div style="display:flex;gap:8px">
+        <button onclick="submitNotice(document.getElementById('notice-input').value)" 
+          style="flex:2;padding:12px;background:#1a3a4a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">
+          📢 공지 올리기
+        </button>
+        <button onclick="clearNotice()"
+          style="flex:1;padding:12px;background:#f5f5f5;color:#888;border:1px solid #ddd;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">
+          🗑️ 삭제
+        </button>
+      </div>
       <button class="btn-reset" onclick="closeAdmin()">닫기</button>
     </div>
   </div>
@@ -1951,18 +1964,22 @@ function submitAdmin(){
 
 // ── 공지사항 ────────────────────────────────────────────────
 function loadNotice(){
-  db.ref('notice/latest').once('value').then(snap=>{
+  // 실시간 리스너로 공지 감지
+  db.ref('notice/latest').on('value', snap=>{
     const data = snap.val();
-    if(!data || !data.text) return;
-    const lastSeen = lsGet('notice_seen');
-    if(lastSeen === data.updatedAt) return; // 이미 본 공지
     const banner = document.getElementById('notice-banner');
     const textEl = document.getElementById('notice-text');
     if(!banner || !textEl) return;
+    if(!data || !data.text){
+      banner.style.display = 'none';
+      return;
+    }
     textEl.textContent = data.text;
     banner.style.display = 'block';
-    banner.dataset.ts = data.updatedAt;
-  }).catch(()=>{});
+    // 마퀴 재시작
+    textEl.style.animation = 'none';
+    setTimeout(()=>{ textEl.style.animation = 'marquee 12s linear infinite'; }, 50);
+  });
 }
 
 function closeNotice(){
@@ -1974,11 +1991,24 @@ function closeNotice(){
 
 // 관리자 공지 등록 함수
 function submitNotice(text){
-  if(!text || !text.trim()) return;
+  if(!text || !text.trim()){ alert('공지 내용을 입력해주세요!'); return; }
   db.ref('notice/latest').set({
     text: text.trim(),
     updatedAt: new Date().toISOString()
-  }).then(()=>{ alert('공지 등록 완료!'); }).catch(e=>alert('실패: '+e.message));
+  }).then(()=>{
+    alert('✅ 공지 등록 완료!\n기사님들 앱에 즉시 표시됩니다!');
+    const inp = document.getElementById('notice-input');
+    if(inp) inp.value = '';
+  }).catch(e=>alert('실패: '+e.message));
+}
+
+function clearNotice(){
+  if(!confirm('공지사항을 삭제할까요?')) return;
+  db.ref('notice/latest').remove().then(()=>{
+    alert('공지 삭제 완료!');
+    const inp = document.getElementById('notice-input');
+    if(inp) inp.value = '';
+  });
 }
 
 // ── 통계 탭 ──────────────────────────────────────────────
