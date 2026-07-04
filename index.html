@@ -294,7 +294,7 @@ input[type=number]{-moz-appearance:textfield}
       <div style="background:linear-gradient(135deg,#FF8F00,#FF6F00);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:15px;font-weight:700;color:#fff">🎟️ 오늘의 행운 추첨</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.8);margin-top:1px">매일 오후 2시 추첨 · ☕ 메가커피 아이스 아메리카노</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:1px;font-weight:500">매회 2명 당첨 · ☕ 메가커피 아이스 아메리카노</div>
         </div>
         <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;text-align:center">
           <div style="font-size:10px;color:#fff">추첨까지</div>
@@ -1808,7 +1808,15 @@ function loadLottery(){
       if(btnEl){ btnEl.textContent = '✅ 응모 완료'; btnEl.style.background = '#aaa'; btnEl.disabled = true; }
     } else {
       myStatusEl.innerHTML = '';
-      if(btnEl){ btnEl.textContent = '🍀 오늘 응모하기'; btnEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)'; btnEl.disabled = false; }
+      // 추첨일 오후 2시 이후면 응모 마감
+      const kstCheck = toKST(new Date());
+      const isDrawDayCheck = getLotteryDrawDays().includes(kstCheck.getUTCDay());
+      const isPast14Check = kstCheck.getUTCHours() >= 14;
+      if(isDrawDayCheck && isPast14Check){
+        if(btnEl){ btnEl.textContent = '⏰ 오늘 응모 마감'; btnEl.style.background = '#bbb'; btnEl.disabled = true; }
+      } else {
+        if(btnEl){ btnEl.textContent = '🍀 오늘 응모하기'; btnEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)'; btnEl.disabled = false; }
+      }
     }
   }
 
@@ -1835,6 +1843,13 @@ function loadLottery(){
         )
         +'</div>';
       if(isMe) setTimeout(()=>showConfetti(0,0), 300);
+      // 추첨 완료 후 버튼 비활성화
+      if(btnEl){
+        btnEl.textContent = '🏆 추첨 완료';
+        btnEl.style.background = '#aaa';
+        btnEl.disabled = true;
+      }
+      if(msgEl) msgEl.textContent = '📅 다음 추첨: '+( getNextLotteryDate()?.label || '추후 공지')+' 오후 2시';
     } else {
       // 당첨자 미발표
       db.ref('lottery/'+dateKey+'/entries').once('value').then(eSnap=>{
