@@ -1711,27 +1711,7 @@ function enterLottery(){
       overlay.remove();
       lsSet('lottery_entered_'+dateKey, name2);
       loadLottery();
-      // 응모 완료 축하 팝업
-      const successOverlay = document.createElement('div');
-      successOverlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-      successOverlay.innerHTML = '<div style="background:#fff;border-radius:24px;width:100%;max-width:300px;overflow:hidden;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,0.2)">'
-        +'<div style="background:linear-gradient(135deg,#1D9E75,#2EC4A0);padding:24px 20px 20px">'
-        +'<div style="font-size:48px;margin-bottom:8px">🍀</div>'
-        +'<div style="font-size:18px;font-weight:700;color:#fff">응모 완료!</div>'
-        +'<div style="font-size:12px;color:rgba(255,255,255,0.9);margin-top:4px">'+name2+' 기사님, 행운을 빕니다!</div>'
-        +'</div>'
-        +'<div style="padding:20px">'
-        +'<div style="font-size:14px;color:#333;font-weight:600;margin-bottom:6px">☕ 오늘의 상품</div>'
-        +'<div style="font-size:13px;color:#FF8F00;font-weight:700;margin-bottom:4px">메가커피 아이스 아메리카노</div>'
-        +'<div style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.5">매일 오후 2시 추첨<br>당첨 시 카카오톡으로 쿠폰 발송!</div>'
-        +'<div style="font-size:12px;color:#aaa;margin-bottom:14px">🎯 오늘 '+name2+' 기사님의 행운을 응원합니다!</div>'
-        +'<button onclick="this.closest('[style*=fixed]').remove()" '
-        +'style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:15px;font-weight:700;cursor:pointer">'
-        +'확인 🍀</button>'
-        +'</div></div>';
-      document.body.appendChild(successOverlay);
-      successOverlay.addEventListener('click', e=>{ if(e.target===successOverlay) successOverlay.remove(); });
-      showConfetti(0, 0);
+
     });
   };
 
