@@ -316,7 +316,7 @@ input[type=number]{-moz-appearance:textfield}
           style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(255,111,0,0.3)">
           🍀 오늘 응모하기
         </button>
-        <div style="font-size:10px;color:#888;text-align:center;margin-top:6px" id="lottery-msg">화·목·토 추첨 · 매회 2명 · 이번 주 당첨자 제외</div>
+        <div style="font-size:13px;color:#E65100;font-weight:700;text-align:center;margin-top:8px" id="lottery-msg">📅 화·목·토 오후 2시 추첨 · 매회 2명 당첨</div>
       </div>
     </div>
 
@@ -702,15 +702,22 @@ function autoSave(){
   updateCumulTotal();
   // 오늘 미션현황 즉시 업데이트
   const todayC2 = rec.todayComplete || rec.complete || 0;
-  const days2 = rec.workDays || 1;
-  const daily2 = todayC2;
   const GOALS2 = [30,40,50,60,70];
-  const nextGoal2 = GOALS2.find(g => daily2 < g) || 70;
-  const pct2 = Math.min(daily2/nextGoal2*100,100);
+  const curGoal2 = GOALS2.slice().reverse().find(g => todayC2 >= g); // 현재 달성 단계
+  const nextGoal2 = GOALS2.find(g => todayC2 < g) || 70;
+  // 진행바: 현재 달성단계~다음단계 사이 비율
+  let pct2;
+  if(curGoal2){
+    const prevGoal2 = GOALS2[GOALS2.indexOf(curGoal2)-1] || 0;
+    pct2 = Math.min(((todayC2-prevGoal2)/(nextGoal2-prevGoal2))*100, 100);
+    if(todayC2 >= nextGoal2) pct2 = 100;
+  } else {
+    pct2 = Math.min(todayC2/nextGoal2*100, 100);
+  }
   const curEl2 = document.getElementById('goal-current');
   const tarEl2 = document.getElementById('goal-target');
   const barEl2 = document.getElementById('goal-bar');
-  if(curEl2) curEl2.textContent = daily2;
+  if(curEl2) curEl2.textContent = todayC2;
   if(tarEl2) tarEl2.textContent = nextGoal2;
   if(barEl2) barEl2.style.width = pct2+'%';
   const msEl2 = document.getElementById('goal-milestones');
@@ -796,8 +803,15 @@ function updateBonusCalc(rec){
   // 오늘 미션현황 - 오늘 완료건 기준
   const todayC = todayComplete;
   const GOALS = [30,40,50,60,70];
+  const curGoalX = GOALS.slice().reverse().find(g => todayC >= g);
   const nextGoal = GOALS.find(g => todayC < g) || 70;
-  const pct = Math.min(todayC / nextGoal * 100, 100);
+  let pct;
+  if(curGoalX){
+    const prevGoalX = GOALS[GOALS.indexOf(curGoalX)-1] || 0;
+    pct = Math.min(((todayC-prevGoalX)/(nextGoal-prevGoalX))*100, 100);
+  } else {
+    pct = Math.min(todayC/nextGoal*100, 100);
+  }
 
   const curEl = document.getElementById('goal-current');
   const tarEl = document.getElementById('goal-target');
