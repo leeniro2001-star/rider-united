@@ -421,6 +421,23 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
+    <!-- 주간 보너스 정산 조회 -->
+    <div class="card" id="settlement-lookup-card">
+      <div class="card-title">📋 주간 보너스 정산 조회</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button onclick="changeSettlementLookupWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
+        <span style="font-size:13px;font-weight:600;color:#1a1a1a" id="settlement-week-label">이번 주</span>
+        <button onclick="changeSettlementLookupWeek(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="settlement-name-input" placeholder="본인 이름을 입력하세요" inputmode="text"
+          style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:14px;font-family:inherit"
+          onkeydown="if(event.key==='Enter') searchSettlement()">
+        <button onclick="searchSettlement()" style="padding:9px 16px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">조회</button>
+      </div>
+      <div id="settlement-result"></div>
+    </div>
+
   </div>
 </div>
 
@@ -613,6 +630,26 @@ input[type=number]{-moz-appearance:textfield}
           🗑️ 삭제
         </button>
       </div>
+      <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
+      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:600">📊 주간 보너스 정산 (기사님 전체)</div>
+      <div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:10px;border:1px solid #FED7AA">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <button onclick="changeSettlementAdminWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">◀</button>
+          <span style="font-size:13px;font-weight:600;color:#9A5B13" id="settlement-admin-week-label">이번 주</span>
+          <button onclick="changeSettlementAdminWeek(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit">▶</button>
+        </div>
+        <div id="settlement-file-slots" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <button onclick="calcSettlement()" style="width:100%;padding:10px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:6px">
+          🧮 정산 계산하기
+        </button>
+        <div id="settlement-admin-status" style="font-size:11px;color:#888;margin-bottom:8px"></div>
+        <div id="settlement-admin-preview"></div>
+        <button onclick="publishSettlement()" id="settlement-publish-btn" style="width:100%;padding:11px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:14px;font-weight:700;cursor:pointer;display:none">
+          ✅ 게시하기 (기사님들에게 공개)
+        </button>
+      </div>
+
+      <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
       <button class="btn-reset" onclick="closeAdmin()">닫기</button>
     </div>
   </div>
@@ -794,42 +831,63 @@ function resetToday(){
 
 function updateBonusCalc(rec){
   if(!rec) return;
-  const wc = rec.complete || 0;  // 주간 총 완료건
-  const days = rec.workDays || 1;
-  const daily = wc / days;       // 주간 하루 평균
-
   // 오늘 하루 완료건 (오늘 미션현황용)
-  const todayComplete = rec.todayComplete || wc; // 오늘만의 건수
+  const todayComplete = rec.todayComplete || rec.complete || 0;
 
-  // 일미션 (주간 평균 기준)
-  let dm = 0;
-  if(daily >= 70) dm = 40000;
-  else if(daily >= 60) dm = 32000;
-  else if(daily >= 50) dm = 24000;
-  else if(daily >= 40) dm = 16000;
-  else if(daily >= 30) dm = 8000;
+  // 주간(수~화) 실제 하루하루 기록을 직접 훑어서 계산합니다.
+  // (평균으로 구간 하나를 정해 곱하는 게 아니라, 그날그날 구간을 각각 적용해서 더합니다)
+  const {start} = getWeekRange(0);
+  const GOALS = [30,40,50,60,70];
+  const TIER_BONUS = {30:8000,40:16000,50:24000,60:32000,70:40000};
 
-  const mission = dm * days;
+  let weekTotal = 0;      // 그 주(수~화) 완료건 합계
+  let missionDays = 0;    // 하루 30건↑ 미션을 달성한 날 수
+  let dailyMissionSum = 0;// 그날그날 구간 보너스를 각각 더한 값
 
-  // 개근+물량
-  const attend = days >= 6 ? 20000 : (days >= 5 ? 10000 : 0);
-  const vol = wc >= 450 ? 50000 : (wc >= 400 ? 30000 : (wc >= 350 ? 20000 : 0));
+  for(let i=0;i<7;i++){
+    const d = new Date(start); d.setUTCDate(start.getUTCDate()+i);
+    const dayRec = lsGet(dateKey(d));
+    const dayComplete = dayRec ? (parseInt(dayRec.complete)||0) : 0;
+    if(dayComplete <= 0) continue;
+    weekTotal += dayComplete;
+    const tier = GOALS.slice().reverse().find(g => dayComplete >= g);
+    if(tier){
+      missionDays++;
+      dailyMissionSum += TIER_BONUS[tier];
+    }
+  }
+
+  // 주간보너스 지급 조건: 주 150건 이상 AND 일 30건↑ 미션 달성일 3일 이상
+  // 둘 다 만족해야 일일미션보너스+개근보너스+물량보너스가 지급됩니다.
+  // (심야보너스·누적이벤트는 이 조건과 무관하게 별도로 지급됩니다)
+  const eligible = weekTotal >= 150 && missionDays >= 3;
+
+  const mission = eligible ? dailyMissionSum : 0;
+  // 개근보너스: 근무일수가 아니라 "미션(30건↑) 달성일수" 기준
+  const attend = eligible ? (missionDays >= 6 ? 20000 : (missionDays >= 5 ? 10000 : 0)) : 0;
+  const vol = eligible ? (weekTotal >= 450 ? 50000 : (weekTotal >= 400 ? 30000 : (weekTotal >= 350 ? 20000 : 0))) : 0;
   const extra = attend + vol;
   const total = mission + extra;
 
   // 다음 목표 팁
   let tip = '';
-  const nextMile = [30,40,50,60,70].find(m => daily < m);
-  if(nextMile){
-    const need = Math.ceil(nextMile * days - wc);
-    const nextBonus = (nextMile>=70?40000:nextMile>=60?32000:nextMile>=50?24000:nextMile>=40?16000:30000)*days;
-    tip = `${need}건 더 타면 일미션 ${nextBonus.toLocaleString()}원으로 상승! 🔥`;
-  }
-  // 물량 보너스 팁
-  const nextVol = wc < 350 ? 350 : wc < 400 ? 400 : wc < 450 ? 450 : 0;
-  const volBonus = nextVol === 350 ? 20000 : nextVol === 400 ? 30000 : nextVol === 450 ? 50000 : 0;
-  if(nextVol > 0 && wc >= 120){
-    tip += (tip?' · ':'')+`${nextVol-wc}건 더 타면 물량보너스 ${volBonus.toLocaleString()}원 추가!`;
+  if(!eligible){
+    if(weekTotal < 150){
+      tip = `주간보너스 대상까지 ${150-weekTotal}건 더 필요해요 (주 150건 이상)`;
+    } else {
+      tip = `주간보너스까지 미션(30건↑) 달성일 ${Math.max(0,3-missionDays)}일 더 필요해요 (현재 ${missionDays}일)`;
+    }
+  } else {
+    const parts = [];
+    if(missionDays < 6){
+      parts.push(`개근보너스(2만원)까지 미션달성일 ${6-missionDays}일 더 필요`);
+    }
+    const nextVol = weekTotal < 350 ? 350 : weekTotal < 400 ? 400 : weekTotal < 450 ? 450 : 0;
+    if(nextVol > 0){
+      const volBonus = nextVol===350?20000:nextVol===400?30000:50000;
+      parts.push(`물량보너스까지 ${nextVol-weekTotal}건 더 필요 (${volBonus.toLocaleString()}원)`);
+    }
+    tip = parts.join(' · ');
   }
 
   const mEl = document.getElementById('calc-mission');
@@ -952,17 +1010,26 @@ function renderWeek(){
       </div>
     </div>`);
   }
+  // 주간보너스 지급 조건: 주 150건 이상 AND 미션(30건↑) 달성일 3일 이상
+  const eligible = totC >= 150 && mDays >= 3;
+  if(!eligible) totBonus = 0;
+
   // 개근보너스
   let attendBonus=0,attendLabel='';
-  if(mDays>=6){attendBonus=20000;attendLabel=`${mDays}일 달성`;}
-  else if(mDays>=5){attendBonus=10000;attendLabel=`${mDays}일 달성`;}
+  if(eligible && mDays>=6){attendBonus=20000;attendLabel=`${mDays}일 달성`;}
+  else if(eligible && mDays>=5){attendBonus=10000;attendLabel=`${mDays}일 달성`;}
   else{attendLabel=`${mDays}일 달성 (5일↑ 보너스)`;}
   // 주간물량보너스
   let wqBonus=0,wqLabel='';
-  if(totC>=450){wqBonus=50000;wqLabel=`${totC}건`;}
-  else if(totC>=400){wqBonus=30000;wqLabel=`${totC}건`;}
-  else if(totC>=350){wqBonus=20000;wqLabel=`${totC}건`;}
+  if(eligible && totC>=450){wqBonus=50000;wqLabel=`${totC}건`;}
+  else if(eligible && totC>=400){wqBonus=30000;wqLabel=`${totC}건`;}
+  else if(eligible && totC>=350){wqBonus=20000;wqLabel=`${totC}건`;}
   else{wqLabel=`${totC}건 (350건↑ 보너스)`;}
+  const gateNote = !eligible
+    ? (totC<150
+        ? `<div style="font-size:11px;color:#E24B4A;margin-bottom:8px">⚠️ 주 150건 미만이라 주간보너스 대상이 아니에요 (${totC}건)</div>`
+        : `<div style="font-size:11px;color:#E24B4A;margin-bottom:8px">⚠️ 미션(30건↑) 달성일이 ${mDays}일이라 주간보너스 미지급이에요 (3일 이상 필요)</div>`)
+    : '';
   const grand=totBonus+attendBonus+wqBonus;
   const wAcc=totC+totR+totX>0?Math.round(totC/(totC+totR+totX)*1000)/10:null;
   const wAccColor=wAcc===null?'#1a1a1a':wAcc>=80?'#1D9E75':wAcc>=60?'#BA7517':'#E24B4A';
@@ -982,6 +1049,7 @@ function renderWeek(){
     </div>`:''}
     <div class="wsum" style="grid-column:span 3;background:#F8FDF9;border:0.5px solid #9FE1CB;border-radius:10px;padding:12px 14px;margin-top:4px">
       <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:10px">주간 보너스 내역</div>
+      ${gateNote}
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>일일미션 누적</span><span style="font-weight:600;color:${totBonus>0?'#1D9E75':'#bbb'}">${totBonus.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>개근보너스 <span style="font-size:11px;color:#888">${attendLabel}</span></span><span style="font-weight:600;color:${attendBonus>0?'#1D9E75':'#bbb'}">${attendBonus.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>주간물량보너스 <span style="font-size:11px;color:#888">${wqLabel}</span></span><span style="font-weight:600;color:${wqBonus>0?'#1D9E75':'#bbb'}">${wqBonus.toLocaleString()}원</span></div>
@@ -1586,6 +1654,11 @@ function showAdmin(){
   // 세트수 표시 업데이트
   const scEl = document.getElementById('set-count-display');
   if(scEl) scEl.textContent = getSetCount();
+  // 주간 보너스 정산 업로드 슬롯 초기화
+  settlementAdminWeekOffset = 0;
+  settlementFilesData = {};
+  lastComputedSettlement = null;
+  renderSettlementFileSlots();
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
   lastUploadedAcceptData = null; // 관리자 화면 새로 열 때마다 초기화 (이전 파일 결과 재사용 방지)
@@ -2113,6 +2186,327 @@ function parseSlotDataFromRows(rows){
     riderCount: rows.length - 3 // 헤더 2행 + 합계행 제외
   };
 }
+
+// ── 주간 보너스 정산: 하루치 운행자료에서 기사님 개별 데이터 추출 ──────
+// (완료건수 + 심야(22시,23시) 콜수를 기사님별로 뽑습니다. 이름이 같은 분이 있을 수
+//  있어서, 마지막 "아이디" 컬럼을 기준키로 사용합니다.)
+function parseRiderRowsFromRows(rows){
+  if(rows.length < 3) throw new Error('표 구조를 인식하지 못했습니다 (행 수 부족)');
+  const header0 = rows[0];
+  const header1 = rows[1];
+
+  function findGroupTotalIdx(groupName){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===groupName && header1[i]==='합계') return i;
+    }
+    return -1;
+  }
+  function findSingleIdx(name){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===name) return i;
+    }
+    return -1;
+  }
+
+  const idxComplete = findGroupTotalIdx('완료');
+  const idx22 = findSingleIdx('22시');
+  const idx23 = findSingleIdx('23시');
+  const idxId = header0.length - 1; // 마지막 컬럼이 아이디
+  if(idxComplete===-1 || idx22===-1 || idx23===-1){
+    throw new Error('완료/22시/23시 컬럼을 찾지 못했습니다');
+  }
+
+  const toNum = (v)=> parseInt((v||'0').replace(/[^0-9-]/g,''))||0;
+
+  // 헤더 2행 + 합계행(보통 3번째 행) 제외한 나머지가 기사님별 데이터
+  const dataRows = rows.slice(2).filter(r => r[0] !== '합계');
+
+  return dataRows.map(r => ({
+    name: (r[0]||'').trim(),
+    phone: (r[2]||'').trim(),
+    id: (r[idxId]||'').trim(),
+    complete: toNum(r[idxComplete]),
+    night: toNum(r[idx22]) + toNum(r[idx23])
+  })).filter(r => r.name); // 빈 행 제외
+}
+
+// 요일별 라이더 데이터 배열 여러 개(최대 7개)를 받아 기사님별로 합산하고,
+// 확정된 보너스 규정대로 요일별 미션보너스+개근보너스+물량보너스+심야보너스를 계산합니다.
+function computeWeeklySettlement(dayArrays){
+  // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
+  const GOALS = [30,40,50,60,70];
+  const TIER_BONUS = {30:8000,40:16000,50:24000,60:32000,70:40000};
+
+  // 아이디 기준으로 기사님별 레코드 병합 (아이디가 비어있으면 이름으로 대체)
+  const riders = {}; // key -> {name, phone, id, days:[{dayLabel, complete, night}]}
+
+  dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
+    dayRiders.forEach(r=>{
+      const key = r.id || ('name:'+r.name);
+      if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id, days:[] };
+      riders[key].days.push({ dayLabel, complete:r.complete, night:r.night });
+    });
+  });
+
+  const result = [];
+  Object.values(riders).forEach(rider=>{
+    let weekTotal = 0, missionDays = 0, dailyMissionSum = 0, nightTotal = 0;
+    const breakdown = [];
+    rider.days.forEach(d=>{
+      nightTotal += d.night;
+      if(d.complete <= 0){
+        breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier:0, won:0});
+        return;
+      }
+      weekTotal += d.complete;
+      const tier = GOALS.slice().reverse().find(g => d.complete >= g) || 0;
+      const won = tier ? TIER_BONUS[tier] : 0;
+      if(tier){ missionDays++; dailyMissionSum += won; }
+      breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier, won});
+    });
+
+    const eligible = weekTotal >= 150 && missionDays >= 3;
+    const mission = eligible ? dailyMissionSum : 0;
+    const attend = eligible ? (missionDays >= 6 ? 20000 : (missionDays >= 5 ? 10000 : 0)) : 0;
+    const vol = eligible ? (weekTotal >= 450 ? 50000 : (weekTotal >= 400 ? 30000 : (weekTotal >= 350 ? 20000 : 0))) : 0;
+    const night = nightTotal >= 30 ? 30000 : (nightTotal >= 15 ? 15000 : 0);
+    const total = mission + attend + vol + night;
+
+    result.push({
+      name: rider.name, phone: rider.phone, id: rider.id,
+      weekTotal, missionDays, nightTotal,
+      breakdown, mission, attend, vol, night, total, eligible
+    });
+  });
+
+  // 총 보너스 높은 순으로 정렬
+  result.sort((a,b)=>b.total-a.total);
+  return result;
+}
+
+// ── 주간 보너스 정산 - 관리자 업로드/게시 ──────────────────────
+const SETTLEMENT_DAY_LABELS = ['수요일','목요일','금요일','토요일','일요일','월요일','화요일'];
+let settlementAdminWeekOffset = 0;
+let settlementFilesData = {}; // { '수요일': [riders...], ... } 이번에 업로드/계산 중인 주 기준
+let lastComputedSettlement = null;
+
+function getSettlementWeekInfo(offset){
+  const {start} = getWeekRange(offset);
+  const weekKey = start.toISOString().slice(0,10); // 수요일 날짜를 주 키로 사용
+  const days = SETTLEMENT_DAY_LABELS.map((label,i)=>{
+    const d = new Date(start); d.setUTCDate(start.getUTCDate()+i);
+    const kd = toKST(d);
+    return { label, dateLabel: `${kd.getUTCMonth()+1}/${kd.getUTCDate()}` };
+  });
+  const endD = new Date(start); endD.setUTCDate(start.getUTCDate()+6);
+  const kdEnd = toKST(endD); const kdStart = toKST(start);
+  const rangeLabel = `${kdStart.getUTCMonth()+1}/${kdStart.getUTCDate()} ~ ${kdEnd.getUTCMonth()+1}/${kdEnd.getUTCDate()}`;
+  return { weekKey, days, rangeLabel };
+}
+
+function renderSettlementFileSlots(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  const labelEl = document.getElementById('settlement-admin-week-label');
+  if(labelEl) labelEl.textContent = (settlementAdminWeekOffset===0?'이번 주 · ':'') + info.rangeLabel;
+
+  const container = document.getElementById('settlement-file-slots');
+  if(!container) return;
+  container.innerHTML = info.days.map((d,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #FED7AA">
+      <span style="font-size:12px;font-weight:600;color:#9A5B13;min-width:70px">${d.label} <span style="font-size:10px;color:#bbb">${d.dateLabel}</span></span>
+      <input type="file" accept=".docx" id="settlement-file-${i}" style="flex:1;font-size:11px" onchange="handleSettlementFileUpload(${i}, '${d.label}', this.files[0])">
+      <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px"></span>
+    </div>
+  `).join('');
+}
+
+function changeSettlementAdminWeek(delta){
+  settlementAdminWeekOffset += delta;
+  settlementFilesData = {};
+  lastComputedSettlement = null;
+  const previewEl = document.getElementById('settlement-admin-preview');
+  if(previewEl) previewEl.innerHTML = '';
+  const statusEl = document.getElementById('settlement-admin-status');
+  if(statusEl) statusEl.textContent = '';
+  const pubBtn = document.getElementById('settlement-publish-btn');
+  if(pubBtn) pubBtn.style.display = 'none';
+  renderSettlementFileSlots();
+}
+
+function handleSettlementFileUpload(idx, dayLabel, file){
+  const statusEl = document.getElementById('settlement-file-status-'+idx);
+  if(!file) return;
+  if(statusEl){ statusEl.textContent = '⏳'; }
+  file.arrayBuffer().then(buf=>JSZip.loadAsync(buf))
+    .then(zip=>getDocxTableRows(zip))
+    .then(rows=>{
+      const riders = parseRiderRowsFromRows(rows);
+      settlementFilesData[dayLabel] = riders;
+      if(statusEl) statusEl.textContent = '✅';
+    })
+    .catch(err=>{
+      if(statusEl) statusEl.textContent = '❌';
+      console.error(dayLabel+' 파일 인식 실패:', err.message);
+    });
+}
+
+function calcSettlement(){
+  const statusEl = document.getElementById('settlement-admin-status');
+  const uploadedDays = Object.keys(settlementFilesData);
+  if(uploadedDays.length === 0){
+    if(statusEl){ statusEl.style.color='#E24B4A'; statusEl.textContent = '파일을 하나 이상 업로드해주세요'; }
+    return;
+  }
+  const dayArrays = SETTLEMENT_DAY_LABELS
+    .filter(label => settlementFilesData[label])
+    .map(label => ({ dayLabel: label, riders: settlementFilesData[label] }));
+
+  const settlement = computeWeeklySettlement(dayArrays);
+  lastComputedSettlement = settlement;
+
+  if(statusEl){
+    statusEl.style.color = '#1D9E75';
+    statusEl.textContent = `✅ ${uploadedDays.length}일치 자료로 계산 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
+  }
+
+  const previewEl = document.getElementById('settlement-admin-preview');
+  if(previewEl){
+    const bonusRiders = settlement.filter(r=>r.total>0);
+    previewEl.innerHTML = `
+      <div style="max-height:260px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
+        ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
+          bonusRiders.map(r=>`
+            <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px">
+              <span style="font-weight:600">${r.name}</span>
+              <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+            </div>
+          `).join('')
+        }
+      </div>
+      <div style="font-size:11px;color:#888">전체 ${settlement.length}명 중 ${bonusRiders.length}명 보너스 대상 · 업로드된 요일: ${uploadedDays.join(', ')}</div>
+    `;
+  }
+
+  const pubBtn = document.getElementById('settlement-publish-btn');
+  if(pubBtn) pubBtn.style.display = 'block';
+}
+
+function publishSettlement(){
+  if(!lastComputedSettlement){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  const uploadedDays = Object.keys(settlementFilesData);
+  if(!confirm(`${info.rangeLabel} 주간 정산 결과를 게시할까요?\n(전체 기사님이 본인 이름으로 조회할 수 있게 됩니다)`)) return;
+
+  const ridersMap = {};
+  lastComputedSettlement.forEach(r=>{
+    const key = r.id || ('name:'+r.name);
+    ridersMap[key] = r;
+  });
+
+  const payload = {
+    weekKey: info.weekKey,
+    rangeLabel: info.rangeLabel,
+    uploadedDays,
+    publishedAt: new Date().toISOString(),
+    riders: ridersMap
+  };
+
+  db.ref('settlement/'+info.weekKey).set(payload).then(()=>{
+    alert('✅ 게시 완료! 기사님들이 "미션" 탭에서 본인 이름으로 조회할 수 있습니다.');
+  }).catch(err=>{
+    alert('게시 중 오류가 발생했습니다: ' + err.message);
+  });
+}
+
+// ── 주간 보너스 정산 - 기사님 개인 조회 ──────────────────────
+let settlementLookupWeekOffset = 0;
+
+function changeSettlementLookupWeek(delta){
+  settlementLookupWeekOffset += delta;
+  const info = getSettlementWeekInfo(settlementLookupWeekOffset);
+  const labelEl = document.getElementById('settlement-week-label');
+  if(labelEl) labelEl.textContent = (settlementLookupWeekOffset===0?'이번 주 · ':'') + info.rangeLabel;
+  const resultEl = document.getElementById('settlement-result');
+  if(resultEl) resultEl.innerHTML = '';
+}
+
+function renderSettlementBreakdown(r){
+  const tierLabel = (t)=> t ? `${t}건↑` : '미달성';
+  const rows = r.breakdown.map(b=>`
+    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
+      <span style="color:#666">${b.dayLabel} <span style="color:#bbb;font-size:11px">(${b.complete}건 · ${tierLabel(b.tier)})</span></span>
+      <span style="font-weight:600;color:${b.won>0?'#1D9E75':'#bbb'}">${b.won.toLocaleString()}원</span>
+    </div>
+  `).join('');
+
+  const gateNote = !r.eligible
+    ? `<div style="font-size:11px;color:#E24B4A;margin:8px 0;padding:8px;background:#FFF5F5;border-radius:8px">
+        ⚠️ ${r.weekTotal<150 ? `주 150건 미만(${r.weekTotal}건)이라 주간보너스 대상이 아니에요` : `미션(30건↑) 달성일이 ${r.missionDays}일이라 주간보너스가 지급되지 않아요 (3일 이상 필요)`}
+      </div>`
+    : '';
+
+  return `
+    <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span>
+        <span style="font-size:12px;color:#888">주간완료 ${r.weekTotal}건</span>
+      </div>
+      ${gateNote}
+      <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px">
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">일별 미션보너스</div>
+        ${rows}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>일일미션 합계</span><span style="font-weight:600;color:${r.mission>0?'#1D9E75':'#bbb'}">${r.mission.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>개근보너스 <span style="font-size:11px;color:#888">(미션달성 ${r.missionDays}일)</span></span><span style="font-weight:600;color:${r.attend>0?'#1D9E75':'#bbb'}">${r.attend.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>물량보너스</span><span style="font-weight:600;color:${r.vol>0?'#1D9E75':'#bbb'}">${r.vol.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>심야보너스 <span style="font-size:11px;color:#888">(${r.nightTotal}건)</span></span><span style="font-weight:600;color:${r.night>0?'#1D9E75':'#bbb'}">${r.night.toLocaleString()}원</span></div>
+      <div style="height:1px;background:#d0eed8;margin:8px 0"></div>
+      <div style="display:flex;justify-content:space-between;font-size:16px"><span style="font-weight:700;color:#0F6E56">총 보너스</span><span style="font-weight:800;color:#1D9E75;font-size:19px">${r.total.toLocaleString()}원</span></div>
+    </div>
+  `;
+}
+
+function searchSettlement(){
+  const nameInput = document.getElementById('settlement-name-input');
+  const resultEl = document.getElementById('settlement-result');
+  const name = (nameInput.value||'').trim();
+  if(!name){ resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">이름을 입력해주세요</div>'; return; }
+
+  const info = getSettlementWeekInfo(settlementLookupWeekOffset);
+  resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">불러오는 중...</div>';
+
+  db.ref('settlement/'+info.weekKey).once('value').then(snap=>{
+    const data = snap.val();
+    if(!data || !data.riders){
+      resultEl.innerHTML = `<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">${info.rangeLabel} 정산 결과가 아직 게시되지 않았어요</div>`;
+      return;
+    }
+    const matches = Object.values(data.riders).filter(r=>r.name===name);
+    if(matches.length === 0){
+      resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">해당 이름의 정산 내역을 찾을 수 없어요. 이름을 확인해주세요</div>';
+    } else if(matches.length === 1){
+      resultEl.innerHTML = renderSettlementBreakdown(matches[0]);
+    } else {
+      // 동명이인: 전화번호 뒷자리로 구분
+      resultEl.innerHTML = `
+        <div style="font-size:12px;color:#888;margin-bottom:8px">같은 이름이 여러 명이에요. 본인 번호를 선택해주세요.</div>
+        ${matches.map((r,i)=>`
+          <button onclick='showSettlementMatch(${i})' style="width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:1px solid #ddd;background:#fff;margin-bottom:6px;font-size:13px;cursor:pointer;font-family:inherit">
+            ${r.name} · ${(r.phone||'').replace(/(\d{3})-?\d{2,4}-?(\d{4})/,'$1-****-$2')}
+          </button>
+        `).join('')}
+      `;
+      window.__settlementMatches = matches;
+      window.showSettlementMatch = function(i){
+        resultEl.innerHTML = renderSettlementBreakdown(window.__settlementMatches[i]);
+      };
+    }
+  }).catch(err=>{
+    resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
+  });
+}
+
+
 
 function handleSlotFileUpload(file){
   const statusEl = document.getElementById('slot-file-status');
@@ -2677,6 +3071,10 @@ function init(){
   loadNightCalls();
   loadSetCount();
   loadLottery();
+  // 주간 보너스 정산 조회 라벨 초기화
+  const settleInfo = getSettlementWeekInfo(0);
+  const settleLabelEl = document.getElementById('settlement-week-label');
+  if(settleLabelEl) settleLabelEl.textContent = '이번 주 · ' + settleInfo.rangeLabel;
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
