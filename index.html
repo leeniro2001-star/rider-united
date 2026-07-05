@@ -18,6 +18,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F5F5F5;min-height:100vh;padding-bottom:72px;color:#1a1a1a}
@@ -433,6 +434,29 @@ input[type=number]{-moz-appearance:textfield}
       <button onclick="changeBranchDate(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
     </div>
 
+    <!-- 지사 전체 완료/거절/배차취소/수락률 요약 -->
+    <div class="card" id="branch-accept-card">
+      <div class="card-title">📊 지사 전체 오늘 현황</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
+          <div style="font-size:9px;color:#aaa">완료</div>
+          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-total-complete">-</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
+          <div style="font-size:9px;color:#aaa">거절</div>
+          <div style="font-size:16px;font-weight:700;color:#E24B4A" id="branch-total-reject">-</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
+          <div style="font-size:9px;color:#aaa">배차취소</div>
+          <div style="font-size:16px;font-weight:700;color:#BA7517" id="branch-total-cancel">-</div>
+        </div>
+        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
+          <div style="font-size:9px;color:#aaa">수락률</div>
+          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-accept-rate">-</div>
+        </div>
+      </div>
+    </div>
+
     <!-- 심야 알림 배너 -->
     <div id="night-banner" style="display:none;border-radius:12px;padding:12px 16px;margin-bottom:10px;text-align:center">
       <div id="night-banner-msg" style="font-size:14px;font-weight:600;line-height:1.6"></div>
@@ -555,6 +579,14 @@ input[type=number]{-moz-appearance:textfield}
         <button onclick="saveSetCount()" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">세트수 저장</button>
       </div>
       <div style="font-size:13px;color:#666;margin-bottom:14px">슬롯별 현재 완료 건수를 입력하세요</div>
+
+      <!-- 배민 운행자료 업로드 자동입력 -->
+      <div style="background:#EEF5FF;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #CFE3FF">
+        <div style="font-size:12px;font-weight:600;color:#2A5CA8;margin-bottom:6px">📄 배민 운행자료(.docx) 업로드해서 자동 입력</div>
+        <input type="file" id="slot-file-input" accept=".docx" style="font-size:12px;margin-bottom:6px;width:100%" onchange="handleSlotFileUpload(this.files[0])">
+        <div id="slot-file-status" style="font-size:11px;color:#888;margin-top:2px"></div>
+      </div>
+
       <div id="admin-slot-inputs"></div>
       <button class="btn-save" onclick="submitAdmin()">저장하기</button>
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
@@ -1380,6 +1412,29 @@ function renderBranch(data, offset){
   const slotListEl = document.getElementById('slot-list');
   if(!slotListEl) return; // 지사현황 탭이 아니면 중단
 
+  // 지사 전체 완료/거절/배차취소/수락률 (배민 운행자료 업로드로 채워진 값)
+  const bcEl = document.getElementById('branch-total-complete');
+  const brEl = document.getElementById('branch-total-reject');
+  const bxEl = document.getElementById('branch-total-cancel');
+  const baEl = document.getElementById('branch-accept-rate');
+  if(bcEl && brEl && bxEl && baEl){
+    const bComplete = data && data.complete!=null ? parseInt(data.complete)||0 : null;
+    const bReject = data && data.reject!=null ? parseInt(data.reject)||0 : null;
+    const bCancel = data && data.cancel!=null ? parseInt(data.cancel)||0 : null;
+    if(bComplete!=null && bReject!=null && bCancel!=null){
+      const denom = bComplete + bReject + bCancel;
+      const rate = denom>0 ? Math.round(bComplete/denom*1000)/10 : null;
+      bcEl.textContent = bComplete;
+      brEl.textContent = bReject;
+      bxEl.textContent = bCancel;
+      baEl.textContent = rate!=null ? rate+'%' : '-';
+      baEl.style.color = rate===null?'#1a1a1a':rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
+    } else {
+      bcEl.textContent = '-'; brEl.textContent = '-'; bxEl.textContent = '-'; baEl.textContent = '-';
+    }
+  }
+
+
   if(cur){
     if(slotNameEl){ slotNameEl.textContent=cur.name; slotNameEl.style.color=cur.color; }
     if(slotTimeEl) slotTimeEl.textContent=cur.time;
@@ -1477,6 +1532,8 @@ function loadBranch(){
 
 // 관리자
 let adminAuthed = false; // 한번 인증하면 앱 종료 전까지 유지
+let lastUploadedAcceptData = null; // 파일 업로드로 읽은 완료/거절/배차취소 (제출 전 임시 보관)
+let currentAdminSavedData = null; // 관리자 화면 열 때 불러온 기존 저장값 (수동 수정 시 완료/거절/배차취소 보존용)
 
 // ── 세트수 관리 ──────────────────────────────────────
 function getSetCount(){
@@ -1531,8 +1588,10 @@ function showAdmin(){
   if(scEl) scEl.textContent = getSetCount();
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
+  lastUploadedAcceptData = null; // 관리자 화면 새로 열 때마다 초기화 (이전 파일 결과 재사용 방지)
   db.ref('branch/daily/'+k).once('value').then(snap=>{
     const saved = snap.val() || {};
+    currentAdminSavedData = saved;
     const todayDayKey = DAY_KEY[toKST(new Date()).getUTCDay()];
     const inputs = `<div class="admin-grid">${SLOTS.map(s=>{
       const val = saved[s.key] || '';
@@ -1937,10 +1996,175 @@ function checkAdmin(){
   }
 }
 
+// ── 배민 운행자료(.docx) 업로드 자동입력 ──────────────────────────
+// 배민 관리자페이지에서 내려받은(또는 표를 복사해 워드에 붙여넣은) .docx 파일의
+// 표를 읽어서, "합계" 행에 있는 4개 구간(아침점심피크/오후논피크/저녁피크/심야논피크)
+// 값을 자동으로 관리자 입력창에 채워줍니다. 저장(Firebase 반영)은 사람이
+// 숫자를 확인한 뒤 "저장하기" 버튼을 눌러야 실제로 반영됩니다 (안전을 위한 확인 단계).
+function getDocxTableRows(zip){
+  return zip.file('word/document.xml').async('string').then(xml=>{
+    const parser = new DOMParser();
+    const docXml = parser.parseFromString(xml, 'application/xml');
+    const ns = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const tbl = docXml.getElementsByTagNameNS(ns, 'tbl')[0];
+    if(!tbl) throw new Error('표를 찾을 수 없습니다');
+    const trs = Array.from(tbl.getElementsByTagNameNS(ns, 'tr'));
+
+    // 표는 가로 병합(gridSpan)과 세로 병합(vMerge)이 섞여 있을 수 있어서,
+    // 셀을 그냥 순서대로 읽으면 병합된 칸 때문에 이후 모든 칸이 밀려버립니다.
+    // 그래서 각 행을 "논리적 전체 컬럼 그리드"로 완전히 펼쳐서 반환합니다.
+    const carry = []; // 컬럼별 세로병합 진행 중인 값 (위 칸에서 이어지는 텍스트)
+    const result = [];
+
+    trs.forEach(tr=>{
+      const tcs = Array.from(tr.getElementsByTagNameNS(ns, 'tc'));
+      const rowOut = [];
+      let col = 0;
+
+      tcs.forEach(tc=>{
+        const tcPr = tc.getElementsByTagNameNS(ns, 'tcPr')[0];
+        let span = 1;
+        let vMergeEl = null;
+        if(tcPr){
+          const gridSpanEl = tcPr.getElementsByTagNameNS(ns, 'gridSpan')[0];
+          if(gridSpanEl){
+            const v = gridSpanEl.getAttributeNS(ns, 'val') || gridSpanEl.getAttribute('w:val');
+            span = parseInt(v) || 1;
+          }
+          vMergeEl = tcPr.getElementsByTagNameNS(ns, 'vMerge')[0] || null;
+        }
+        const ts = Array.from(tc.getElementsByTagNameNS(ns, 't'));
+        const text = ts.map(t=>t.textContent).join('').trim();
+
+        let isContinue = false;
+        if(vMergeEl){
+          const val = vMergeEl.getAttributeNS(ns, 'val') || vMergeEl.getAttribute('w:val');
+          // val이 없거나 'continue'면 이어지는 병합, 'restart'면 새 병합 시작
+          isContinue = (val !== 'restart');
+        }
+
+        for(let s=0; s<span; s++){
+          if(isContinue){
+            rowOut[col] = carry[col] !== undefined ? carry[col] : '';
+          } else {
+            rowOut[col] = text;
+            carry[col] = text;
+          }
+          col++;
+        }
+      });
+
+      result.push(rowOut);
+    });
+
+    return result;
+  });
+}
+
+
+function parseSlotDataFromRows(rows){
+  if(rows.length < 3) throw new Error('표 구조를 인식하지 못했습니다 (행 수 부족)');
+  const header0 = rows[0];
+  const header1 = rows[1];
+
+  // 완료/거절/배차취소 "합계" 하위 컬럼 인덱스 찾기 (2단 헤더: 상단 항목명 + 하단 '합계')
+  function findGroupTotalIdx(groupName){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===groupName && header1[i]==='합계') return i;
+    }
+    return -1;
+  }
+  // 단일 헤더(구간명이 그대로 반복되는 컬럼) 인덱스 찾기
+  function findSingleIdx(name){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===name) return i;
+    }
+    return -1;
+  }
+
+  const idx = {
+    complete: findGroupTotalIdx('완료'),
+    reject: findGroupTotalIdx('거절'),
+    cancel: findGroupTotalIdx('배차취소'),
+    lunch: findSingleIdx('아침점심피크'),
+    afternoon: findSingleIdx('오후논피크'),
+    evening: findSingleIdx('저녁피크'),
+    night: findSingleIdx('심야논피크'),
+    name: 0
+  };
+  if([idx.lunch, idx.afternoon, idx.evening, idx.night].some(v=>v===-1)){
+    throw new Error('구간별 컬럼(아침점심피크 등)을 찾지 못했습니다');
+  }
+
+  // "합계" 라벨이 있는 데이터 행 찾기 (보통 헤더 다음 첫 데이터 행)
+  const totalRow = rows.slice(2).find(r=>r[idx.name]==='합계');
+  if(!totalRow) throw new Error('합계 행을 찾지 못했습니다');
+
+  const toNum = (v)=> parseInt((v||'0').replace(/[^0-9-]/g,''))||0;
+
+  return {
+    lunch: toNum(totalRow[idx.lunch]),
+    afternoon: toNum(totalRow[idx.afternoon]),
+    evening: toNum(totalRow[idx.evening]),
+    night: toNum(totalRow[idx.night]),
+    complete: idx.complete>=0 ? toNum(totalRow[idx.complete]) : null,
+    reject: idx.reject>=0 ? toNum(totalRow[idx.reject]) : null,
+    cancel: idx.cancel>=0 ? toNum(totalRow[idx.cancel]) : null,
+    riderCount: rows.length - 3 // 헤더 2행 + 합계행 제외
+  };
+}
+
+function handleSlotFileUpload(file){
+  const statusEl = document.getElementById('slot-file-status');
+  if(!file) return;
+  if(statusEl){ statusEl.style.color = '#888'; statusEl.textContent = '파일 읽는 중...'; }
+
+  file.arrayBuffer().then(buf=>JSZip.loadAsync(buf))
+    .then(zip=>getDocxTableRows(zip))
+    .then(rows=>{
+      const result = parseSlotDataFromRows(rows);
+      ['lunch','afternoon','evening','night'].forEach(key=>{
+        const el = document.getElementById('ai-'+key);
+        if(el) el.value = result[key];
+      });
+      // 완료/거절/배차취소도 함께 보관 (저장하기 누를 때 같이 반영됨)
+      let acceptMsg = '';
+      if(result.complete!=null && result.reject!=null && result.cancel!=null){
+        lastUploadedAcceptData = { complete: result.complete, reject: result.reject, cancel: result.cancel };
+        const denom = result.complete + result.reject + result.cancel;
+        const rate = denom>0 ? Math.round(result.complete/denom*1000)/10 : null;
+        acceptMsg = ` · 완료 ${result.complete} 거절 ${result.reject} 배차취소 ${result.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
+      } else {
+        lastUploadedAcceptData = null;
+      }
+      if(statusEl){
+        statusEl.style.color = '#1D9E75';
+        statusEl.textContent = `✅ 자동 입력 완료 (기사님 ${result.riderCount}명 데이터 인식)${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
+      }
+    })
+    .catch(err=>{
+      if(statusEl){
+        statusEl.style.color = '#E24B4A';
+        statusEl.textContent = '❌ 인식 실패: ' + err.message + ' (파일 형식을 확인해주세요)';
+      }
+    });
+}
+
 function submitAdmin(){
   const k=getBranchDateKey(branchDateOffset);
   const data={updatedAt:new Date().toISOString()};
   SLOTS.forEach(s=>{ data[s.key]=parseInt(document.getElementById('ai-'+s.key).value)||0; });
+  // 완료/거절/배차취소: 방금 업로드한 파일 값이 있으면 그걸 쓰고,
+  // 없으면(파일 재업로드 없이 슬롯 숫자만 수동 수정한 경우) 기존 저장값을 그대로 유지
+  if(lastUploadedAcceptData){
+    data.complete = lastUploadedAcceptData.complete;
+    data.reject = lastUploadedAcceptData.reject;
+    data.cancel = lastUploadedAcceptData.cancel;
+  } else if(currentAdminSavedData){
+    if(currentAdminSavedData.complete!=null) data.complete = currentAdminSavedData.complete;
+    if(currentAdminSavedData.reject!=null) data.reject = currentAdminSavedData.reject;
+    if(currentAdminSavedData.cancel!=null) data.cancel = currentAdminSavedData.cancel;
+  }
   db.ref('branch/daily/'+k).set(data)
     .then(()=>{
       try {
