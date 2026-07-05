@@ -294,7 +294,6 @@ input[type=number]{-moz-appearance:textfield}
       <div style="background:linear-gradient(135deg,#FF8F00,#FF6F00);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:15px;font-weight:700;color:#fff">🎟️ 오늘의 행운 추첨</div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:1px;font-weight:500">매회 2명 당첨 · ☕ 메가커피 아이스 아메리카노</div>
         </div>
         <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;text-align:center">
           <div style="font-size:10px;color:#fff">추첨까지</div>
@@ -680,6 +679,49 @@ function setVal(type, val){
   autoSave();
 }
 
+// 오늘 미션 현황 카드 - 단일 소스 (완료 건수 하나만 받아서 화면을 그림)
+function updateGoalCard(todayC){
+  todayC = todayC || 0;
+  const GOALS = [30,40,50,60,70];
+  const curGoal = GOALS.slice().reverse().find(g => todayC >= g);
+  const nextGoal = GOALS.find(g => todayC < g) || 70;
+  let pct;
+  if(curGoal){
+    const prevGoal = GOALS[GOALS.indexOf(curGoal)-1] || 0;
+    pct = Math.min(((todayC-prevGoal)/(nextGoal-prevGoal))*100, 100);
+    if(todayC >= nextGoal) pct = 100;
+  } else {
+    pct = Math.min(todayC/nextGoal*100, 100);
+  }
+  const curEl = document.getElementById('goal-current');
+  const tarEl = document.getElementById('goal-target');
+  const barEl = document.getElementById('goal-bar');
+  if(curEl) curEl.textContent = todayC;
+  if(tarEl) tarEl.textContent = nextGoal;
+  if(barEl) barEl.style.width = pct+'%';
+  const msEl = document.getElementById('goal-milestones');
+  if(msEl){
+    const labels = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
+    msEl.innerHTML = labels.map(({g,w})=>{
+      const done = todayC>=g;
+      const bg=done?'#1D9E75':'#F0F0F0'; const tc=done?'#fff':'#aaa'; const tc2=done?'#fff':'#bbb';
+      return '<div style="text-align:center;padding:5px 2px;border-radius:6px;background:'+bg+'">'
+        +'<div style="font-size:10px;color:'+tc+'">'+g+'건</div>'
+        +'<div style="font-size:11px;font-weight:700;color:'+tc2+'">'+w+'</div>'
+        +'<div style="font-size:12px">'+(done?'✅':'⬜')+'</div></div>';
+    }).join('');
+  }
+  const msgEl = document.getElementById('goal-message');
+  if(msgEl){
+    if(todayC>=70) msgEl.textContent='🎉 최고 미션 달성!';
+    else if(todayC>=60) msgEl.textContent='70건까지 '+(70-todayC)+'건 남았어요!';
+    else if(todayC>=50) msgEl.textContent='60건까지 '+(60-todayC)+'건 남았어요!';
+    else if(todayC>=40) msgEl.textContent='50건까지 '+(50-todayC)+'건 남았어요!';
+    else if(todayC>=30) msgEl.textContent='40건까지 '+(40-todayC)+'건 남았어요!';
+    else msgEl.textContent='30건까지 '+(30-todayC)+'건 남았어요! 화이팅!';
+  }
+}
+
 function autoSave(){
   const total = cnt.complete + cnt.reject + cnt.cancel;
   const accept = total > 0 ? Math.round(cnt.complete/total*1000)/10 : null;
@@ -700,47 +742,8 @@ function autoSave(){
   updateTodayIncome(rec);
   updateBonusCalc(rec);
   updateCumulTotal();
-  // 오늘 미션현황 즉시 업데이트
-  const todayC2 = rec.todayComplete || rec.complete || 0;
-  const GOALS2 = [30,40,50,60,70];
-  const curGoal2 = GOALS2.slice().reverse().find(g => todayC2 >= g); // 현재 달성 단계
-  const nextGoal2 = GOALS2.find(g => todayC2 < g) || 70;
-  // 진행바: 현재 달성단계~다음단계 사이 비율
-  let pct2;
-  if(curGoal2){
-    const prevGoal2 = GOALS2[GOALS2.indexOf(curGoal2)-1] || 0;
-    pct2 = Math.min(((todayC2-prevGoal2)/(nextGoal2-prevGoal2))*100, 100);
-    if(todayC2 >= nextGoal2) pct2 = 100;
-  } else {
-    pct2 = Math.min(todayC2/nextGoal2*100, 100);
-  }
-  const curEl2 = document.getElementById('goal-current');
-  const tarEl2 = document.getElementById('goal-target');
-  const barEl2 = document.getElementById('goal-bar');
-  if(curEl2) curEl2.textContent = todayC2;
-  if(tarEl2) tarEl2.textContent = nextGoal2;
-  if(barEl2) barEl2.style.width = pct2+'%';
-  const msEl2 = document.getElementById('goal-milestones');
-  if(msEl2){
-    const labels2 = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
-    msEl2.innerHTML = labels2.map(({g,w})=>{
-      const done = todayC2>=g;
-      const bg=done?'#1D9E75':'#F0F0F0'; const tc=done?'#fff':'#aaa'; const tc2=done?'#fff':'#bbb';
-      return '<div style="text-align:center;padding:5px 2px;border-radius:6px;background:'+bg+'">'
-        +'<div style="font-size:10px;color:'+tc+'">'+g+'건</div>'
-        +'<div style="font-size:11px;font-weight:700;color:'+tc2+'">'+w+'</div>'
-        +'<div style="font-size:12px">'+(done?'✅':'⬜')+'</div></div>';
-    }).join('');
-  }
-  const msgEl2 = document.getElementById('goal-message');
-  if(msgEl2){
-    if(todayC2>=70) msgEl2.textContent='🎉 최고 미션 달성!';
-    else if(todayC2>=60) msgEl2.textContent='70건까지 '+(70-todayC2)+'건 남았어요!';
-    else if(todayC2>=50) msgEl2.textContent='60건까지 '+(60-todayC2)+'건 남았어요!';
-    else if(todayC2>=40) msgEl2.textContent='50건까지 '+(50-todayC2)+'건 남았어요!';
-    else if(todayC2>=30) msgEl2.textContent='40건까지 '+(40-todayC2)+'건 남았어요!';
-    else msgEl2.textContent='30건까지 '+(30-todayC2)+'건 남았어요! 화이팅!';
-  }
+  // 오늘 미션현황 즉시 업데이트 (완료 카운터와 항상 동일한 값 사용)
+  updateGoalCard(cnt.complete);
 }
 
 function resetToday(){
@@ -800,53 +803,8 @@ function updateBonusCalc(rec){
   if(tEl) tEl.textContent = total.toLocaleString()+'원';
   if(tipEl) tipEl.textContent = tip;
 
-  // 오늘 미션현황 - 오늘 완료건 기준
-  const todayC = todayComplete;
-  const GOALS = [30,40,50,60,70];
-  const curGoalX = GOALS.slice().reverse().find(g => todayC >= g);
-  const nextGoal = GOALS.find(g => todayC < g) || 70;
-  let pct;
-  if(curGoalX){
-    const prevGoalX = GOALS[GOALS.indexOf(curGoalX)-1] || 0;
-    pct = Math.min(((todayC-prevGoalX)/(nextGoal-prevGoalX))*100, 100);
-  } else {
-    pct = Math.min(todayC/nextGoal*100, 100);
-  }
-
-  const curEl = document.getElementById('goal-current');
-  const tarEl = document.getElementById('goal-target');
-  const barEl = document.getElementById('goal-bar');
-  const msEl = document.getElementById('goal-milestones');
-  const msgEl = document.getElementById('goal-message');
-
-  if(curEl) curEl.textContent = todayC;
-  if(tarEl) tarEl.textContent = nextGoal;
-  if(barEl) barEl.style.width = pct+'%';
-
-  if(msEl){
-    const labels = [{g:30,w:'8천'},{g:40,w:'1.6만'},{g:50,w:'2.4만'},{g:60,w:'3.2만'},{g:70,w:'4만'}];
-    msEl.innerHTML = labels.map(({g,w}) => {
-      const done = todayC >= g;
-      const bg = done ? '#1D9E75' : '#F0F0F0';
-      const tc1 = done ? '#fff' : '#aaa';
-      const tc2 = done ? '#fff' : '#bbb';
-      const icon = done ? '✅' : '⬜';
-      return '<div style="text-align:center;padding:6px 2px;border-radius:8px;background:'+bg+'">'
-        + '<div style="font-size:10px;color:'+tc1+'">'+g+'건</div>'
-        + '<div style="font-size:11px;font-weight:700;color:'+tc2+'">'+w+'</div>'
-        + '<div style="font-size:14px">'+icon+'</div>'
-        + '</div>';
-    }).join('');
-  }
-
-  if(msgEl){
-    if(todayC >= 70) msgEl.textContent = '🎉 최고 미션 달성! 대단해요!';
-    else if(todayC >= 60) msgEl.textContent = `70건까지 ${70-todayC}건 남았어요!`;
-    else if(todayC >= 50) msgEl.textContent = `60건까지 ${60-todayC}건 남았어요!`;
-    else if(todayC >= 40) msgEl.textContent = `50건까지 ${50-todayC}건 남았어요!`;
-    else if(todayC >= 30) msgEl.textContent = `40건까지 ${40-todayC}건 남았어요!`;
-    else msgEl.textContent = `30건까지 ${30-todayC}건 남았어요! 화이팅!`;
-  }
+  // 오늘 미션현황 - 오늘 완료건 기준 (단일 함수로 위임)
+  updateGoalCard(todayComplete);
 }
 
 function renderResult(rec){
