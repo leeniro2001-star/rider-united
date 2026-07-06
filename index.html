@@ -177,6 +177,8 @@ input[type=number]{-moz-appearance:textfield}
 .cell-empty{background:#F5F5F5;color:#ccc}
 .cell-today{outline:2px solid #1D9E75;outline-offset:-2px}
 [contenteditable][data-placeholder]:empty:before{content:attr(data-placeholder);color:#aaa}
+.paste-target{transition:border-color 0.15s, background 0.15s}
+.paste-target:focus{border-color:#EA8C1E !important;border-style:solid !important;background:#FFF9F0 !important}
 </style>
 </head>
 <body>
@@ -603,7 +605,7 @@ input[type=number]{-moz-appearance:textfield}
         <div style="font-size:12px;font-weight:600;color:#2A5CA8;margin-bottom:6px">📄 배민 운행자료(.docx) 업로드해서 자동 입력</div>
         <input type="file" id="slot-file-input" accept=".docx" style="font-size:12px;margin-bottom:6px;width:100%" onchange="handleSlotFileUpload(this.files[0])">
         <div style="font-size:11px;color:#2A5CA8;margin:8px 0 4px;font-weight:600">또는 표를 복사해서 바로 붙여넣기 (워드 저장 없이 가능)</div>
-        <div contenteditable="true" id="slot-paste-target" data-placeholder="여기를 클릭한 후 Ctrl+V로 붙여넣기"
+        <div contenteditable="true" id="slot-paste-target" data-placeholder="여기를 탭(클릭)한 후 붙여넣기" class="paste-target"
           style="min-height:36px;background:#fff;border:1px dashed #9DBEEA;border-radius:8px;padding:8px 10px;font-size:12px;color:#888;outline:none"
           onpaste="handleSlotPaste(event)"></div>
         <div id="slot-file-status" style="font-size:11px;color:#888;margin-top:6px"></div>
@@ -2366,9 +2368,10 @@ function renderSettlementFileSlots(){
         <input type="file" accept=".docx" id="settlement-file-${i}" style="flex:1;font-size:11px" onchange="handleSettlementFileUpload(${i}, '${d.label}', this.files[0])">
         <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px"></span>
       </div>
-      <div contenteditable="true" data-placeholder="또는 여기 클릭 후 Ctrl+V로 붙여넣기"
-        style="margin-top:4px;min-height:22px;background:#FFFBF5;border:1px dashed #FED7AA;border-radius:6px;padding:4px 8px;font-size:11px;color:#888;outline:none"
+      <div contenteditable="true" data-placeholder="또는 여기 탭(클릭) 후 붙여넣기" class="paste-target"
+        style="margin-top:4px;min-height:26px;background:#FFFBF5;border:1px dashed #FED7AA;border-radius:6px;padding:6px 8px;font-size:11px;color:#888;outline:none"
         onpaste="handleSettlementPaste(event, ${i}, '${d.label}')"></div>
+      <div id="settlement-paste-msg-${i}" style="font-size:11px;margin-top:3px"></div>
     </div>
   `).join('');
 }
@@ -2406,11 +2409,12 @@ function handleSettlementFileUpload(idx, dayLabel, file){
 function handleSettlementPaste(event, idx, dayLabel){
   event.preventDefault();
   const statusEl = document.getElementById('settlement-file-status-'+idx);
+  const msgEl = document.getElementById('settlement-paste-msg-'+idx);
   const html = event.clipboardData ? event.clipboardData.getData('text/html') : '';
   event.target.textContent = ''; // 붙여넣은 내용은 화면에 남기지 않음
   if(!html){
     if(statusEl) statusEl.textContent = '❌';
-    console.error(dayLabel+': 표 형식으로 복사되지 않았습니다');
+    if(msgEl){ msgEl.style.color='#E24B4A'; msgEl.textContent = '❌ 표 형식으로 복사되지 않았어요. 표를 드래그해서 선택한 뒤 복사(길게 눌러 복사)해주세요. 안 되면 파일 업로드를 이용해주세요.'; }
     return;
   }
   try{
@@ -2418,9 +2422,10 @@ function handleSettlementPaste(event, idx, dayLabel){
     const riders = parseRiderRowsFromRows(rows);
     settlementFilesData[dayLabel] = riders;
     if(statusEl) statusEl.textContent = '✅';
+    if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 인식 완료 (기사님 ${riders.length}명)`; }
   }catch(err){
     if(statusEl) statusEl.textContent = '❌';
-    console.error(dayLabel+' 붙여넣기 인식 실패:', err.message);
+    if(msgEl){ msgEl.style.color='#E24B4A'; msgEl.textContent = '❌ 인식 실패: ' + err.message; }
   }
 }
 
@@ -2446,13 +2451,18 @@ function calcSettlement(){
   const previewEl = document.getElementById('settlement-admin-preview');
   if(previewEl){
     const bonusRiders = settlement.filter(r=>r.total>0);
+    window.__settlementAdminPreviewRiders = bonusRiders;
     previewEl.innerHTML = `
-      <div style="max-height:260px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
+      <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
+      <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
         ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
-          bonusRiders.map(r=>`
-            <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px">
-              <span style="font-weight:600">${r.name}</span>
-              <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+          bonusRiders.map((r,i)=>`
+            <div>
+              <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
+                <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
+                <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+              </div>
+              <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
             </div>
           `).join('')
         }
@@ -2463,6 +2473,18 @@ function calcSettlement(){
 
   const pubBtn = document.getElementById('settlement-publish-btn');
   if(pubBtn) pubBtn.style.display = 'block';
+}
+
+function toggleSettlementAdminDetail(i){
+  const detailEl = document.getElementById('settlement-admin-detail-'+i);
+  if(!detailEl) return;
+  if(detailEl.style.display === 'none'){
+    const rider = (window.__settlementAdminPreviewRiders||[])[i];
+    if(rider) detailEl.innerHTML = renderSettlementBreakdown(rider);
+    detailEl.style.display = 'block';
+  } else {
+    detailEl.style.display = 'none';
+  }
 }
 
 function publishSettlement(){
