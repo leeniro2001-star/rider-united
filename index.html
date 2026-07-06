@@ -604,6 +604,8 @@ input[type=number]{-moz-appearance:textfield}
           style="min-height:36px;background:#fff;border:1px dashed #9DBEEA;border-radius:8px;padding:8px 10px;font-size:12px;color:#888;outline:none"
           onpaste="handleSlotPaste(event)"></div>
         <div id="slot-file-status" style="font-size:11px;color:#888;margin-top:6px"></div>
+        <div style="font-size:10px;color:#9DBEEA;margin-top:6px">💡 기사님이 100명 넘어 페이지가 나뉘면, 1페이지 올린 후 이어서 2페이지도 같은 방식으로 올려주세요 (자동으로 합산됩니다)</div>
+        <button onclick="resetSlotPages()" style="margin-top:6px;padding:5px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;color:#aaa;font-size:11px;cursor:pointer">🔄 처음부터 다시 (잘못 올렸을 때)</button>
       </div>
 
       <div id="admin-slot-inputs"></div>
@@ -1604,6 +1606,7 @@ function loadBranch(){
 // 관리자
 let adminAuthed = false; // 한번 인증하면 앱 종료 전까지 유지
 let lastUploadedAcceptData = null; // 파일 업로드로 읽은 완료/거절/배차취소 (제출 전 임시 보관)
+let slotUploadPages = []; // 100명 넘어 페이지가 나뉜 경우, 여러 파일을 업로드한 결과를 누적
 let currentAdminSavedData = null; // 관리자 화면 열 때 불러온 기존 저장값 (수동 수정 시 완료/거절/배차취소 보존용)
 
 // ── 세트수 관리 ──────────────────────────────────────
@@ -1665,6 +1668,7 @@ function showAdmin(){
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
   lastUploadedAcceptData = null; // 관리자 화면 새로 열 때마다 초기화 (이전 파일 결과 재사용 방지)
+  slotUploadPages = [];
   db.ref('branch/daily/'+k).once('value').then(snap=>{
     const saved = snap.val() || {};
     currentAdminSavedData = saved;
@@ -2257,7 +2261,8 @@ function parseRiderRowsFromRows(rows){
   const idxComplete = findGroupTotalIdx('완료');
   const idx22 = findSingleIdx('22시');
   const idx23 = findSingleIdx('23시');
-  const idxId = header0.length - 1; // 마지막 컬럼이 아이디
+  const idxId = findSingleIdx('아이디');
+  const idxPhone = findSingleIdx('휴대폰번호');
   if(idxComplete===-1 || idx22===-1 || idx23===-1){
     throw new Error('완료/22시/23시 컬럼을 찾지 못했습니다');
   }
@@ -2269,8 +2274,8 @@ function parseRiderRowsFromRows(rows){
 
   return dataRows.map(r => ({
     name: (r[0]||'').trim(),
-    phone: (r[2]||'').trim(),
-    id: (r[idxId]||'').trim(),
+    phone: idxPhone>=0 ? (r[idxPhone]||'').trim() : '',
+    id: idxId>=0 ? (r[idxId]||'').trim() : '',
     complete: toNum(r[idxComplete]),
     night: toNum(r[idx22]) + toNum(r[idx23])
   })).filter(r => r.name); // 빈 행 제외
@@ -2290,7 +2295,8 @@ function computeWeeklySettlement(dayArrays){
 
   dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
     dayRiders.forEach(r=>{
-      const key = r.name + '|' + (r.phone || '');
+      const normPhone = (r.phone || '').replace(/[^0-9]/g,''); // 하이픈/공백 등 형식 차이 무시하고 숫자만 비교
+      const key = r.name + '|' + normPhone;
       if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', days:[] };
       if(r.id && !riders[key].id) riders[key].id = r.id; // 대표 아이디가 아직 없으면 채워넣기
       riders[key].days.push({ dayLabel, complete:r.complete, night:r.night });
@@ -2390,7 +2396,11 @@ function renderSettlementFileSlots(){
       <div contenteditable="true" data-placeholder="또는 여기 탭(클릭) 후 붙여넣기" class="paste-target"
         style="margin-top:4px;min-height:26px;background:#FFFBF5;border:1px dashed #FED7AA;border-radius:6px;padding:6px 8px;font-size:11px;color:#888;outline:none"
         onpaste="handleSettlementPaste(event, ${i}, '${d.label}')"></div>
-      <div id="settlement-paste-msg-${i}" style="font-size:11px;margin-top:3px">${already ? `✅ ${d.label} 저장된 자료 있음 (기사님 ${already.length}명) - 앱을 껐다 켜도 유지돼요` : ''}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px">
+        <div id="settlement-paste-msg-${i}" style="font-size:11px">${already ? `✅ ${d.label} 총 ${already.length}명 저장됨 - 앱을 껐다 켜도 유지돼요` : ''}</div>
+        ${already ? `<button onclick="resetSettlementDaySlot(${i}, '${d.label}')" style="font-size:10px;color:#aaa;background:none;border:none;text-decoration:underline;cursor:pointer;white-space:nowrap;margin-left:6px">초기화</button>` : ''}
+      </div>
+      <div style="font-size:10px;color:#ddb27a;margin-top:2px">100명 넘어 페이지가 나뉘면, 1페이지 올린 후 이어서 2페이지도 같은 요일에 올려주세요 (자동 합산)</div>
     </div>
   `;
   }).join('');
@@ -2427,10 +2437,14 @@ function handleSettlementFileUpload(idx, dayLabel, file){
     .then(zip=>getDocxTableRows(zip))
     .then(rows=>{
       const riders = parseRiderRowsFromRows(rows);
-      settlementFilesData[dayLabel] = riders;
+      // 100명 넘어 페이지가 나뉜 경우를 위해 덮어쓰지 않고 이어붙임
+      settlementFilesData[dayLabel] = (settlementFilesData[dayLabel] || []).concat(riders);
       saveSettlementDraft();
       updateRosterFromRiders(riders);
+      const msgEl = document.getElementById('settlement-paste-msg-'+idx);
+      const total = settlementFilesData[dayLabel].length;
       if(statusEl) statusEl.textContent = '✅';
+      if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 총 ${total}명 인식됨 (100명 넘으면 이어서 다음 페이지도 업로드해주세요)`; }
     })
     .catch(err=>{
       if(statusEl) statusEl.textContent = '❌';
@@ -2452,15 +2466,28 @@ function handleSettlementPaste(event, idx, dayLabel){
   try{
     const rows = parseHtmlTableToRows(html);
     const riders = parseRiderRowsFromRows(rows);
-    settlementFilesData[dayLabel] = riders;
+    // 100명 넘어 페이지가 나뉜 경우를 위해 덮어쓰지 않고 이어붙임
+    settlementFilesData[dayLabel] = (settlementFilesData[dayLabel] || []).concat(riders);
     saveSettlementDraft();
     updateRosterFromRiders(riders);
+    const total = settlementFilesData[dayLabel].length;
     if(statusEl) statusEl.textContent = '✅';
-    if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 인식 완료 (기사님 ${riders.length}명)`; }
+    if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 총 ${total}명 인식됨 (100명 넘으면 이어서 다음 페이지도 업로드해주세요)`; }
   }catch(err){
     if(statusEl) statusEl.textContent = '❌';
     if(msgEl){ msgEl.style.color='#E24B4A'; msgEl.textContent = '❌ 인식 실패: ' + err.message; }
   }
+}
+
+// 특정 요일 자료를 처음부터 다시 올리고 싶을 때 (잘못된 페이지를 올렸거나 순서가 꼬였을 때)
+function resetSettlementDaySlot(idx, dayLabel){
+  if(!confirm(`${dayLabel} 자료를 초기화할까요? (이 요일에 업로드한 파일들이 모두 지워집니다)`)) return;
+  delete settlementFilesData[dayLabel];
+  saveSettlementDraft();
+  const statusEl = document.getElementById('settlement-file-status-'+idx);
+  const msgEl = document.getElementById('settlement-paste-msg-'+idx);
+  if(statusEl) statusEl.textContent = '';
+  if(msgEl){ msgEl.style.color='#888'; msgEl.textContent = '초기화됨 - 다시 올려주세요'; }
 }
 
 function calcSettlement(){
@@ -2541,8 +2568,117 @@ function searchSettlementAdminRider(){
   const matches = all.filter(r => r.name.includes(name));
   if(matches.length === 0){
     resultEl.innerHTML = `<div style="padding:10px;background:#FFF5F5;border:1px solid #FFCDD2;border-radius:8px;font-size:12px;color:#E24B4A">"${name}" 이름으로 이번에 업로드한 자료에서 찾을 수 없어요. 업로드하신 요일별 자료에 이 기사님이 포함되어 있는지 확인해주세요.</div>`;
-  } else {
-    resultEl.innerHTML = matches.map(r => renderSettlementBreakdown(r)).join('<div style="height:8px"></div>');
+    return;
+  }
+
+  // 이름이 정확히 똑같은 사람이 여러 명이면, 전화번호/아이디가 날짜별로 다르게 기록돼서
+  // 같은 사람이 쪼개져 계산됐을 가능성이 있으므로, 합치기를 제안합니다.
+  const exactSameName = matches.filter(r => r.name === name);
+  window.__settlementSearchMatches = matches;
+
+  let mergeBanner = '';
+  if(exactSameName.length > 1){
+    const idxList = exactSameName.map(r => all.indexOf(r));
+    mergeBanner = `
+      <div style="padding:10px 12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;margin-bottom:8px;font-size:12px;color:#9A5B13">
+        ⚠️ "${name}" 이름이 ${exactSameName.length}건으로 나뉘어 계산됐어요. 요일별 파일에 전화번호나 아이디가 다르게 기록돼서 같은 분이 쪼개졌을 수 있어요.<br>
+        <b>동일인이 맞다면</b> 아래 버튼으로 하나로 합쳐주세요. (다른 사람이면 누르지 마세요)
+        <div style="margin-top:8px">
+          <button onclick="mergeSettlementAdminEntries('${idxList.join(',')}')" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">
+            🔗 "${name}" ${exactSameName.length}건 동일인으로 합치기
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  resultEl.innerHTML = mergeBanner + matches.map(r => renderSettlementBreakdown(r)).join('<div style="height:8px"></div>');
+}
+
+// 같은 사람인데 쪼개져 있던 여러 항목을 하나로 합칩니다 (요일별 완료건수를 다시 모아서 재계산)
+function mergeSettlementAdminEntries(idxCsv){
+  const indices = idxCsv.split(',').map(Number);
+  const all = window.__settlementAdminAllRiders || [];
+  const entries = indices.map(i => all[i]).filter(Boolean);
+  if(entries.length < 2) return;
+
+  const GOALS = [30,40,50,60,70];
+  const TIER_BONUS = {30:8000,40:16000,50:24000,60:32000,70:40000};
+
+  // 요일별 완료건수를 다시 모음 (겹치는 요일이 있으면 혹시 몰라 더함)
+  const dayMap = {};
+  entries.forEach(e => e.breakdown.forEach(b => {
+    dayMap[b.dayLabel] = (dayMap[b.dayLabel]||0) + b.complete;
+  }));
+  const nightTotal = entries.reduce((s,e)=>s+e.nightTotal, 0);
+  const name = entries[0].name;
+  const phone = entries.map(e=>e.phone).find(p=>p) || '';
+  const id = entries.map(e=>e.id).find(v=>v) || '';
+
+  let weekTotal = 0, missionDays = 0, dailyMissionSum = 0;
+  const breakdown = SETTLEMENT_DAY_LABELS.filter(d => dayMap[d] !== undefined).map(dayLabel=>{
+    const complete = dayMap[dayLabel];
+    if(complete <= 0) return {dayLabel, complete, tier:0, won:0};
+    weekTotal += complete;
+    const tier = GOALS.slice().reverse().find(g => complete >= g) || 0;
+    const won = tier ? TIER_BONUS[tier] : 0;
+    if(tier){ missionDays++; dailyMissionSum += won; }
+    return {dayLabel, complete, tier, won};
+  });
+
+  const eligible = weekTotal >= 150 && missionDays >= 3;
+  const mission = eligible ? dailyMissionSum : 0;
+  const attend = eligible ? (missionDays >= 6 ? 20000 : (missionDays >= 5 ? 10000 : 0)) : 0;
+  const vol = eligible ? (weekTotal >= 450 ? 50000 : (weekTotal >= 400 ? 30000 : (weekTotal >= 350 ? 20000 : 0))) : 0;
+  const night = nightTotal >= 30 ? 30000 : (nightTotal >= 15 ? 15000 : 0);
+  const total = mission + attend + vol + night;
+
+  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, total, eligible };
+
+  // 기존 쪼개진 항목들을 제거하고 합쳐진 항목 하나로 교체
+  const remaining = all.filter(r => !entries.includes(r));
+  remaining.push(merged);
+  remaining.sort((a,b) => b.total - a.total);
+
+  lastComputedSettlement = remaining;
+  window.__settlementAdminAllRiders = remaining;
+  window.__settlementAdminPreviewRiders = remaining.filter(r => r.total > 0);
+
+  alert(`✅ "${name}" ${entries.length}건을 하나로 합쳤어요. (합산 주간완료 ${weekTotal}건)`);
+
+  // 화면 갱신
+  const statusEl = document.getElementById('settlement-admin-status');
+  if(statusEl){
+    statusEl.style.color = '#1D9E75';
+    statusEl.textContent = `✅ 계산 완료 (기사님 ${remaining.length}명, 보너스 대상 ${remaining.filter(r=>r.total>0).length}명) - 방금 ${name} 병합함`;
+  }
+  const previewEl = document.getElementById('settlement-admin-preview');
+  if(previewEl){
+    const bonusRiders = window.__settlementAdminPreviewRiders;
+    previewEl.innerHTML = `
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
+          style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
+          onkeydown="if(event.key==='Enter') searchSettlementAdminRider()">
+        <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
+      </div>
+      <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
+      <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
+      <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
+        ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
+          bonusRiders.map((r,i)=>`
+            <div>
+              <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
+                <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
+                <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+              </div>
+              <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
+            </div>
+          `).join('')
+        }
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">전체 ${remaining.length}명 인식됨 (검색창에서 보너스 0원인 분도 확인 가능)</div>
+    `;
   }
 }
 
@@ -2750,6 +2886,41 @@ function loadMySettlement(id){
 
 
 
+function applySlotPagesSum(){
+  const sum = {lunch:0, afternoon:0, evening:0, night:0, complete:0, reject:0, cancel:0, riderCount:0};
+  let hasAccept = true;
+  slotUploadPages.forEach(p=>{
+    sum.lunch += p.lunch; sum.afternoon += p.afternoon; sum.evening += p.evening; sum.night += p.night;
+    sum.riderCount += p.riderCount;
+    if(p.complete!=null && p.reject!=null && p.cancel!=null){
+      sum.complete += p.complete; sum.reject += p.reject; sum.cancel += p.cancel;
+    } else {
+      hasAccept = false;
+    }
+  });
+  ['lunch','afternoon','evening','night'].forEach(key=>{
+    const el = document.getElementById('ai-'+key);
+    if(el) el.value = sum[key];
+  });
+  if(hasAccept && slotUploadPages.length > 0){
+    lastUploadedAcceptData = { complete: sum.complete, reject: sum.reject, cancel: sum.cancel };
+  } else {
+    lastUploadedAcceptData = null;
+  }
+  return sum;
+}
+
+function resetSlotPages(){
+  slotUploadPages = [];
+  ['lunch','afternoon','evening','night'].forEach(key=>{
+    const el = document.getElementById('ai-'+key);
+    if(el) el.value = 0;
+  });
+  lastUploadedAcceptData = null;
+  const statusEl = document.getElementById('slot-file-status');
+  if(statusEl){ statusEl.style.color='#888'; statusEl.textContent = '초기화됐어요. 파일을 다시 올려주세요.'; }
+}
+
 function handleSlotPaste(event){
   event.preventDefault();
   const statusEl = document.getElementById('slot-file-status');
@@ -2762,24 +2933,20 @@ function handleSlotPaste(event){
   try{
     const rows = parseHtmlTableToRows(html);
     const result = parseSlotDataFromRows(rows);
-    ['lunch','afternoon','evening','night'].forEach(key=>{
-      const el = document.getElementById('ai-'+key);
-      if(el) el.value = result[key];
-    });
+    slotUploadPages.push(result);
+    const sum = applySlotPagesSum();
     // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용)
     try{ updateRosterFromRiders(parseRiderRowsFromRows(rows)); }catch(e){}
     let acceptMsg = '';
-    if(result.complete!=null && result.reject!=null && result.cancel!=null){
-      lastUploadedAcceptData = { complete: result.complete, reject: result.reject, cancel: result.cancel };
-      const denom = result.complete + result.reject + result.cancel;
-      const rate = denom>0 ? Math.round(result.complete/denom*1000)/10 : null;
-      acceptMsg = ` · 완료 ${result.complete} 거절 ${result.reject} 배차취소 ${result.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
-    } else {
-      lastUploadedAcceptData = null;
+    if(sum.complete!=null){
+      const denom = sum.complete + sum.reject + sum.cancel;
+      const rate = denom>0 ? Math.round(sum.complete/denom*1000)/10 : null;
+      acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
     }
+    const pageInfo = slotUploadPages.length > 1 ? ` (${slotUploadPages.length}개 파일 합산, 100명 넘어 페이지 나뉜 경우 이어서 올려주세요)` : '';
     if(statusEl){
       statusEl.style.color = '#1D9E75';
-      statusEl.textContent = `✅ 붙여넣기로 자동 입력 완료 (기사님 ${result.riderCount}명 데이터 인식)${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
+      statusEl.textContent = `✅ 붙여넣기로 자동 입력 완료 (총 ${sum.riderCount}명 데이터 인식)${pageInfo}${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
     }
   }catch(err){
     if(statusEl){ statusEl.style.color='#E24B4A'; statusEl.textContent = '❌ 인식 실패: ' + err.message; }
@@ -2795,25 +2962,20 @@ function handleSlotFileUpload(file){
     .then(zip=>getDocxTableRows(zip))
     .then(rows=>{
       const result = parseSlotDataFromRows(rows);
-      ['lunch','afternoon','evening','night'].forEach(key=>{
-        const el = document.getElementById('ai-'+key);
-        if(el) el.value = result[key];
-      });
+      slotUploadPages.push(result);
+      const sum = applySlotPagesSum();
       // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용)
       try{ updateRosterFromRiders(parseRiderRowsFromRows(rows)); }catch(e){}
-      // 완료/거절/배차취소도 함께 보관 (저장하기 누를 때 같이 반영됨)
       let acceptMsg = '';
-      if(result.complete!=null && result.reject!=null && result.cancel!=null){
-        lastUploadedAcceptData = { complete: result.complete, reject: result.reject, cancel: result.cancel };
-        const denom = result.complete + result.reject + result.cancel;
-        const rate = denom>0 ? Math.round(result.complete/denom*1000)/10 : null;
-        acceptMsg = ` · 완료 ${result.complete} 거절 ${result.reject} 배차취소 ${result.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
-      } else {
-        lastUploadedAcceptData = null;
+      if(sum.complete!=null){
+        const denom = sum.complete + sum.reject + sum.cancel;
+        const rate = denom>0 ? Math.round(sum.complete/denom*1000)/10 : null;
+        acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
       }
+      const pageInfo = slotUploadPages.length > 1 ? ` (${slotUploadPages.length}개 파일 합산, 100명 넘어 페이지 나뉜 경우 이어서 올려주세요)` : '';
       if(statusEl){
         statusEl.style.color = '#1D9E75';
-        statusEl.textContent = `✅ 자동 입력 완료 (기사님 ${result.riderCount}명 데이터 인식)${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
+        statusEl.textContent = `✅ 자동 입력 완료 (총 ${sum.riderCount}명 데이터 인식)${pageInfo}${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
       }
     })
     .catch(err=>{
