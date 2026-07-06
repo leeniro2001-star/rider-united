@@ -1657,9 +1657,8 @@ function showAdmin(){
   // 세트수 표시 업데이트
   const scEl = document.getElementById('set-count-display');
   if(scEl) scEl.textContent = getSetCount();
-  // 주간 보너스 정산 업로드 슬롯 초기화
+  // 주간 보너스 정산 업로드 슬롯 초기화 (저장해둔 임시 자료가 있으면 자동 복원됨)
   settlementAdminWeekOffset = 0;
-  settlementFilesData = {};
   lastComputedSettlement = null;
   renderSettlementFileSlots();
   renderNoticePresets();
@@ -2351,31 +2350,51 @@ function getSettlementWeekInfo(offset){
   return { weekKey, days, rangeLabel };
 }
 
+// 업로드한 요일별 자료를 폰에 임시 저장 (앱을 껐다 켜도 남아있도록, 주 단위로 구분해서 저장)
+function getSettlementDraftKey(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  return 'ru_settlement_draft_' + info.weekKey;
+}
+function saveSettlementDraft(){
+  try{ localStorage.setItem(getSettlementDraftKey(), JSON.stringify(settlementFilesData)); }catch(e){}
+}
+function loadSettlementDraft(){
+  try{
+    const raw = localStorage.getItem(getSettlementDraftKey());
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+
 function renderSettlementFileSlots(){
   const info = getSettlementWeekInfo(settlementAdminWeekOffset);
   const labelEl = document.getElementById('settlement-admin-week-label');
   if(labelEl) labelEl.textContent = (settlementAdminWeekOffset===0?'이번 주 · ':'') + info.rangeLabel;
 
+  // 이 주에 저장해둔 임시 자료가 있으면 복원
+  settlementFilesData = loadSettlementDraft();
+
   const container = document.getElementById('settlement-file-slots');
   if(!container) return;
-  container.innerHTML = info.days.map((d,i)=>`
+  container.innerHTML = info.days.map((d,i)=>{
+    const already = settlementFilesData[d.label];
+    return `
     <div style="background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #FED7AA">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;font-weight:600;color:#9A5B13;min-width:70px">${d.label} <span style="font-size:10px;color:#bbb">${d.dateLabel}</span></span>
         <input type="file" accept=".docx" id="settlement-file-${i}" style="flex:1;font-size:11px" onchange="handleSettlementFileUpload(${i}, '${d.label}', this.files[0])">
-        <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px"></span>
+        <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px">${already ? '✅' : ''}</span>
       </div>
       <div contenteditable="true" data-placeholder="또는 여기 탭(클릭) 후 붙여넣기" class="paste-target"
         style="margin-top:4px;min-height:26px;background:#FFFBF5;border:1px dashed #FED7AA;border-radius:6px;padding:6px 8px;font-size:11px;color:#888;outline:none"
         onpaste="handleSettlementPaste(event, ${i}, '${d.label}')"></div>
-      <div id="settlement-paste-msg-${i}" style="font-size:11px;margin-top:3px"></div>
+      <div id="settlement-paste-msg-${i}" style="font-size:11px;margin-top:3px">${already ? `✅ ${d.label} 저장된 자료 있음 (기사님 ${already.length}명) - 앱을 껐다 켜도 유지돼요` : ''}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function changeSettlementAdminWeek(delta){
   settlementAdminWeekOffset += delta;
-  settlementFilesData = {};
   lastComputedSettlement = null;
   const previewEl = document.getElementById('settlement-admin-preview');
   if(previewEl) previewEl.innerHTML = '';
@@ -2383,7 +2402,7 @@ function changeSettlementAdminWeek(delta){
   if(statusEl) statusEl.textContent = '';
   const pubBtn = document.getElementById('settlement-publish-btn');
   if(pubBtn) pubBtn.style.display = 'none';
-  renderSettlementFileSlots();
+  renderSettlementFileSlots(); // 여기서 해당 주의 임시 저장분을 다시 불러옴
 }
 
 // 기사님 이름/전화번호/아이디 명단을 Firebase에 누적 저장 (정산 조회 등록 시 본인 확인용)
@@ -2406,6 +2425,7 @@ function handleSettlementFileUpload(idx, dayLabel, file){
     .then(rows=>{
       const riders = parseRiderRowsFromRows(rows);
       settlementFilesData[dayLabel] = riders;
+      saveSettlementDraft();
       updateRosterFromRiders(riders);
       if(statusEl) statusEl.textContent = '✅';
     })
@@ -2430,6 +2450,7 @@ function handleSettlementPaste(event, idx, dayLabel){
     const rows = parseHtmlTableToRows(html);
     const riders = parseRiderRowsFromRows(rows);
     settlementFilesData[dayLabel] = riders;
+    saveSettlementDraft();
     updateRosterFromRiders(riders);
     if(statusEl) statusEl.textContent = '✅';
     if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 인식 완료 (기사님 ${riders.length}명)`; }
@@ -2620,11 +2641,34 @@ function renderSettlementBreakdown(r){
     </div>
   `).join('');
 
-  const gateNote = !r.eligible
-    ? `<div style="font-size:11px;color:#E24B4A;margin:8px 0;padding:8px;background:#FFF5F5;border-radius:8px">
-        ⚠️ ${r.weekTotal<150 ? `주 150건 미만(${r.weekTotal}건)이라 주간보너스 대상이 아니에요` : `미션(30건↑) 달성일이 ${r.missionDays}일이라 주간보너스가 지급되지 않아요 (3일 이상 필요)`}
-      </div>`
-    : '';
+  let gateNote = '';
+  if(!r.eligible){
+    let msg;
+    if(r.weekTotal < 150){
+      msg = `🚀 조금만 더 힘내요! 주간 보너스는 150건부터 시작이에요.<br>지금 <b>${r.weekTotal}건</b> 타셨으니 <b>${150-r.weekTotal}건</b>만 더 타면 보너스 대상이 됩니다!`;
+    } else if(r.missionDays === 0){
+      msg = `🔥 주 150건은 이미 넘기셨어요! 이제 하루 30건 이상 타는 날이 <b>3일</b>만 있으면 주간 보너스를 받으실 수 있어요. 화이팅!`;
+    } else {
+      msg = `🔥 미션(30건↑) <b>${r.missionDays}일</b> 달성하셨네요! <b>${3-r.missionDays}일</b>만 더 채우시면 주간 보너스 받으실 수 있어요. 조금만 더 힘내주세요!`;
+    }
+    gateNote = `<div style="font-size:12px;color:#9A5B13;line-height:1.6;margin:8px 0;padding:10px 12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px">${msg}</div>`;
+  } else {
+    // 이미 주간보너스 대상 - 다음 단계(개근/물량) 향한 응원 문구
+    const tips = [];
+    if(r.missionDays < 6){
+      tips.push(`💪 미션 <b>${r.missionDays}일</b> 달성 중! <b>${6-r.missionDays}일</b>만 더 채우면 개근보너스(2만원)까지 받으실 수 있어요`);
+    }
+    const nextVol = r.weekTotal < 350 ? 350 : r.weekTotal < 400 ? 400 : r.weekTotal < 450 ? 450 : 0;
+    if(nextVol > 0){
+      const volBonus = nextVol===350?20000:nextVol===400?30000:50000;
+      tips.push(`📦 물량보너스까지 <b>${nextVol-r.weekTotal}건</b> 남았어요! 조금만 더 타시면 <b>${volBonus.toLocaleString()}원</b> 추가로 받으실 수 있어요`);
+    }
+    if(tips.length > 0){
+      gateNote = `<div style="font-size:12px;color:#0F6E56;line-height:1.6;margin:8px 0;padding:10px 12px;background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px">${tips.join('<br>')}</div>`;
+    } else {
+      gateNote = `<div style="font-size:12px;color:#0F6E56;line-height:1.6;margin:8px 0;padding:10px 12px;background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px">🎉 이번 주 모든 보너스 조건을 다 채우셨어요! 정말 고생 많으셨습니다</div>`;
+    }
+  }
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
@@ -2786,7 +2830,7 @@ function submitAdmin(){
 
 // ── 공지사항 ────────────────────────────────────────────────
 const NOTICE_PRESETS = [
-  { label: '📊 주간 보너스 확인 안내', text: '📢 이번 주 보너스 중간 확인 가능해요!\n미션 탭 → 주간 보너스 정산 조회 → 본인 이름 검색\n화요일까지 화이팅입니다 🙌' },
+  { label: '📊 주간 보너스 확인 안내', text: '📢 이번 주 보너스 중간 확인 가능해요!\n미션 탭 맨 아래 → 주간 보너스 정산 조회\n(처음이면 본인 배민 아이디 입력해서 등록, 그다음부터는 자동으로 보여요)\n화요일까지 화이팅입니다 🙌' },
   { label: '🙏 일반 안전운전', text: '오늘도 안전운전 부탁드려요 🙏' },
   { label: '☔ 우천 시 안전운전', text: '비가 옵니다. 더욱더 안전운전 부탁드려요 ☔' },
 ];
