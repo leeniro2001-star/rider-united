@@ -2807,7 +2807,23 @@ function startSettlementRegister(){
   });
 }
 
-function renderSettlementBreakdown(r, closeTargetId){
+// 정산 결과 카드를 닫을 때: 본인 조회 화면이면(canReopen) 다시보기 버튼을 남기고,
+// 그 외(관리자 검색 등)에는 그냥 비웁니다.
+function collapseSettlementResult(targetId, canReopen){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  if(canReopen){
+    el.innerHTML = `<button onclick="reopenSettlementResult('${targetId}')" style="padding:8px 14px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📋 정산 결과 다시 보기</button>`;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function reopenSettlementResult(targetId){
+  if(window.__lastSettlementMatchId) loadMySettlement(window.__lastSettlementMatchId);
+}
+
+function renderSettlementBreakdown(r, closeTargetId, reopenCall){
   const tierLabel = (t)=> t ? `${t}건↑` : '미달성';
   const rows = r.breakdown.map(b=>`
     <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
@@ -2849,7 +2865,7 @@ function renderSettlementBreakdown(r, closeTargetId){
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span>
-        ${closeTargetId ? `<button onclick="document.getElementById('${closeTargetId}').innerHTML=''" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
+        ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
         <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 완료</span>
@@ -2891,7 +2907,8 @@ function loadMySettlement(id){
     if(!match){
       resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">${info.rangeLabel} 정산은 게시됐지만, 본인 자료를 찾을 수 없어요.<br>업로드하신 요일별 자료에 이 아이디가 포함되어 있는지 사장님께 확인 부탁드려주세요.</div>`;
     } else {
-      resultEl.innerHTML = renderSettlementBreakdown(match, 'settlement-result');
+      window.__lastSettlementMatchId = id;
+      resultEl.innerHTML = renderSettlementBreakdown(match, 'settlement-result', true);
     }
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
