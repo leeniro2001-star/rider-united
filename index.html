@@ -2283,13 +2283,16 @@ function computeWeeklySettlement(dayArrays){
   const GOALS = [30,40,50,60,70];
   const TIER_BONUS = {30:8000,40:16000,50:24000,60:32000,70:40000};
 
-  // 아이디 기준으로 기사님별 레코드 병합 (아이디가 비어있으면 이름으로 대체)
+  // 같은 사람을 "이름+전화번호"로 먼저 묶습니다 (아이디만 보고 묶으면, 어떤 날짜 파일에는
+  // 아이디가 비어있거나 다르게 기록된 경우 같은 사람이 두 명으로 쪼개질 위험이 있어서
+  // 훨씬 안정적인 이름+전화번호를 기준으로 묶고, 그 중 하나라도 있는 아이디를 대표로 사용합니다)
   const riders = {}; // key -> {name, phone, id, days:[{dayLabel, complete, night}]}
 
   dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
     dayRiders.forEach(r=>{
-      const key = r.id || ('name:'+r.name);
-      if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id, days:[] };
+      const key = r.name + '|' + (r.phone || '');
+      if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', days:[] };
+      if(r.id && !riders[key].id) riders[key].id = r.id; // 대표 아이디가 아직 없으면 채워넣기
       riders[key].days.push({ dayLabel, complete:r.complete, night:r.night });
     });
   });
@@ -2483,7 +2486,15 @@ function calcSettlement(){
   if(previewEl){
     const bonusRiders = settlement.filter(r=>r.total>0);
     window.__settlementAdminPreviewRiders = bonusRiders;
+    window.__settlementAdminAllRiders = settlement; // 검색용: 보너스 0원인 분도 포함 전체
     previewEl.innerHTML = `
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
+          style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
+          onkeydown="if(event.key==='Enter') searchSettlementAdminRider()">
+        <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
+      </div>
+      <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
       <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
       <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
         ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
@@ -2498,7 +2509,7 @@ function calcSettlement(){
           `).join('')
         }
       </div>
-      <div style="font-size:11px;color:#888">전체 ${settlement.length}명 중 ${bonusRiders.length}명 보너스 대상 · 업로드된 요일: ${uploadedDays.join(', ')}</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">전체 ${settlement.length}명 인식됨 · 업로드된 요일: ${uploadedDays.join(', ')} (검색창에서 보너스 0원인 분도 확인 가능)</div>
     `;
   }
 
@@ -2518,11 +2529,28 @@ function toggleSettlementAdminDetail(i){
   }
 }
 
+// 관리자용: 특정 기사님이 이번 계산에 포함됐는지 이름으로 직접 확인 (보너스 0원인 분도 검색 가능)
+function searchSettlementAdminRider(){
+  const input = document.getElementById('settlement-admin-search-input');
+  const resultEl = document.getElementById('settlement-admin-search-result');
+  const name = (input.value||'').trim();
+  if(!resultEl) return;
+  if(!name){ resultEl.innerHTML = ''; return; }
+
+  const all = window.__settlementAdminAllRiders || [];
+  const matches = all.filter(r => r.name.includes(name));
+  if(matches.length === 0){
+    resultEl.innerHTML = `<div style="padding:10px;background:#FFF5F5;border:1px solid #FFCDD2;border-radius:8px;font-size:12px;color:#E24B4A">"${name}" 이름으로 이번에 업로드한 자료에서 찾을 수 없어요. 업로드하신 요일별 자료에 이 기사님이 포함되어 있는지 확인해주세요.</div>`;
+  } else {
+    resultEl.innerHTML = matches.map(r => renderSettlementBreakdown(r)).join('<div style="height:8px"></div>');
+  }
+}
+
 function publishSettlement(){
   if(!lastComputedSettlement){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
   const info = getSettlementWeekInfo(settlementAdminWeekOffset);
   const uploadedDays = Object.keys(settlementFilesData);
-  if(!confirm(`${info.rangeLabel} 주간 정산 결과를 게시할까요?\n(전체 기사님이 본인 이름으로 조회할 수 있게 됩니다)`)) return;
+  if(!confirm(`${info.rangeLabel} 주간 정산 결과를 게시할까요?\n(전체 기사님이 본인 아이디로 등록 후 조회할 수 있게 됩니다)`)) return;
 
   const ridersMap = {};
   lastComputedSettlement.forEach(r=>{
@@ -2539,7 +2567,7 @@ function publishSettlement(){
   };
 
   db.ref('settlement/'+info.weekKey).set(payload).then(()=>{
-    alert('✅ 게시 완료! 기사님들이 "미션" 탭에서 본인 이름으로 조회할 수 있습니다.');
+    alert('✅ 게시 완료! 기사님들이 "미션" 탭에서 본인 배민 아이디로 등록 후 조회할 수 있습니다.');
   }).catch(err=>{
     alert('게시 중 오류가 발생했습니다: ' + err.message);
   });
@@ -2702,10 +2730,15 @@ function loadMySettlement(id){
   const info = getSettlementWeekInfo(settlementLookupWeekOffset);
   resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">불러오는 중...</div>';
 
-  db.ref('settlement/'+info.weekKey+'/riders/'+id).once('value').then(snap=>{
-    const match = snap.val();
-    if(!match){
+  db.ref('settlement/'+info.weekKey).once('value').then(snap=>{
+    const data = snap.val();
+    if(!data || !data.publishedAt){
       resultEl.innerHTML = `<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">${info.rangeLabel} 정산 결과가 아직 게시되지 않았어요</div>`;
+      return;
+    }
+    const match = data.riders ? data.riders[id] : null;
+    if(!match){
+      resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">${info.rangeLabel} 정산은 게시됐지만, 본인 자료를 찾을 수 없어요.<br>업로드하신 요일별 자료에 이 아이디가 포함되어 있는지 사장님께 확인 부탁드려주세요.</div>`;
     } else {
       resultEl.innerHTML = renderSettlementBreakdown(match);
     }
