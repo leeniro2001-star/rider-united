@@ -2596,7 +2596,7 @@ function searchSettlementAdminRider(){
     `;
   }
 
-  resultEl.innerHTML = mergeBanner + matches.map(r => renderSettlementBreakdown(r)).join('<div style="height:8px"></div>');
+  resultEl.innerHTML = mergeBanner + matches.map(r => renderSettlementBreakdown(r, 'settlement-admin-search-result')).join('<div style="height:8px"></div>');
 }
 
 // 같은 사람인데 쪼개져 있던 여러 항목을 하나로 합칩니다 (요일별 완료건수를 다시 모아서 재계산)
@@ -2800,7 +2800,7 @@ function startSettlementRegister(){
   });
 }
 
-function renderSettlementBreakdown(r){
+function renderSettlementBreakdown(r, closeTargetId){
   const tierLabel = (t)=> t ? `${t}건↑` : '미달성';
   const rows = r.breakdown.map(b=>`
     <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
@@ -2840,9 +2840,13 @@ function renderSettlementBreakdown(r){
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span>
-        <span style="font-size:12px;color:#888">주간완료 ${r.weekTotal}건</span>
+        ${closeTargetId ? `<button onclick="document.getElementById('${closeTargetId}').innerHTML=''" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
+        <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 완료</span>
+        <span style="font-size:28px;font-weight:800;color:#fff;line-height:1">${r.weekTotal}<span style="font-size:15px;font-weight:700">건</span></span>
       </div>
       ${gateNote}
       <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px">
@@ -2880,7 +2884,7 @@ function loadMySettlement(id){
     if(!match){
       resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">${info.rangeLabel} 정산은 게시됐지만, 본인 자료를 찾을 수 없어요.<br>업로드하신 요일별 자료에 이 아이디가 포함되어 있는지 사장님께 확인 부탁드려주세요.</div>`;
     } else {
-      resultEl.innerHTML = renderSettlementBreakdown(match);
+      resultEl.innerHTML = renderSettlementBreakdown(match, 'settlement-result');
     }
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
