@@ -2258,13 +2258,17 @@ function parseRiderRowsFromRows(rows){
     return -1;
   }
 
-  const idxComplete = findGroupTotalIdx('완료');
+  // 완료건수는 "완료 합계" 컬럼(배민 SLA 기준 10시~24시만 집계)이 아니라,
+  // 지사 미션 기준(새벽 0~10시 콜도 포함하는 하루 전체, 06시~다음날05시)에 맞춰
+  // 시간대별 24개 칸을 전부 더한 값을 사용합니다.
+  const HOUR_LABELS = ['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시','0시','1시','2시','3시','4시','5시'];
+  const hourIdxs = HOUR_LABELS.map(h => findSingleIdx(h));
   const idx22 = findSingleIdx('22시');
   const idx23 = findSingleIdx('23시');
   const idxId = findSingleIdx('아이디');
   const idxPhone = findSingleIdx('휴대폰번호');
-  if(idxComplete===-1 || idx22===-1 || idx23===-1){
-    throw new Error('완료/22시/23시 컬럼을 찾지 못했습니다');
+  if(hourIdxs.some(i => i === -1)){
+    throw new Error('시간대별(6시~5시) 컬럼을 찾지 못했습니다');
   }
 
   const toNum = (v)=> parseInt((v||'0').replace(/[^0-9-]/g,''))||0;
@@ -2276,7 +2280,7 @@ function parseRiderRowsFromRows(rows){
     name: (r[0]||'').trim(),
     phone: idxPhone>=0 ? (r[idxPhone]||'').trim() : '',
     id: idxId>=0 ? (r[idxId]||'').trim() : '',
-    complete: toNum(r[idxComplete]),
+    complete: hourIdxs.reduce((sum, idx) => sum + toNum(r[idx]), 0),
     night: toNum(r[idx22]) + toNum(r[idx23])
   })).filter(r => r.name); // 빈 행 제외
 }
