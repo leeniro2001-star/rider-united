@@ -176,6 +176,7 @@ input[type=number]{-moz-appearance:textfield}
 .cell-fail{background:#FEF2F2;color:#E24B4A}
 .cell-empty{background:#F5F5F5;color:#ccc}
 .cell-today{outline:2px solid #1D9E75;outline-offset:-2px}
+[contenteditable][data-placeholder]:empty:before{content:attr(data-placeholder);color:#aaa}
 </style>
 </head>
 <body>
@@ -601,7 +602,11 @@ input[type=number]{-moz-appearance:textfield}
       <div style="background:#EEF5FF;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #CFE3FF">
         <div style="font-size:12px;font-weight:600;color:#2A5CA8;margin-bottom:6px">📄 배민 운행자료(.docx) 업로드해서 자동 입력</div>
         <input type="file" id="slot-file-input" accept=".docx" style="font-size:12px;margin-bottom:6px;width:100%" onchange="handleSlotFileUpload(this.files[0])">
-        <div id="slot-file-status" style="font-size:11px;color:#888;margin-top:2px"></div>
+        <div style="font-size:11px;color:#2A5CA8;margin:8px 0 4px;font-weight:600">또는 표를 복사해서 바로 붙여넣기 (워드 저장 없이 가능)</div>
+        <div contenteditable="true" id="slot-paste-target" data-placeholder="여기를 클릭한 후 Ctrl+V로 붙여넣기"
+          style="min-height:36px;background:#fff;border:1px dashed #9DBEEA;border-radius:8px;padding:8px 10px;font-size:12px;color:#888;outline:none"
+          onpaste="handleSlotPaste(event)"></div>
+        <div id="slot-file-status" style="font-size:11px;color:#888;margin-top:6px"></div>
       </div>
 
       <div id="admin-slot-inputs"></div>
@@ -2135,6 +2140,49 @@ function getDocxTableRows(zip){
 }
 
 
+// 붙여넣기(Ctrl+V)로 받은 표 HTML을 표 구조 그대로 2차원 배열로 변환합니다.
+// (워드 파일과 똑같이 가로/세로 병합(colspan/rowspan)을 정확히 펼쳐서 처리합니다)
+function parseHtmlTableToRows(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const table = doc.querySelector('table');
+  if(!table) throw new Error('표를 찾을 수 없어요. 표 전체(헤더 포함)를 복사했는지 확인해주세요.');
+  const trs = Array.from(table.querySelectorAll('tr'));
+  let pending = {}; // 이전 행에서 이어지는 세로병합만 여기 있음 (이번 행에서 새로 생긴 건 별도 보관)
+  const result = [];
+
+  trs.forEach(tr=>{
+    const cells = Array.from(tr.children).filter(el => el.tagName==='TD' || el.tagName==='TH');
+    const rowOut = [];
+    const nextPending = {}; // 이번 행에서 새로 만들어져 "다음" 행부터 적용될 세로병합
+    let col = 0, cellIdx = 0;
+
+    while(cellIdx < cells.length || Object.keys(pending).some(k => Number(k) >= col && pending[k].remaining > 0)){
+      if(pending[col] && pending[col].remaining > 0){
+        rowOut[col] = pending[col].text;
+        const remaining = pending[col].remaining - 1;
+        if(remaining > 0) nextPending[col] = { text: pending[col].text, remaining };
+        delete pending[col];
+        col++;
+        continue;
+      }
+      if(cellIdx >= cells.length){ col++; continue; }
+      const cell = cells[cellIdx++];
+      const span = parseInt(cell.getAttribute('colspan'))||1;
+      const rowspan = parseInt(cell.getAttribute('rowspan'))||1;
+      const text = cell.textContent.replace(/\s+/g,' ').trim();
+      for(let s=0;s<span;s++){
+        rowOut[col] = text;
+        if(rowspan > 1) nextPending[col] = { text, remaining: rowspan-1 };
+        col++;
+      }
+    }
+    pending = nextPending;
+    result.push(rowOut);
+  });
+
+  return result;
+}
+
 function parseSlotDataFromRows(rows){
   if(rows.length < 3) throw new Error('표 구조를 인식하지 못했습니다 (행 수 부족)');
   const header0 = rows[0];
@@ -2312,10 +2360,15 @@ function renderSettlementFileSlots(){
   const container = document.getElementById('settlement-file-slots');
   if(!container) return;
   container.innerHTML = info.days.map((d,i)=>`
-    <div style="display:flex;align-items:center;gap:8px;background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #FED7AA">
-      <span style="font-size:12px;font-weight:600;color:#9A5B13;min-width:70px">${d.label} <span style="font-size:10px;color:#bbb">${d.dateLabel}</span></span>
-      <input type="file" accept=".docx" id="settlement-file-${i}" style="flex:1;font-size:11px" onchange="handleSettlementFileUpload(${i}, '${d.label}', this.files[0])">
-      <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px"></span>
+    <div style="background:#fff;border-radius:8px;padding:6px 10px;border:1px solid #FED7AA">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:12px;font-weight:600;color:#9A5B13;min-width:70px">${d.label} <span style="font-size:10px;color:#bbb">${d.dateLabel}</span></span>
+        <input type="file" accept=".docx" id="settlement-file-${i}" style="flex:1;font-size:11px" onchange="handleSettlementFileUpload(${i}, '${d.label}', this.files[0])">
+        <span id="settlement-file-status-${i}" style="font-size:11px;min-width:20px"></span>
+      </div>
+      <div contenteditable="true" data-placeholder="또는 여기 클릭 후 Ctrl+V로 붙여넣기"
+        style="margin-top:4px;min-height:22px;background:#FFFBF5;border:1px dashed #FED7AA;border-radius:6px;padding:4px 8px;font-size:11px;color:#888;outline:none"
+        onpaste="handleSettlementPaste(event, ${i}, '${d.label}')"></div>
     </div>
   `).join('');
 }
@@ -2348,6 +2401,27 @@ function handleSettlementFileUpload(idx, dayLabel, file){
       if(statusEl) statusEl.textContent = '❌';
       console.error(dayLabel+' 파일 인식 실패:', err.message);
     });
+}
+
+function handleSettlementPaste(event, idx, dayLabel){
+  event.preventDefault();
+  const statusEl = document.getElementById('settlement-file-status-'+idx);
+  const html = event.clipboardData ? event.clipboardData.getData('text/html') : '';
+  event.target.textContent = ''; // 붙여넣은 내용은 화면에 남기지 않음
+  if(!html){
+    if(statusEl) statusEl.textContent = '❌';
+    console.error(dayLabel+': 표 형식으로 복사되지 않았습니다');
+    return;
+  }
+  try{
+    const rows = parseHtmlTableToRows(html);
+    const riders = parseRiderRowsFromRows(rows);
+    settlementFilesData[dayLabel] = riders;
+    if(statusEl) statusEl.textContent = '✅';
+  }catch(err){
+    if(statusEl) statusEl.textContent = '❌';
+    console.error(dayLabel+' 붙여넣기 인식 실패:', err.message);
+  }
 }
 
 function calcSettlement(){
@@ -2507,6 +2581,40 @@ function searchSettlement(){
 }
 
 
+
+function handleSlotPaste(event){
+  event.preventDefault();
+  const statusEl = document.getElementById('slot-file-status');
+  const html = event.clipboardData ? event.clipboardData.getData('text/html') : '';
+  document.getElementById('slot-paste-target').textContent = ''; // 붙여넣은 내용은 화면에 남기지 않음(용량/혼란 방지)
+  if(!html){
+    if(statusEl){ statusEl.style.color='#E24B4A'; statusEl.textContent = '❌ 표 형식으로 복사되지 않았어요. 배민 페이지에서 표 전체를 드래그해서 복사(Ctrl+C)한 뒤 다시 붙여넣어주세요.'; }
+    return;
+  }
+  try{
+    const rows = parseHtmlTableToRows(html);
+    const result = parseSlotDataFromRows(rows);
+    ['lunch','afternoon','evening','night'].forEach(key=>{
+      const el = document.getElementById('ai-'+key);
+      if(el) el.value = result[key];
+    });
+    let acceptMsg = '';
+    if(result.complete!=null && result.reject!=null && result.cancel!=null){
+      lastUploadedAcceptData = { complete: result.complete, reject: result.reject, cancel: result.cancel };
+      const denom = result.complete + result.reject + result.cancel;
+      const rate = denom>0 ? Math.round(result.complete/denom*1000)/10 : null;
+      acceptMsg = ` · 완료 ${result.complete} 거절 ${result.reject} 배차취소 ${result.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
+    } else {
+      lastUploadedAcceptData = null;
+    }
+    if(statusEl){
+      statusEl.style.color = '#1D9E75';
+      statusEl.textContent = `✅ 붙여넣기로 자동 입력 완료 (기사님 ${result.riderCount}명 데이터 인식)${acceptMsg} - 숫자 확인 후 저장하기를 눌러주세요`;
+    }
+  }catch(err){
+    if(statusEl){ statusEl.style.color='#E24B4A'; statusEl.textContent = '❌ 인식 실패: ' + err.message; }
+  }
+}
 
 function handleSlotFileUpload(file){
   const statusEl = document.getElementById('slot-file-status');
