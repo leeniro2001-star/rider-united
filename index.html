@@ -2494,6 +2494,63 @@ function resetSettlementDaySlot(idx, dayLabel){
   if(msgEl){ msgEl.style.color='#888'; msgEl.textContent = '초기화됨 - 다시 올려주세요'; }
 }
 
+// 관리자 정산 미리보기 화면(검색창+명단+총액)을 그리는 공통 함수
+function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
+  const bonusRiders = settlement.filter(r=>r.total>0);
+  window.__settlementAdminPreviewRiders = bonusRiders;
+  window.__settlementAdminAllRiders = settlement;
+
+  const totalPayout = settlement.reduce((s,r)=>s+r.total, 0);
+  const totalMission = settlement.reduce((s,r)=>s+r.mission, 0);
+  const totalAttend = settlement.reduce((s,r)=>s+r.attend, 0);
+  const totalVol = settlement.reduce((s,r)=>s+r.vol, 0);
+  const totalNight = settlement.reduce((s,r)=>s+r.night, 0);
+
+  return `
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
+        style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
+        onkeydown="if(event.key==='Enter') searchSettlementAdminRider()">
+      <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
+    </div>
+    <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
+    <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
+    <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
+      ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
+        bonusRiders.map((r,i)=>`
+          <div>
+            <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
+              <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
+              <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+            </div>
+            <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
+          </div>
+        `).join('')
+      }
+    </div>
+    <div style="font-size:11px;color:#888;margin-bottom:12px">전체 ${settlement.length}명 인식됨${uploadedDaysLabel ? ' · 업로드된 요일: '+uploadedDaysLabel : ''} (검색창에서 보너스 0원인 분도 확인 가능)</div>
+
+    <div style="background:#1a3a4a;border-radius:10px;padding:14px 16px;margin-bottom:8px">
+      <div style="font-size:12px;color:#9DBEEA;font-weight:600;margin-bottom:4px">💰 이번 주 지사 전체 보너스 지출 총액</div>
+      <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:10px">${totalPayout.toLocaleString()}<span style="font-size:14px;font-weight:700">원</span></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px;color:#9DBEEA">
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>일일미션</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalMission.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>개근</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalAttend.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>물량</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalVol.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>심야</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalNight.toLocaleString()}원</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function calcSettlement(){
   const statusEl = document.getElementById('settlement-admin-status');
   const uploadedDays = Object.keys(settlementFilesData);
@@ -2515,33 +2572,7 @@ function calcSettlement(){
 
   const previewEl = document.getElementById('settlement-admin-preview');
   if(previewEl){
-    const bonusRiders = settlement.filter(r=>r.total>0);
-    window.__settlementAdminPreviewRiders = bonusRiders;
-    window.__settlementAdminAllRiders = settlement; // 검색용: 보너스 0원인 분도 포함 전체
-    previewEl.innerHTML = `
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
-          style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
-          onkeydown="if(event.key==='Enter') searchSettlementAdminRider()">
-        <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
-      </div>
-      <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
-      <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
-      <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
-        ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
-          bonusRiders.map((r,i)=>`
-            <div>
-              <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
-                <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
-                <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
-              </div>
-              <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
-            </div>
-          `).join('')
-        }
-      </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">전체 ${settlement.length}명 인식됨 · 업로드된 요일: ${uploadedDays.join(', ')} (검색창에서 보너스 0원인 분도 확인 가능)</div>
-    `;
+    previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
   }
 
   const pubBtn = document.getElementById('settlement-publish-btn');
@@ -2658,31 +2689,7 @@ function mergeSettlementAdminEntries(idxCsv){
   }
   const previewEl = document.getElementById('settlement-admin-preview');
   if(previewEl){
-    const bonusRiders = window.__settlementAdminPreviewRiders;
-    previewEl.innerHTML = `
-      <div style="display:flex;gap:6px;margin-bottom:10px">
-        <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
-          style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
-          onkeydown="if(event.key==='Enter') searchSettlementAdminRider()">
-        <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
-      </div>
-      <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
-      <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
-      <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
-        ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
-          bonusRiders.map((r,i)=>`
-            <div>
-              <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
-                <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
-                <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
-              </div>
-              <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
-            </div>
-          `).join('')
-        }
-      </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">전체 ${remaining.length}명 인식됨 (검색창에서 보너스 0원인 분도 확인 가능)</div>
-    `;
+    previewEl.innerHTML = renderSettlementAdminPreviewHTML(remaining, null);
   }
 }
 
