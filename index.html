@@ -472,6 +472,16 @@ input[type=number]{-moz-appearance:textfield}
       </div>
     </div>
 
+    <!-- 이번 주 평균 수락률 -->
+    <div class="card" id="weekly-accept-card">
+      <div class="card-title">📈 이번 주 지사 평균 수락률</div>
+      <div id="weekly-accept-days" style="margin-bottom:10px"></div>
+      <div style="background:#F0FBF7;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#0F6E56;font-weight:600">누적 평균 (<span id="weekly-accept-daycount">0</span>일치)</span>
+        <span style="font-size:20px;font-weight:800;color:#1D9E75" id="weekly-accept-avg">-</span>
+      </div>
+    </div>
+
     <!-- 심야 알림 배너 -->
     <div id="night-banner" style="display:none;border-radius:12px;padding:12px 16px;margin-bottom:10px;text-align:center">
       <div id="night-banner-msg" style="font-size:14px;font-weight:600;line-height:1.6"></div>
@@ -1601,6 +1611,50 @@ function loadBranch(){
   } else {
     ref.once('value').then(snap => { renderBranch(snap.val(), branchDateOffset); });
   }
+  loadWeeklyAcceptRate();
+}
+
+// 이번 주(수~화) 지사 평균 수락률: 요일별로 저장된 완료/거절/배차취소를 모아서
+// 지금까지 업로드된 날짜만큼 누적 평균을 계산합니다.
+const WEEKLY_ACCEPT_DAY_LABELS = ['수요일','목요일','금요일','토요일','일요일','월요일','화요일'];
+function loadWeeklyAcceptRate(){
+  const {start} = getWeekRange(0);
+  const daysEl = document.getElementById('weekly-accept-days');
+  const avgEl = document.getElementById('weekly-accept-avg');
+  const countEl = document.getElementById('weekly-accept-daycount');
+  if(!daysEl || !avgEl || !countEl) return;
+
+  const fetches = WEEKLY_ACCEPT_DAY_LABELS.map((label,i)=>{
+    const d = new Date(start); d.setUTCDate(start.getUTCDate()+i);
+    const k = d.toISOString().slice(0,10); // branch/daily 저장 키(getBranchDateKey)와 동일한 방식
+    return db.ref('branch/daily/'+k).once('value').then(snap=>{
+      const data = snap.val();
+      if(data && data.complete!=null && data.reject!=null && data.cancel!=null){
+        return { label, complete:data.complete, reject:data.reject, cancel:data.cancel };
+      }
+      return { label, complete:null };
+    });
+  });
+
+  Promise.all(fetches).then(results=>{
+    let sumComplete=0, sumReject=0, sumCancel=0, dayCount=0;
+    daysEl.innerHTML = results.map(r=>{
+      if(r.complete==null){
+        return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#ccc">${r.label}<span>미입력</span></div>`;
+      }
+      const denom = r.complete + r.reject + r.cancel;
+      const rate = denom>0 ? Math.round(r.complete/denom*1000)/10 : null;
+      sumComplete += r.complete; sumReject += r.reject; sumCancel += r.cancel; dayCount++;
+      const color = rate===null?'#1a1a1a':rate>=80?'#1D9E75':rate>=60?'#BA7517':'#E24B4A';
+      return `<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:#555">${r.label}<span style="font-weight:700;color:${color}">${rate!=null?rate+'%':'-'}</span></div>`;
+    }).join('');
+
+    const totalDenom = sumComplete + sumReject + sumCancel;
+    const avgRate = dayCount>0 && totalDenom>0 ? Math.round(sumComplete/totalDenom*1000)/10 : null;
+    avgEl.textContent = avgRate!=null ? avgRate+'%' : '-';
+    avgEl.style.color = avgRate===null?'#1a1a1a':avgRate>=80?'#1D9E75':avgRate>=60?'#BA7517':'#E24B4A';
+    countEl.textContent = dayCount;
+  });
 }
 
 // 관리자
