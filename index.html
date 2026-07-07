@@ -507,6 +507,14 @@ input[type=number]{-moz-appearance:textfield}
       <button class="nav-btn" onclick="changeWeek(1)"><i class="ti ti-chevron-right"></i></button>
     </div>
     <div class="week-sum-grid" id="week-summary"></div>
+
+    <!-- 내 수락률 조회 (사장님이 올린 자료 기준 자동 집계) -->
+    <div class="card" id="my-accept-card">
+      <div class="card-title">📊 내 수락률 조회</div>
+      <div id="my-accept-register-area"></div>
+      <div id="my-accept-result"></div>
+    </div>
+
     <div id="week-days"></div>
   </div>
 </div>
@@ -1048,29 +1056,78 @@ function renderWeek(){
   const totIncome = totDelivery + totBonus + attendBonus + wqBonus;
   document.getElementById('week-summary').innerHTML=`
     <div class="wsum"><div class="wsum-label">주간 완료</div><div class="wsum-val" style="color:#1D9E75">${totC}</div></div>
-    <div class="wsum"><div class="wsum-label">수락률</div><div class="wsum-val" style="color:${wAccColor}">${wAcc!==null?wAcc+'%':'-'}</div></div>
     <div class="wsum"><div class="wsum-label">거절+취소</div><div class="wsum-val" style="color:#E24B4A">${totR+totX}</div></div>
     ${totDelivery>0?`
     <div class="wsum" style="grid-column:span 3;background:#F0FBF7;border:0.5px solid #9FE1CB;border-radius:10px;padding:10px 14px;margin-top:4px">
-      <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:8px">이번 주 수입 요약</div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>배달 수입</span><span style="font-weight:600;color:#1D9E75">${totDelivery.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>미션 보너스</span><span style="font-weight:600;color:#1D9E75">${totBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>개근 보너스</span><span style="font-weight:600;color:${attendBonus>0?'#1D9E75':'#bbb'}">${attendBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:0.5px solid #d0eed8"><span>물량 보너스</span><span style="font-weight:600;color:${wqBonus>0?'#1D9E75':'#bbb'}">${wqBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:15px;padding:8px 0 2px"><span style="color:#0F6E56;font-weight:600">이번 주 총 수입</span><span style="font-weight:700;color:#1D9E75;font-size:20px">${totIncome.toLocaleString()}원</span></div>
-    </div>`:''}
-    <div class="wsum" style="grid-column:span 3;background:#F8FDF9;border:0.5px solid #9FE1CB;border-radius:10px;padding:12px 14px;margin-top:4px">
-      <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:10px">주간 보너스 내역</div>
-      ${gateNote}
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>일일미션 누적</span><span style="font-weight:600;color:${totBonus>0?'#1D9E75':'#bbb'}">${totBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>개근보너스 <span style="font-size:11px;color:#888">${attendLabel}</span></span><span style="font-weight:600;color:${attendBonus>0?'#1D9E75':'#bbb'}">${attendBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:0.5px solid #d0eed8"><span>주간물량보너스 <span style="font-size:11px;color:#888">${wqLabel}</span></span><span style="font-weight:600;color:${wqBonus>0?'#1D9E75':'#bbb'}">${wqBonus.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:14px;padding:8px 0 4px"><span style="color:#0F6E56;font-weight:600">이번 주 총 보너스</span><span style="font-weight:700;color:#1D9E75;font-size:18px">${grand.toLocaleString()}원</span></div>
-    </div>`;
+      <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:8px">이번 주 배달 수입</div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;padding:4px 0"><span style="color:#0F6E56;font-weight:600">배달 수입 합계</span><span style="font-weight:700;color:#1D9E75;font-size:20px">${totDelivery.toLocaleString()}원</span></div>
+    </div>`:''}`;
   document.getElementById('week-days').innerHTML = totC+totR+totX>0?cards.join(''):`<div class="empty-state"><i class="ti ti-inbox"></i><p>이번 주 데이터가 없습니다</p></div>`;
 }
 
 function toggleDay(id){ document.getElementById(id).classList.toggle('open'); }
+
+// ── 내 수락률 조회 (사장님이 올린 정산 자료 기준 자동 집계) ──────────
+function renderMyAcceptRate(){
+  const registerArea = document.getElementById('my-accept-register-area');
+  const resultEl = document.getElementById('my-accept-result');
+  if(!registerArea || !resultEl) return;
+
+  const identity = getMySettlementIdentity();
+  if(!identity){
+    registerArea.innerHTML = `
+      <div style="font-size:12px;color:#888;margin-bottom:8px">사장님이 올린 자료를 기준으로 본인 수락률을 확인할 수 있어요. 처음이면 본인 배민 아이디를 입력해서 등록해주세요.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="my-accept-id-input" placeholder="본인 배민 아이디" inputmode="text"
+          style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:14px;font-family:inherit"
+          onkeydown="if(event.key==='Enter') startSettlementRegister('my-accept-id-input','my-accept-register-result')">
+        <button onclick="startSettlementRegister('my-accept-id-input','my-accept-register-result')" style="padding:9px 16px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+      </div>
+      <div id="my-accept-register-result"></div>
+    `;
+    resultEl.innerHTML = '';
+    return;
+  }
+
+  registerArea.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="font-size:12px;color:#888">🔒 ${identity.name} 기사님으로 등록된 기기</span>
+      <button onclick="clearMySettlementIdentity()" style="font-size:11px;color:#aaa;background:none;border:none;text-decoration:underline;cursor:pointer">본인 아님? 재설정</button>
+    </div>
+  `;
+
+  const {start} = getWeekRange(weekOffset);
+  const weekKey = start.toISOString().slice(0,10);
+  resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">불러오는 중...</div>';
+
+  db.ref('settlement/'+weekKey+'/riders/'+identity.id).once('value').then(snap=>{
+    const rider = snap.val();
+    if(!rider || !rider.dailyAccept || rider.dailyAccept.length===0){
+      resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">이 주 자료가 아직 게시되지 않았어요</div>';
+      return;
+    }
+    const rows = rider.dailyAccept.map(a=>{
+      const color = a.rate==null?'#1a1a1a':a.rate>=80?'#1D9E75':a.rate>=60?'#BA7517':'#E24B4A';
+      return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
+        <span style="color:#666">${a.dayLabel} <span style="color:#bbb;font-size:11px">(완료${a.complete}·거절${a.reject}·취소${a.cancel})</span></span>
+        <span style="font-weight:700;color:${color}">${a.rate!=null?a.rate+'%':'-'}</span>
+      </div>`;
+    }).join('');
+    const avgColor = rider.acceptRate==null?'#1a1a1a':rider.acceptRate>=80?'#1D9E75':rider.acceptRate>=60?'#BA7517':'#E24B4A';
+    resultEl.innerHTML = `
+      <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid #eee">
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">요일별 수락률</div>
+        ${rows}
+      </div>
+      <div style="background:#F0FBF7;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#0F6E56;font-weight:600">이 주 평균 수락률</span>
+        <span style="font-size:20px;font-weight:800;color:${avgColor}">${rider.acceptRate!=null?rider.acceptRate+'%':'-'}</span>
+      </div>
+    `;
+  }).catch(err=>{
+    resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
+  });
+}
 
 function saveDelivery(dk, val){
   const rec = lsGet(dk);
@@ -1431,7 +1488,7 @@ function updateTodayIncome(rec){
     el.style.display = 'none';
   }
 }
-function changeWeek(dir){ weekOffset+=dir; renderWeek(); }
+function changeWeek(dir){ weekOffset+=dir; renderWeek(); renderMyAcceptRate(); }
 
 // 지사현황
 function getCurrentSlot(){
@@ -2466,6 +2523,10 @@ function parseRiderRowsFromRows(rows){
   const idx23 = findSingleIdx('23시');
   const idxId = findSingleIdx('아이디');
   const idxPhone = findSingleIdx('휴대폰번호');
+  // 수락률 계산용(배민 SLA 10~24시 기준, 지사현황 탭 수락률과 동일한 방식)
+  const idxCompleteSla = findGroupTotalIdx('완료');
+  const idxReject = findGroupTotalIdx('거절');
+  const idxCancel = findGroupTotalIdx('배차취소');
   if(hourIdxs.some(i => i === -1)){
     throw new Error('시간대별(6시~5시) 컬럼을 찾지 못했습니다');
   }
@@ -2480,7 +2541,10 @@ function parseRiderRowsFromRows(rows){
     phone: idxPhone>=0 ? (r[idxPhone]||'').trim() : '',
     id: idxId>=0 ? (r[idxId]||'').trim() : '',
     complete: hourIdxs.reduce((sum, idx) => sum + toNum(r[idx]), 0),
-    night: toNum(r[idx22]) + toNum(r[idx23])
+    night: toNum(r[idx22]) + toNum(r[idx23]),
+    completeSla: idxCompleteSla>=0 ? toNum(r[idxCompleteSla]) : 0,
+    reject: idxReject>=0 ? toNum(r[idxReject]) : 0,
+    cancel: idxCancel>=0 ? toNum(r[idxCancel]) : 0
   })).filter(r => r.name); // 빈 행 제외
 }
 
@@ -2502,16 +2566,25 @@ function computeWeeklySettlement(dayArrays){
       const key = r.name + '|' + normPhone;
       if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', days:[] };
       if(r.id && !riders[key].id) riders[key].id = r.id; // 대표 아이디가 아직 없으면 채워넣기
-      riders[key].days.push({ dayLabel, complete:r.complete, night:r.night });
+      riders[key].days.push({ dayLabel, complete:r.complete, night:r.night, completeSla:r.completeSla||0, reject:r.reject||0, cancel:r.cancel||0 });
     });
   });
 
   const result = [];
   Object.values(riders).forEach(rider=>{
     let weekTotal = 0, missionDays = 0, dailyMissionSum = 0, nightTotal = 0;
+    let acceptCompleteSum = 0, acceptDenomSum = 0;
     const breakdown = [];
+    const dailyAccept = [];
     rider.days.forEach(d=>{
       nightTotal += d.night;
+
+      // 수락률(지사현황 탭과 동일 방식: 완료/(완료+거절+배차취소), SLA 10~24시 기준)
+      const denom = d.completeSla + d.reject + d.cancel;
+      const dayRate = denom > 0 ? Math.round(d.completeSla/denom*1000)/10 : null;
+      acceptCompleteSum += d.completeSla; acceptDenomSum += denom;
+      dailyAccept.push({ dayLabel:d.dayLabel, complete:d.completeSla, reject:d.reject, cancel:d.cancel, rate:dayRate });
+
       if(d.complete <= 0){
         breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier:0, won:0});
         return;
@@ -2523,6 +2596,8 @@ function computeWeeklySettlement(dayArrays){
       breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier, won});
     });
 
+    const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
+
     const eligible = weekTotal >= 150 && missionDays >= 3;
     const mission = eligible ? dailyMissionSum : 0;
     const attend = eligible ? (missionDays >= 6 ? 20000 : (missionDays >= 5 ? 10000 : 0)) : 0;
@@ -2533,7 +2608,8 @@ function computeWeeklySettlement(dayArrays){
     result.push({
       name: rider.name, phone: rider.phone, id: rider.id,
       weekTotal, missionDays, nightTotal,
-      breakdown, mission, attend, vol, night, total, eligible
+      breakdown, mission, attend, vol, night, total, eligible,
+      dailyAccept, acceptRate
     });
   });
 
@@ -2867,7 +2943,24 @@ function mergeSettlementAdminEntries(idxCsv){
   const night = nightTotal >= 30 ? 30000 : (nightTotal >= 15 ? 15000 : 0);
   const total = mission + attend + vol + night;
 
-  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, total, eligible };
+  // 수락률 데이터도 합쳐서 다시 계산 (겹치는 요일 있으면 합산)
+  const acceptDayMap = {};
+  entries.forEach(e => (e.dailyAccept||[]).forEach(a=>{
+    if(!acceptDayMap[a.dayLabel]) acceptDayMap[a.dayLabel] = {complete:0, reject:0, cancel:0};
+    acceptDayMap[a.dayLabel].complete += a.complete||0;
+    acceptDayMap[a.dayLabel].reject += a.reject||0;
+    acceptDayMap[a.dayLabel].cancel += a.cancel||0;
+  }));
+  let acceptCompleteSum = 0, acceptDenomSum = 0;
+  const dailyAccept = SETTLEMENT_DAY_LABELS.filter(d => acceptDayMap[d]).map(dayLabel=>{
+    const a = acceptDayMap[dayLabel];
+    const denom = a.complete + a.reject + a.cancel;
+    acceptCompleteSum += a.complete; acceptDenomSum += denom;
+    return { dayLabel, complete:a.complete, reject:a.reject, cancel:a.cancel, rate: denom>0?Math.round(a.complete/denom*1000)/10:null };
+  });
+  const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
+
+  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, total, eligible, dailyAccept, acceptRate };
 
   // 기존 쪼개진 항목들을 제거하고 합쳐진 항목 하나로 교체
   const remaining = all.filter(r => !entries.includes(r));
@@ -3010,6 +3103,7 @@ function startSettlementRegister(inputId, resultId){
 
 function cancelSettlementRegister(resultId){
   if(resultId === 'cumul-register-result') renderCumulRegisterArea();
+  else if(resultId === 'my-accept-register-result') renderMyAcceptRate();
   else renderSettlementLookupCard();
 }
 
@@ -3096,6 +3190,7 @@ function confirmSettlementRegister(id, name){
   setMySettlementIdentity(id, name);
   renderSettlementLookupCard();
   renderCumulRegisterArea();
+  renderMyAcceptRate();
 }
 
 // 등록된 아이디로 현재 선택된 주의 정산 내역 자동 로드
@@ -3673,7 +3768,7 @@ function switchTab(name,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='record') renderWeek();
+  if(name==='record'){ renderWeek(); renderMyAcceptRate(); }
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
   if(name==='mission'){ loadCumulCalls(); loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); }
