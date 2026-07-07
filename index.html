@@ -337,7 +337,7 @@ input[type=number]{-moz-appearance:textfield}
 
     <!-- 주간 보너스 정산 조회 -->
     <div class="card" id="settlement-lookup-card">
-      <div class="card-title">📋 주간 보너스 정산 조회</div>
+      <div class="card-title" style="font-size:17px;color:#1D9E75;font-weight:800;text-transform:none;letter-spacing:normal">📋 주간 보너스 정산 조회</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <button onclick="changeSettlementLookupWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
         <span style="font-size:13px;font-weight:600;color:#1a1a1a" id="settlement-week-label">이번 주</span>
@@ -3067,7 +3067,7 @@ function renderSettlementLookupCard(){
   } else {
     registerArea.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:16px;font-weight:800;color:#0F6E56">🔒 ${identity.name} 기사님</span>
+        <span style="font-size:13px;font-weight:600;color:#888">🔒 ${identity.name} 기사님으로 등록된 기기</span>
         <button onclick="clearMySettlementIdentity()" style="font-size:11px;color:#aaa;background:none;border:none;text-decoration:underline;cursor:pointer">본인 아님? 재설정</button>
       </div>
     `;
