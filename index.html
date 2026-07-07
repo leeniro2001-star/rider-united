@@ -496,8 +496,13 @@ input[type=number]{-moz-appearance:textfield}
     </div>
     <div class="card" id="weekly-grid-card" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="card-title" style="margin:0">이번 주 28슬롯 현황</div>
+        <div class="card-title" style="margin:0" id="weekly-grid-title">이번 주 28슬롯 현황</div>
         <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <button onclick="changeWeeklyGridOffset(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
+        <span style="font-size:12px;color:#888" id="weekly-grid-range">-</span>
+        <button onclick="changeWeeklyGridOffset(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
       </div>
       <div style="overflow-x:auto">
         <div id="weekly-grid" style="min-width:280px"></div>
@@ -3387,11 +3392,27 @@ function openSlotInput(dateStr, slotKey, slotName, target) {
   setTimeout(() => { inp.focus(); inp.select(); }, 100);
 }
 
+let weeklyGridOffset = 0; // 28슬롯 현황 - 주 이동 (0=이번 주, -1=지난 주 ...)
+function changeWeeklyGridOffset(delta){
+  weeklyGridOffset += delta;
+  renderWeeklyGrid();
+}
+
 function renderWeeklyGrid(){
-  const {start} = getWeekRange(0);
+  const {start} = getWeekRange(weeklyGridOffset);
   const todayK = todayKey();
   const slotNames = ['점심','오후','저녁','심야'];
   const slotKeys = ['lunch','afternoon','evening','night'];
+
+  // 제목/기간 라벨 업데이트
+  const titleEl = document.getElementById('weekly-grid-title');
+  const rangeEl = document.getElementById('weekly-grid-range');
+  if(titleEl) titleEl.textContent = (weeklyGridOffset===0?'이번 주':weeklyGridOffset<0?`지난 ${-weeklyGridOffset}주`:`다음 ${weeklyGridOffset}주`) + ' 28슬롯 현황';
+  if(rangeEl){
+    const endD = new Date(start); endD.setUTCDate(start.getUTCDate()+6);
+    const kdStart = toKST(start); const kdEnd = toKST(endD);
+    rangeEl.textContent = `${kdStart.getUTCMonth()+1}/${kdStart.getUTCDate()} ~ ${kdEnd.getUTCMonth()+1}/${kdEnd.getUTCDate()}`;
+  }
   const t1 = [
     {월:22,화:22,수:22,목:22,금:25,토:31,일:32},
     {월:21,화:21,수:21,목:21,금:22,토:23,일:24},
@@ -3461,7 +3482,7 @@ function renderWeeklyGrid(){
 
     // 주간 총 초과보너스
     html += `<div style="margin-top:10px;background:#F0FBF7;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">`
-      + `<span style="font-size:12px;color:#555;font-weight:600">이번 주 초과보너스 합계</span>`
+      + `<span style="font-size:12px;color:#555;font-weight:600">${weeklyGridOffset===0?'이번 주':weeklyGridOffset<0?`지난 ${-weeklyGridOffset}주`:`다음 ${weeklyGridOffset}주`} 초과보너스 합계</span>`
       + `<span style="font-size:16px;font-weight:700;color:#1D9E75">${totalBonus.toLocaleString()}원</span></div>`;
 
     if(gridEl) gridEl.innerHTML = html;
