@@ -215,32 +215,32 @@ input[type=number]{-moz-appearance:textfield}
       <!-- 카운터 3열 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
         <div style="background:#F0FBF7;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:10px;color:#888;margin-bottom:4px">완료</div>
+          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">완료</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:3px">
             <button onclick="adjust('complete',-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
             <input type="number" id="cnt-complete" value="0" min="0" inputmode="numeric"
               onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)"
-              style="width:36px;font-size:20px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75;padding:0">
+              style="width:40px;font-size:26px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75;padding:0">
             <button class="cnt-btn plus-complete" onclick="adjust('complete',1)" style="width:26px;height:26px;border-radius:50%;border:none;background:#1D9E75;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
         </div>
         <div style="background:#FFF5F5;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:10px;color:#888;margin-bottom:4px">거절</div>
+          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">거절</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:3px">
             <button onclick="adjust('reject',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
             <input type="number" id="cnt-reject" value="0" min="0" inputmode="numeric"
               onchange="setVal('reject',this.value)" oninput="setVal('reject',this.value)"
-              style="width:32px;font-size:18px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#E24B4A;padding:0">
+              style="width:36px;font-size:22px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#E24B4A;padding:0">
             <button onclick="adjust('reject',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
         </div>
         <div style="background:#FFFBF0;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:10px;color:#888;margin-bottom:4px">배차취소</div>
+          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">배차취소</div>
           <div style="display:flex;align-items:center;justify-content:center;gap:3px">
             <button onclick="adjust('cancel',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
             <input type="number" id="cnt-cancel" value="0" min="0" inputmode="numeric"
               onchange="setVal('cancel',this.value)" oninput="setVal('cancel',this.value)"
-              style="width:32px;font-size:18px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#BA7517;padding:0">
+              style="width:36px;font-size:22px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#BA7517;padding:0">
             <button onclick="adjust('cancel',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
           </div>
         </div>
@@ -249,20 +249,20 @@ input[type=number]{-moz-appearance:textfield}
       <!-- 완료/수락률/거절/배차취소 요약 (작게) -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:9px;color:#aaa">완료</div>
-          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
+          <div style="font-size:11px;color:#888;font-weight:600">완료</div>
+          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
         </div>
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:9px;color:#aaa">수락률</div>
-          <div style="font-size:15px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
+          <div style="font-size:11px;color:#888;font-weight:600">수락률</div>
+          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
         </div>
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:9px;color:#aaa">거절</div>
-          <div style="font-size:15px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
+          <div style="font-size:11px;color:#888;font-weight:600">거절</div>
+          <div style="font-size:18px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
         </div>
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:9px;color:#aaa">배차취소</div>
-          <div style="font-size:15px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
+          <div style="font-size:11px;color:#888;font-weight:600">배차취소</div>
+          <div style="font-size:18px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
         </div>
       </div>
 
@@ -1005,28 +1005,13 @@ function renderWeek(){
         <span class="day-total${rec?'':' empty'}">${rec?rec.complete+'건':'미입력'}</span>
       </div>
       <div class="day-detail" id="dd${i}">
-        ${rec?`
-          <div class="detail-row"><span>완료</span><span style="color:#1D9E75">${rec.complete}건</span></div>
-          <div class="detail-row"><span>거절</span><span style="color:#E24B4A">${rec.reject}건</span></div>
-          <div class="detail-row"><span>배차취소</span><span style="color:#BA7517">${rec.cancel}건</span></div>
-          <div class="detail-row"><span>수락률</span><span style="color:${accColor}">${acc!==null?acc+'%':'-'}</span></div>
-          <div class="detail-row"><span>미션보너스</span><span style="color:${achieved?'#1D9E75':'#bbb'}">${achieved?achieved.won.toLocaleString()+'원':'미달성'}</span></div>
-          <div class="detail-row" style="padding-top:8px;border-top:0.5px solid #f0f0f0;margin-top:4px">
-            <span style="color:#888">배달수입</span>
-            <button onclick="openDeliveryModal('${k}', ${rec.delivery||0})" 
-              style="padding:6px 14px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:14px;font-weight:600;cursor:pointer">
-              ${rec.delivery ? rec.delivery.toLocaleString()+'원 ✏️' : '입력하기 +'}
-            </button>
-          </div>
-          ${rec.delivery?'<div class="detail-row"><span style="color:#1D9E75;font-weight:600">오늘 수입</span><span style="color:#1D9E75;font-weight:700">'+(rec.delivery+(achieved?achieved.won:0)).toLocaleString()+'원</span></div>':''}
-        `:`<div style="font-size:13px;color:#bbb;text-align:center;padding:8px">데이터 없음</div>
-          <div class="detail-row" style="padding-top:8px;border-top:0.5px solid #f0f0f0;margin-top:4px">
-            <span style="color:#888">배달수입</span>
-            <button onclick="openDeliveryModal(this.id.slice(4),0)" id="nrd-${k}" style="padding:6px 14px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:14px;font-weight:600;cursor:pointer">
-              입력하기 +
-            </button>
-          </div>
-        `}
+        <div class="detail-row">
+          <span style="color:#888">배달수입</span>
+          <button onclick="openDeliveryModal('${k}', ${rec?rec.delivery||0:0})" 
+            style="padding:6px 14px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:14px;font-weight:600;cursor:pointer">
+            ${rec&&rec.delivery ? rec.delivery.toLocaleString()+'원 ✏️' : '입력하기 +'}
+          </button>
+        </div>
       </div>
     </div>`);
   }
@@ -1055,10 +1040,8 @@ function renderWeek(){
   const wAccColor=wAcc===null?'#1a1a1a':wAcc>=80?'#1D9E75':wAcc>=60?'#BA7517':'#E24B4A';
   const totIncome = totDelivery + totBonus + attendBonus + wqBonus;
   document.getElementById('week-summary').innerHTML=`
-    <div class="wsum"><div class="wsum-label">주간 완료</div><div class="wsum-val" style="color:#1D9E75">${totC}</div></div>
-    <div class="wsum"><div class="wsum-label">거절+취소</div><div class="wsum-val" style="color:#E24B4A">${totR+totX}</div></div>
     ${totDelivery>0?`
-    <div class="wsum" style="grid-column:span 3;background:#F0FBF7;border:0.5px solid #9FE1CB;border-radius:10px;padding:10px 14px;margin-top:4px">
+    <div class="wsum" style="grid-column:span 3;background:#F0FBF7;border:0.5px solid #9FE1CB;border-radius:10px;padding:10px 14px">
       <div style="font-size:11px;color:#0F6E56;font-weight:600;text-transform:uppercase;margin-bottom:8px">이번 주 배달 수입</div>
       <div style="display:flex;justify-content:space-between;font-size:15px;padding:4px 0"><span style="color:#0F6E56;font-weight:600">배달 수입 합계</span><span style="font-weight:700;color:#1D9E75;font-size:20px">${totDelivery.toLocaleString()}원</span></div>
     </div>`:''}`;
