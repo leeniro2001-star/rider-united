@@ -1091,9 +1091,16 @@ function renderMyAcceptRate(){
     }
     const rows = rider.dailyAccept.map(a=>{
       const color = a.rate==null?'#1a1a1a':a.rate>=80?'#1D9E75':a.rate>=60?'#BA7517':'#E24B4A';
-      return `<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
-        <span style="color:#666">${a.dayLabel} <span style="color:#bbb;font-size:11px">(완료${a.complete}·거절${a.reject}·취소${a.cancel})</span></span>
-        <span style="font-weight:700;color:${color}">${a.rate!=null?a.rate+'%':'-'}</span>
+      return `<div style="padding:8px 0;border-bottom:0.5px solid #f0f0f0">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:13px;font-weight:600;color:#333">${a.dayLabel}</span>
+          <span style="font-size:17px;font-weight:800;color:${color}">${a.rate!=null?a.rate+'%':'-'}</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <span style="font-size:12px;font-weight:700;color:#1D9E75;background:#E8F8F2;border-radius:6px;padding:2px 8px">완료 ${a.complete}</span>
+          <span style="font-size:12px;font-weight:700;color:#E24B4A;background:#FFF0F0;border-radius:6px;padding:2px 8px">거절 ${a.reject}</span>
+          <span style="font-size:12px;font-weight:700;color:#BA7517;background:#FFF7E6;border-radius:6px;padding:2px 8px">취소 ${a.cancel}</span>
+        </div>
       </div>`;
     }).join('');
     const avgColor = rider.acceptRate==null?'#1a1a1a':rider.acceptRate>=80?'#1D9E75':rider.acceptRate>=60?'#BA7517':'#E24B4A';
