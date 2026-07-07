@@ -1096,7 +1096,7 @@ function renderMyAcceptRate(){
       return `<div style="display:flex;align-items:center;background:${bg};border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:4px solid ${color}">
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:700;color:#333">${a.dayLabel}</div>
-          <div style="font-size:11px;color:#999;margin-top:2px">${hasData?`완료 ${a.complete} · 거절 ${a.reject} · 취소 ${a.cancel}`:'집계 전'}</div>
+          <div style="font-size:11px;color:#bbb;margin-top:2px">${hasData?`<span style="color:#1D9E75;font-weight:600">완료 ${a.complete}</span> · <span style="color:#E24B4A;font-weight:600">거절 ${a.reject}</span> · <span style="color:#BA7517;font-weight:600">취소 ${a.cancel}</span>`:'집계 전'}</div>
         </div>
         <div style="font-size:19px;font-weight:800;color:${color};white-space:nowrap;margin-left:8px">${hasData?a.rate+'%':'-'}</div>
       </div>`;
