@@ -1995,55 +1995,62 @@ function playLotteryDrawAnimation(candidates, winners){
   const resultEl = document.getElementById('lottery-result');
   if(!resultEl){ return; }
 
-  resultEl.style.background = '#FFF8E1';
+  resultEl.style.background = 'linear-gradient(135deg,#2b2b3d,#1a1a2e)';
   resultEl.innerHTML = `
     <div style="width:100%;text-align:center">
-      <div style="font-size:12px;color:#888;margin-bottom:6px">🎰 추첨 중...</div>
-      <div id="lottery-slot-name" style="font-size:19px;font-weight:800;color:#E65100;background:#fff;border-radius:10px;padding:14px 8px;border:2px solid #FFD180;min-height:26px;transition:transform 0.15s">-</div>
-      <div id="lottery-slot-sub" style="font-size:11px;color:#aaa;margin-top:6px">두구두구두구...</div>
+      <div style="font-size:13px;color:#FFD180;font-weight:700;margin-bottom:10px;letter-spacing:1px">🎰 행운의 추첨 🎰</div>
+      <div style="display:flex;gap:8px;justify-content:center">
+        <div id="lottery-reel-0" style="flex:1;max-width:150px;font-size:15px;font-weight:800;color:#fff;background:#0f0f1e;border-radius:10px;padding:18px 4px;border:3px solid #FFD180;min-height:20px;transition:transform 0.1s;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">-</div>
+        <div id="lottery-reel-1" style="flex:1;max-width:150px;font-size:15px;font-weight:800;color:#fff;background:#0f0f1e;border-radius:10px;padding:18px 4px;border:3px solid #FFD180;min-height:20px;transition:transform 0.1s;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">-</div>
+      </div>
+      <div id="lottery-slot-sub" style="font-size:11px;color:#FFD180;margin-top:10px">두구두구두구...</div>
     </div>
   `;
 
-  const nameEl = document.getElementById('lottery-slot-name');
+  const reelEls = [document.getElementById('lottery-reel-0'), document.getElementById('lottery-reel-1')];
   const subEl = document.getElementById('lottery-slot-sub');
 
-  function spinOnce(winnerName, label, durationMs, onDone){
+  // 두 판을 동시에 돌리되, 멈추는 시점을 살짝 다르게 줘서 카지노 잭팟처럼 순서대로 멈추게 합니다.
+  function spinReel(reelEl, winnerName, durationMs, onDone){
+    if(!reelEl){ if(onDone) onDone(); return; }
     const start = Date.now();
     function tick(){
       const elapsed = Date.now() - start;
       if(elapsed >= durationMs){
-        if(nameEl){
-          nameEl.textContent = winnerName + ' 기사님';
-          nameEl.style.color = '#fff';
-          nameEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)';
-          nameEl.style.transform = 'scale(1.08)';
-        }
-        if(subEl) subEl.textContent = label;
-        setTimeout(onDone, 900);
+        reelEl.textContent = winnerName + ' 기사님';
+        reelEl.style.color = '#1a1a2e';
+        reelEl.style.background = 'linear-gradient(135deg,#FFD180,#FF8F00)';
+        reelEl.style.transform = 'scale(1.06)';
+        if(onDone) onDone();
         return;
       }
-      const randomName = candidates[Math.floor(Math.random()*candidates.length)];
-      if(nameEl) nameEl.textContent = randomName + ' 기사님';
+      reelEl.textContent = candidates[Math.floor(Math.random()*candidates.length)];
       const progress = elapsed / durationMs;
-      const delay = 60 + progress*progress*260; // 점점 느려짐 (60ms → 약 320ms)
+      const delay = 50 + progress*progress*220; // 점점 느려짐 (50ms → 약 270ms)
       setTimeout(tick, delay);
     }
     tick();
   }
 
-  spinOnce(winners[0], '🎉 1등 당첨!', 2600, ()=>{
-    if(nameEl){ nameEl.style.transform='scale(1)'; nameEl.style.background='#fff'; nameEl.style.color='#E65100'; }
-    if(winners[1]){
-      if(subEl) subEl.textContent = '이어서 2등 추첨 중...';
-      setTimeout(()=>{
-        spinOnce(winners[1], '🎉 2등 당첨!', 1800, ()=>{
-          setTimeout(()=> loadLottery(), 1200);
-        });
-      }, 500);
-    } else {
-      setTimeout(()=> loadLottery(), 1200);
+  let stoppedCount = 0;
+  const totalReels = winners.length;
+  function onReelStop(){
+    stoppedCount++;
+    if(stoppedCount === 1 && totalReels > 1 && subEl) subEl.textContent = '🎉 1등 당첨!';
+    if(stoppedCount >= totalReels){
+      if(subEl) subEl.textContent = '🎉 축하합니다! 🎉';
+      setTimeout(()=> loadLottery(), 1600);
     }
-  });
+  }
+
+  // 왼쪽 판: 2.4초 후 정지, 오른쪽 판: 3.2초 후 정지 (약간의 시간차로 순서대로 멈추는 느낌)
+  spinReel(reelEls[0], winners[0], 2400, onReelStop);
+  if(winners[1]){
+    spinReel(reelEls[1], winners[1], 3200, onReelStop);
+  } else if(reelEls[1]){
+    reelEls[1].parentElement.style.gridTemplateColumns = '1fr';
+    reelEls[1].style.display = 'none';
+  }
 }
 
 function loadLottery(){
