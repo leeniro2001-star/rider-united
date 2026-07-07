@@ -335,34 +335,16 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-mission" class="screen">
   <div style="margin-top:4px">
 
-    <!-- 누적콜 현황 -->
-    <div class="card" id="cumul-card">
-      <div class="card-title">🏆 내 누적콜 현황</div>
-      <div id="cumul-register-area"></div>
-      <div id="cumul-display" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div>
-            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="cumul-total">0콜</div>
-            <div style="font-size:12px;color:#888;margin-top:2px" id="cumul-cycle">현재 사이클</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:12px;color:#888">다음 목표</div>
-            <div style="font-size:16px;font-weight:700;color:#E24B4A" id="cumul-next">1000콜</div>
-            <div style="font-size:12px;color:#888" id="cumul-remain">1000콜 남음</div>
-          </div>
-        </div>
-        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
-          <div id="cumul-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;transition:width 0.5s;width:0%"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
-          <span id="ms-1000">1000콜<br>💰3만</span>
-          <span id="ms-2000" style="text-align:center">2000콜<br>💰3만</span>
-          <span id="ms-3000" style="text-align:center">3000콜<br>💰3만</span>
-          <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
-          <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
-        </div>
-        <div style="font-size:10px;color:#aaa;text-align:center">📋 사장님이 올린 주간 정산 자료 기준 자동 집계 (7/1주부터)</div>
+    <!-- 주간 보너스 정산 조회 -->
+    <div class="card" id="settlement-lookup-card">
+      <div class="card-title">📋 주간 보너스 정산 조회</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button onclick="changeSettlementLookupWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
+        <span style="font-size:13px;font-weight:600;color:#1a1a1a" id="settlement-week-label">이번 주</span>
+        <button onclick="changeSettlementLookupWeek(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
       </div>
+      <div id="settlement-register-area"></div>
+      <div id="settlement-result"></div>
     </div>
 
     <!-- 주간 심야 미션 -->
@@ -408,18 +390,6 @@ input[type=number]{-moz-appearance:textfield}
           <div id="night-history"></div>
         </div>
       </div>
-    </div>
-
-    <!-- 주간 보너스 정산 조회 -->
-    <div class="card" id="settlement-lookup-card">
-      <div class="card-title">📋 주간 보너스 정산 조회</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <button onclick="changeSettlementLookupWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
-        <span style="font-size:13px;font-weight:600;color:#1a1a1a" id="settlement-week-label">이번 주</span>
-        <button onclick="changeSettlementLookupWeek(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
-      </div>
-      <div id="settlement-register-area"></div>
-      <div id="settlement-result"></div>
     </div>
 
   </div>
@@ -501,6 +471,37 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 기록 탭 -->
 <div id="screen-record" class="screen">
   <div style="margin-top:4px">
+
+    <!-- 누적콜 현황 -->
+    <div class="card" id="cumul-card">
+      <div class="card-title">🏆 내 누적콜 현황</div>
+      <div id="cumul-register-area"></div>
+      <div id="cumul-display" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div>
+            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="cumul-total">0콜</div>
+            <div style="font-size:12px;color:#888;margin-top:2px" id="cumul-cycle">현재 사이클</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:#888">다음 목표</div>
+            <div style="font-size:16px;font-weight:700;color:#E24B4A" id="cumul-next">1000콜</div>
+            <div style="font-size:12px;color:#888" id="cumul-remain">1000콜 남음</div>
+          </div>
+        </div>
+        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
+          <div id="cumul-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;transition:width 0.5s;width:0%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
+          <span id="ms-1000">1000콜<br>💰3만</span>
+          <span id="ms-2000" style="text-align:center">2000콜<br>💰3만</span>
+          <span id="ms-3000" style="text-align:center">3000콜<br>💰3만</span>
+          <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
+          <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
+        </div>
+        <div style="font-size:10px;color:#aaa;text-align:center">📋 사장님이 올린 주간 정산 자료 기준 자동 집계 (7/1주부터)</div>
+      </div>
+    </div>
+
     <div class="week-nav">
       <button class="nav-btn" onclick="changeWeek(-1)"><i class="ti ti-chevron-left"></i></button>
       <span class="week-label" id="week-label"></span>
@@ -2440,6 +2441,14 @@ function parseSlotDataFromRows(rows){
     }
     return -1;
   }
+  // 수락률 계산용: "푸드" 하위 컬럼 인덱스 찾기 (배민 공식 수락률은 비마트·배민스토어를 제외한
+  // 푸드 건수만으로 계산합니다 - 실제 지사 대시보드 수치와 대조해서 확인된 공식입니다)
+  function findGroupFoodIdx(groupName){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===groupName && header1[i]==='푸드') return i;
+    }
+    return -1;
+  }
   // 단일 헤더(구간명이 그대로 반복되는 컬럼) 인덱스 찾기
   function findSingleIdx(name){
     for(let i=0;i<header0.length;i++){
@@ -2449,9 +2458,9 @@ function parseSlotDataFromRows(rows){
   }
 
   const idx = {
-    complete: findGroupTotalIdx('완료'),
-    reject: findGroupTotalIdx('거절'),
-    cancel: findGroupTotalIdx('배차취소'),
+    complete: findGroupFoodIdx('완료'),
+    reject: findGroupFoodIdx('거절'),
+    cancel: findGroupFoodIdx('배차취소'),
     lunch: findSingleIdx('아침점심피크'),
     afternoon: findSingleIdx('오후논피크'),
     evening: findSingleIdx('저녁피크'),
@@ -2494,6 +2503,14 @@ function parseRiderRowsFromRows(rows){
     }
     return -1;
   }
+  // 수락률 계산용: "푸드" 하위 컬럼 (배민 공식 수락률은 비마트·배민스토어를 제외한
+  // 푸드 건수만으로 계산합니다 - 실제 지사 대시보드 수치와 대조해서 확인된 공식입니다)
+  function findGroupFoodIdx(groupName){
+    for(let i=0;i<header0.length;i++){
+      if(header0[i]===groupName && header1[i]==='푸드') return i;
+    }
+    return -1;
+  }
   function findSingleIdx(name){
     for(let i=0;i<header0.length;i++){
       if(header0[i]===name) return i;
@@ -2503,17 +2520,17 @@ function parseRiderRowsFromRows(rows){
 
   // 완료건수는 "완료 합계" 컬럼(배민 SLA 기준 10시~24시만 집계)이 아니라,
   // 지사 미션 기준(새벽 0~10시 콜도 포함하는 하루 전체, 06시~다음날05시)에 맞춰
-  // 시간대별 24개 칸을 전부 더한 값을 사용합니다.
+  // 시간대별 24개 칸을 전부 더한 값을 사용합니다. (이건 전체 주문 포함, 보너스 계산용)
   const HOUR_LABELS = ['6시','7시','8시','9시','10시','11시','12시','13시','14시','15시','16시','17시','18시','19시','20시','21시','22시','23시','0시','1시','2시','3시','4시','5시'];
   const hourIdxs = HOUR_LABELS.map(h => findSingleIdx(h));
   const idx22 = findSingleIdx('22시');
   const idx23 = findSingleIdx('23시');
   const idxId = findSingleIdx('아이디');
   const idxPhone = findSingleIdx('휴대폰번호');
-  // 수락률 계산용(배민 SLA 10~24시 기준, 지사현황 탭 수락률과 동일한 방식)
-  const idxCompleteSla = findGroupTotalIdx('완료');
-  const idxReject = findGroupTotalIdx('거절');
-  const idxCancel = findGroupTotalIdx('배차취소');
+  // 수락률 계산용(배민 공식: 푸드 완료/(푸드완료+푸드거절+푸드배차취소), 비마트·배민스토어 제외)
+  const idxCompleteSla = findGroupFoodIdx('완료');
+  const idxReject = findGroupFoodIdx('거절');
+  const idxCancel = findGroupFoodIdx('배차취소');
   if(hourIdxs.some(i => i === -1)){
     throw new Error('시간대별(6시~5시) 컬럼을 찾지 못했습니다');
   }
@@ -3050,7 +3067,7 @@ function renderSettlementLookupCard(){
   } else {
     registerArea.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <span style="font-size:12px;color:#888">🔒 ${identity.name} 기사님으로 등록된 기기</span>
+        <span style="font-size:16px;font-weight:800;color:#0F6E56">🔒 ${identity.name} 기사님</span>
         <button onclick="clearMySettlementIdentity()" style="font-size:11px;color:#aaa;background:none;border:none;text-decoration:underline;cursor:pointer">본인 아님? 재설정</button>
       </div>
     `;
@@ -3755,10 +3772,10 @@ function switchTab(name,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
-  if(name==='record'){ renderWeek(); renderMyAcceptRate(); }
+  if(name==='record'){ renderWeek(); renderMyAcceptRate(); loadCumulCalls(); }
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
-  if(name==='mission'){ loadCumulCalls(); loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); }
+  if(name==='mission'){ loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); }
 }
 
 function loadTodayRec(){
