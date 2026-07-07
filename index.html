@@ -1090,23 +1090,20 @@ function renderMyAcceptRate(){
       return;
     }
     const rows = rider.dailyAccept.map(a=>{
-      const color = a.rate==null?'#1a1a1a':a.rate>=80?'#1D9E75':a.rate>=60?'#BA7517':'#E24B4A';
-      return `<div style="padding:8px 0;border-bottom:0.5px solid #f0f0f0">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
-          <span style="font-size:13px;font-weight:600;color:#333">${a.dayLabel}</span>
-          <span style="font-size:17px;font-weight:800;color:${color}">${a.rate!=null?a.rate+'%':'-'}</span>
+      const hasData = a.rate!=null;
+      const color = !hasData?'#ccc':a.rate>=80?'#1D9E75':a.rate>=60?'#BA7517':'#E24B4A';
+      const bg = !hasData?'#FAFAFA':a.rate>=80?'#F0FBF7':a.rate>=60?'#FFFBF0':'#FFF5F5';
+      return `<div style="display:flex;align-items:center;background:${bg};border-radius:10px;padding:10px 12px;margin-bottom:6px;border-left:4px solid ${color}">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#333">${a.dayLabel}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px">${hasData?`완료 ${a.complete} · 거절 ${a.reject} · 취소 ${a.cancel}`:'집계 전'}</div>
         </div>
-        <div style="display:flex;gap:6px">
-          <span style="font-size:12px;font-weight:700;color:#1D9E75;background:#E8F8F2;border-radius:6px;padding:2px 8px">완료 ${a.complete}</span>
-          <span style="font-size:12px;font-weight:700;color:#E24B4A;background:#FFF0F0;border-radius:6px;padding:2px 8px">거절 ${a.reject}</span>
-          <span style="font-size:12px;font-weight:700;color:#BA7517;background:#FFF7E6;border-radius:6px;padding:2px 8px">취소 ${a.cancel}</span>
-        </div>
+        <div style="font-size:19px;font-weight:800;color:${color};white-space:nowrap;margin-left:8px">${hasData?a.rate+'%':'-'}</div>
       </div>`;
     }).join('');
     const avgColor = rider.acceptRate==null?'#1a1a1a':rider.acceptRate>=80?'#1D9E75':rider.acceptRate>=60?'#BA7517':'#E24B4A';
     resultEl.innerHTML = `
-      <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid #eee">
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">요일별 수락률</div>
+      <div style="margin-bottom:8px">
         ${rows}
       </div>
       <div style="background:#F0FBF7;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
