@@ -338,7 +338,8 @@ input[type=number]{-moz-appearance:textfield}
     <!-- 누적콜 현황 -->
     <div class="card" id="cumul-card">
       <div class="card-title">🏆 내 누적콜 현황</div>
-      <div id="cumul-display">
+      <div id="cumul-register-area"></div>
+      <div id="cumul-display" style="display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
           <div>
             <div style="font-size:28px;font-weight:700;color:#1D9E75" id="cumul-total">0콜</div>
@@ -360,22 +361,7 @@ input[type=number]{-moz-appearance:textfield}
           <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
           <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;background:#E8F8F2;border-radius:8px;padding:8px 12px;margin-bottom:8px">
-          <span style="font-size:12px;color:#0F6E56;font-weight:600">오늘 완료건</span>
-          <span style="font-size:16px;font-weight:700;color:#1D9E75" id="cumul-today-count">0건</span>
-        </div>
-        <div id="cumul-input-row" style="display:flex;align-items:center;justify-content:space-between;background:#F0FBF7;border-radius:8px;padding:8px 12px">
-          <div>
-            <div style="font-size:12px;color:#0F6E56;font-weight:600">기존 누적콜 입력</div>
-            <div style="font-size:10px;color:#888">오늘 이전까지의 누적콜</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="cumul-input" placeholder="0" inputmode="numeric"
-              style="width:80px;padding:4px 8px;border-radius:8px;border:1px solid #9FE1CB;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#0F6E56"
-              oninput="saveCumulCalls(this.value)">
-            <span style="font-size:12px;color:#0F6E56">콜</span>
-          </div>
-        </div>
+        <div style="font-size:10px;color:#aaa;text-align:center">📋 사장님이 올린 주간 정산 자료 기준 자동 집계 (7/1주부터)</div>
       </div>
     </div>
 
@@ -835,7 +821,6 @@ function autoSave(){
   renderResult(rec);
   updateTodayIncome(rec);
   updateBonusCalc(rec);
-  updateCumulTotal();
   // 오늘 미션현황 즉시 업데이트 (완료 카운터와 항상 동일한 값 사용)
   updateGoalCard(cnt.complete);
 }
@@ -1135,35 +1120,68 @@ function confirmDelivery(dk){
   renderWeek();
 }
 
-// ── 누적콜 현황 ──────────────────────────────────────────
-function saveCumulCalls(val){
-  const v = parseInt(val)||0;
-  lsSet('cumul_calls_base', v);
-  updateCumulTotal();
+// ── 누적콜 현황 (사장님이 올린 주간 정산 자료 기준 자동 집계) ──────────────
+const CUMUL_START_WEEK_KEY = '2026-07-01'; // 지사 시행 시작 주(수요일 기준)
+
+// 시작 주부터 이번 주까지의 주간 키 목록을 만듭니다.
+function getWeekKeysFromStart(){
+  const keys = [];
+  const startD = new Date(CUMUL_START_WEEK_KEY+'T00:00:00.000Z');
+  const {start: curStart} = getWeekRange(0);
+  let d = new Date(startD);
+  // 시작주부터 이번주까지 7일씩 증가하며 목록 생성 (혹시 시작일이 미래거나 계산이 안 맞으면 안전하게 중단)
+  let guard = 0;
+  while(d.getTime() <= curStart.getTime() && guard < 520){ // 최대 10년치 안전장치
+    keys.push(d.toISOString().slice(0,10));
+    d.setUTCDate(d.getUTCDate()+7);
+    guard++;
+  }
+  return keys;
 }
 
-function updateCumulTotal(){
-  const base = parseInt(lsGet('cumul_calls_base'))||0;
-  
-  // cnt.complete: 현재 세션 완료건 (가장 신뢰할 수 있는 값)
-  // 저장된 오늘 완료건도 함께 확인
-  const sessionComplete = (typeof cnt !== 'undefined') ? (cnt.complete||0) : 0;
-  const savedRec = lsGet(todayKey());
-  const savedComplete = (savedRec && savedRec.complete) ? parseInt(savedRec.complete)||0 : 0;
-  const todayComplete = Math.max(sessionComplete, savedComplete);
-  
-  const total = base + todayComplete;
-  
-  // UI 업데이트
-  const el = document.getElementById('cumul-input');
-  if(el) el.value = base || '';
-  
-  // 오늘 완료건 표시
-  const todayEl = document.getElementById('cumul-today-count');
-  if(todayEl) todayEl.textContent = todayComplete + '건';
-  
-  renderCumulCalls(total);
-  return total;
+// 등록된 아이디 기준으로, 지금까지 게시된 모든 주간 정산의 완료건을 합산합니다.
+function computeAutoCumulCalls(id){
+  const weekKeys = getWeekKeysFromStart();
+  const fetches = weekKeys.map(wk => db.ref('settlement/'+wk+'/riders/'+id).once('value'));
+  return Promise.all(fetches).then(snaps=>{
+    let total = 0;
+    snaps.forEach(snap=>{
+      const rider = snap.val();
+      if(rider && rider.weekTotal) total += rider.weekTotal;
+    });
+    return total;
+  });
+}
+
+function renderCumulRegisterArea(){
+  const registerArea = document.getElementById('cumul-register-area');
+  const displayArea = document.getElementById('cumul-display');
+  if(!registerArea || !displayArea) return;
+
+  const identity = getMySettlementIdentity();
+  if(!identity){
+    registerArea.innerHTML = `
+      <div style="font-size:12px;color:#888;margin-bottom:8px">누적콜은 사장님이 올린 정산 자료를 기준으로 자동 집계돼요. 처음이면 본인 배민 아이디를 입력해서 등록해주세요.</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <input type="text" id="cumul-id-input" placeholder="본인 배민 아이디" inputmode="text"
+          style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:14px;font-family:inherit"
+          onkeydown="if(event.key==='Enter') startSettlementRegister('cumul-id-input','cumul-register-result')">
+        <button onclick="startSettlementRegister('cumul-id-input','cumul-register-result')" style="padding:9px 16px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">등록</button>
+      </div>
+      <div id="cumul-register-result"></div>
+    `;
+    displayArea.style.display = 'none';
+  } else {
+    registerArea.innerHTML = '';
+    displayArea.style.display = 'block';
+    computeAutoCumulCalls(identity.id).then(total=>{
+      renderCumulCalls(total);
+    });
+  }
+}
+
+function loadCumulCalls(){
+  renderCumulRegisterArea();
 }
 
 // ── 심야 미션 ────────────────────────────────────────────
@@ -1328,10 +1346,6 @@ function updateNightTotal(){
 
 function loadNightCalls(){
   updateNightTotal();
-}
-
-function loadCumulCalls(){
-  updateCumulTotal();
 }
 
 function renderCumulCalls(total){
@@ -2844,10 +2858,12 @@ function renderSettlementLookupCard(){
 }
 
 // 아이디 입력 → 명단(roster)에서 이름 찾아서 확인 절차
-function startSettlementRegister(){
-  const idInput = document.getElementById('settlement-id-input');
+function startSettlementRegister(inputId, resultId){
+  inputId = inputId || 'settlement-id-input';
+  resultId = resultId || 'settlement-result';
+  const idInput = document.getElementById(inputId);
   const id = (idInput.value||'').trim();
-  const resultEl = document.getElementById('settlement-result');
+  const resultEl = document.getElementById(resultId);
   if(!id){ resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">아이디를 입력해주세요</div>'; return; }
 
   resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">확인 중...</div>';
@@ -2862,13 +2878,18 @@ function startSettlementRegister(){
         <div style="font-size:15px;font-weight:700;color:#0F6E56;margin-bottom:12px">${rider.name} 기사님이 맞으신가요?</div>
         <div style="display:flex;gap:8px">
           <button onclick="confirmSettlementRegister('${id}', '${rider.name}')" style="flex:1;padding:10px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-weight:600;cursor:pointer">네, 맞습니다</button>
-          <button onclick="renderSettlementLookupCard()" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#888;font-weight:600;cursor:pointer">아니오</button>
+          <button onclick="cancelSettlementRegister('${resultId}')" style="flex:1;padding:10px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#888;font-weight:600;cursor:pointer">아니오</button>
         </div>
       </div>
     `;
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">확인 실패: ${err.message}</div>`;
   });
+}
+
+function cancelSettlementRegister(resultId){
+  if(resultId === 'cumul-register-result') renderCumulRegisterArea();
+  else renderSettlementLookupCard();
 }
 
 // 정산 결과 카드를 닫을 때: 본인 조회 화면이면(canReopen) 다시보기 버튼을 남기고,
@@ -2953,6 +2974,7 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
 function confirmSettlementRegister(id, name){
   setMySettlementIdentity(id, name);
   renderSettlementLookupCard();
+  renderCumulRegisterArea();
 }
 
 // 등록된 아이디로 현재 선택된 주의 정산 내역 자동 로드
