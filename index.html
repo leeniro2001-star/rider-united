@@ -304,6 +304,7 @@ input[type=number]{-moz-appearance:textfield}
       <div style="background:linear-gradient(135deg,#FF8F00,#FF6F00);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
         <div>
           <div style="font-size:15px;font-weight:700;color:#fff">🎟️ 오늘의 행운 추첨</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.9);margin-top:2px;font-weight:600" id="lottery-header-subtitle"></div>
         </div>
         <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 8px;text-align:center">
           <div style="font-size:10px;color:#fff">추첨까지</div>
@@ -619,6 +620,14 @@ input[type=number]{-moz-appearance:textfield}
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
       <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:500">🎰 오늘의 행운 추첨</div>
+      <div style="background:#FFF7ED;border-radius:10px;padding:8px 14px;margin-bottom:8px">
+        <div style="font-size:12px;color:#9A5B13;font-weight:600;margin-bottom:6px">당첨 상품</div>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="lottery-prize-input" placeholder="예: ☕ 메가커피 아이스 아메리카노"
+            style="flex:1;padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:13px;font-family:inherit"
+            onchange="updateLotteryConfig()">
+        </div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;background:#FFF7ED;border-radius:10px;padding:8px 14px;margin-bottom:8px">
         <span style="font-size:13px;color:#9A5B13;font-weight:600">당첨 인원</span>
         <div style="display:flex;align-items:center;gap:10px">
@@ -1795,6 +1804,7 @@ function showAdmin(){
   lastComputedSettlement = null;
   renderSettlementFileSlots();
   renderNoticePresets();
+  loadLotteryConfigForAdmin();
   loadWeeklyAcceptRate();
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
@@ -1908,6 +1918,16 @@ function enterLottery(){
     alert('🍀 응모는 화·목·토 오후 2시 전까지만 가능합니다.');
     return;
   }
+  // 오늘 완료건이 1건 이상이어야 응모 가능 (아직 콜을 안 탄 기사님 응모 방지)
+  const todayRecGuard = lsGet(todayKey());
+  const todayCompleteGuard = Math.max(
+    (typeof cnt !== 'undefined' ? cnt.complete||0 : 0),
+    (todayRecGuard && todayRecGuard.complete) ? parseInt(todayRecGuard.complete)||0 : 0
+  );
+  if(todayCompleteGuard <= 0){
+    alert('🙏 아직 오늘 출근 도장을 안 찍으셨네요!\n한 콜이라도 완료하시면 응모가 가능해요 🍀');
+    return;
+  }
   const btn = document.getElementById('lottery-btn');
   const msg = document.getElementById('lottery-msg');
   const dateKey = getLotteryDateKey();
@@ -1929,7 +1949,7 @@ function enterLottery(){
   boxHeader.style.cssText = 'background:linear-gradient(135deg,#FF8F00,#FF6F00);padding:20px;text-align:center';
   boxHeader.innerHTML = '<div style="font-size:36px;margin-bottom:6px">☕🍀</div>'
     +'<div style="font-size:17px;font-weight:700;color:#fff">오늘의 행운 추첨</div>'
-    +'<div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:3px">당첨되면 메가커피 아이스 아메리카노!</div>';
+    +'<div style="font-size:11px;color:rgba(255,255,255,0.85);margin-top:3px">당첨되면 '+lotteryPrizeName+'!</div>';
   box.appendChild(boxHeader);
 
   const boxBody = document.createElement('div');
@@ -2144,9 +2164,20 @@ function loadLottery(){
   const btnEl = document.getElementById('lottery-btn');
   const msgEl = document.getElementById('lottery-msg');
   const myStatusEl = document.getElementById('lottery-my-status');
+  const subtitleEl = document.getElementById('lottery-header-subtitle');
   if(!resultEl) return;
 
   const enteredName = lsGet('lottery_entered_'+dateKey);
+
+  // 오늘 응모/추첨에 적용되는 상품명·인원수를 불러옵니다 (관리자가 설정한 값, 없으면 기본값)
+  db.ref('lottery/'+dateKey+'/config').once('value').then(cfgSnap=>{
+    const cfg = cfgSnap.val() || {};
+    const prizeName = cfg.prizeName || lotteryPrizeName;
+    const winnerCount = cfg.winnerCount || lotteryWinnerCount;
+    lotteryPrizeName = prizeName;
+    lotteryWinnerCount = winnerCount;
+
+    if(subtitleEl) subtitleEl.textContent = `${prizeName} · 매회 ${winnerCount}명 당첨`;
 
   // 내 응모 상태 표시
   if(myStatusEl){
@@ -2169,7 +2200,7 @@ function loadLottery(){
     }
   }
 
-  // 당첨자 확인 (2명)
+  // 당첨자 확인
   db.ref('lottery/'+dateKey+'/winners').once('value').then(snap=>{
     const winnersData = snap.val();
     if(winnersData){
@@ -2177,7 +2208,7 @@ function loadLottery(){
       const isMe = winners.includes(enteredName);
       resultEl.style.background = isMe ? 'linear-gradient(135deg,#FFF3E0,#FFE0B2)' : '#FFF8E1';
       resultEl.innerHTML = '<div style="width:100%">'
-        +'<div style="font-size:11px;color:#888;margin-bottom:8px">🏆 오늘의 당첨자 (2명)</div>'
+        +'<div style="font-size:11px;color:#888;margin-bottom:8px">🏆 오늘의 당첨자 ('+winners.length+'명)</div>'
         + winners.map((w,i)=>{
             const isMeThis = w===enteredName;
             return '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px">'
@@ -2185,13 +2216,13 @@ function loadLottery(){
               +'<span style="font-size:15px;font-weight:700;color:'+(isMeThis?'#E65100':'#333')+'">'+w+' 기사님</span>'
               +'</div>';
           }).join('')
-        +'<div style="font-size:11px;color:#FF8F00;font-weight:600;margin-top:6px">메가커피 아이스 아메리카노 ☕</div>'
+        +'<div style="font-size:11px;color:#FF8F00;font-weight:600;margin-top:6px">'+prizeName+'</div>'
         +(isMe
           ?''
           :'<div style="font-size:11px;color:#888;margin-top:4px">다음 추첨에 도전하세요! 🍀</div>'
         )
         +'</div>';
-      if(isMe) setTimeout(()=>showLotteryConfetti(), 300);
+      if(isMe) setTimeout(()=>showLotteryConfetti(prizeName), 300);
       // 추첨 완료 후 버튼 비활성화
       if(btnEl){
         btnEl.textContent = '🏆 추첨 완료';
@@ -2223,11 +2254,12 @@ function loadLottery(){
         resultEl.innerHTML = '<div style="text-align:center;width:100%">'
           +'<div style="font-size:22px;margin-bottom:4px">'+statusIcon+'</div>'
           +'<div style="font-size:13px;font-weight:700;color:#333">'+statusText+'</div>'
-          +'<div style="font-size:12px;color:#FF8F00;font-weight:600;margin-top:3px">응모자 <span style="font-size:15px">'+count+'</span>명 · 당첨 <span style="font-size:13px">2명</span></div>'
-          +'<div style="font-size:10px;color:#aaa;margin-top:3px">☕ 메가커피 아이스 아메리카노 × 2</div>'
+          +'<div style="font-size:12px;color:#FF8F00;font-weight:600;margin-top:3px">응모자 <span style="font-size:15px">'+count+'</span>명 · 당첨 <span style="font-size:13px">'+winnerCount+'명</span></div>'
+          +'<div style="font-size:10px;color:#aaa;margin-top:3px">'+prizeName+' × '+winnerCount+'</div>'
           +'</div>';
       });
     }
+  });
   });
 }
 
@@ -2248,10 +2280,37 @@ function resetLottery(){
 }
 
 let lotteryWinnerCount = 2;
+let lotteryPrizeName = '☕ 메가커피 아이스 아메리카노';
+
 function changeLotteryWinnerCount(delta){
   lotteryWinnerCount = Math.max(1, Math.min(6, lotteryWinnerCount + delta));
   const el = document.getElementById('lottery-winner-count-display');
   if(el) el.textContent = lotteryWinnerCount;
+  updateLotteryConfig();
+}
+
+// 관리자가 상품/인원을 바꿀 때마다 오늘 추첨일 기준으로 저장 - 기사님 화면에도 바로 반영됩니다
+function updateLotteryConfig(){
+  const prizeInput = document.getElementById('lottery-prize-input');
+  if(prizeInput && prizeInput.value.trim()) lotteryPrizeName = prizeInput.value.trim();
+  const dateKey = getLotteryDateKey();
+  db.ref('lottery/'+dateKey+'/config').set({ prizeName: lotteryPrizeName, winnerCount: lotteryWinnerCount });
+}
+
+// 관리자 화면 열 때 기존에 설정해둔 상품/인원을 불러와서 입력창에 채워줍니다
+function loadLotteryConfigForAdmin(){
+  const dateKey = getLotteryDateKey();
+  db.ref('lottery/'+dateKey+'/config').once('value').then(snap=>{
+    const cfg = snap.val();
+    if(cfg){
+      if(cfg.prizeName) lotteryPrizeName = cfg.prizeName;
+      if(cfg.winnerCount) lotteryWinnerCount = cfg.winnerCount;
+    }
+    const prizeInput = document.getElementById('lottery-prize-input');
+    if(prizeInput) prizeInput.value = lotteryPrizeName;
+    const countEl = document.getElementById('lottery-winner-count-display');
+    if(countEl) countEl.textContent = lotteryWinnerCount;
+  });
 }
 
 function drawLotteryWinner(){
@@ -2300,6 +2359,8 @@ function drawLotteryWinner(){
       });
       // 전체 기사님 화면에 슬롯머신 추첨 애니메이션을 동시에 보여주기 위한 데이터
       updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now() };
+      // 상품명/인원 설정도 함께 저장 (관리자가 안 건드렸어도 현재 값으로 저장됨)
+      updates['lottery/'+dateKey+'/config'] = { prizeName: lotteryPrizeName, winnerCount: lotteryWinnerCount };
 
       db.ref().update(updates).then(()=>{
         // 관리자 본인도 애니메이션을 볼 수 있게 관리자 화면을 닫고 현황 탭으로 이동
@@ -3937,15 +3998,16 @@ function fireConfetti(count,speed,color){
   }
 }
 
-function showLotteryConfetti(){
+function showLotteryConfetti(prizeName){
+  const prize = prizeName || lotteryPrizeName || '☕ 메가커피 아이스 아메리카노';
   const color = '#FF8F00';
   document.getElementById('msg-bike-display').textContent='☕';
   document.getElementById('msg-bike-name').textContent='';
   document.getElementById('msg-emoji').textContent='🎉';
   document.getElementById('msg-title').textContent='헐 대박!! 당첨을 축하드려요';
   document.getElementById('msg-title').style.color=color;
-  document.getElementById('msg-sub').textContent='메가커피 아이스 아메리카노 당첨!';
-  document.getElementById('msg-bonus').textContent='☕ 아이스 아메리카노';
+  document.getElementById('msg-sub').textContent=prize+' 당첨!';
+  document.getElementById('msg-bonus').textContent=prize;
   document.getElementById('msg-bonus').style.color=color;
   document.getElementById('confetti-msg').querySelector('.msg-close').style.background=color;
   document.getElementById('confetti-msg').classList.add('show');
