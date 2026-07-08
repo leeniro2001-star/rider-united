@@ -608,6 +608,12 @@ input[type=number]{-moz-appearance:textfield}
         <button onclick="resetSlotPages()" style="margin-top:6px;padding:5px 10px;border-radius:6px;border:1px solid #ddd;background:#fff;color:#aaa;font-size:11px;cursor:pointer">🔄 처음부터 다시 (잘못 올렸을 때)</button>
       </div>
 
+      <!-- 오늘 기사님별 수락률 (수락률 높은순 정렬) -->
+      <div id="admin-rider-accept-section" style="display:none;background:#F8F8F8;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">📊 오늘 기사님별 수락률 (높은순)</div>
+        <div id="admin-rider-accept-list" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+
       <div id="admin-slot-inputs"></div>
       <button class="btn-save" onclick="submitAdmin()">저장하기</button>
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
@@ -1731,6 +1737,7 @@ function loadWeeklyAcceptRate(){
 let adminAuthed = false; // 한번 인증하면 앱 종료 전까지 유지
 let lastUploadedAcceptData = null; // 파일 업로드로 읽은 완료/거절/배차취소 (제출 전 임시 보관)
 let slotUploadPages = []; // 100명 넘어 페이지가 나뉜 경우, 여러 파일을 업로드한 결과를 누적
+let slotRidersAccum = []; // 오늘 기사님별 수락률 목록용 (여러 페이지 업로드 시 누적)
 let currentAdminSavedData = null; // 관리자 화면 열 때 불러온 기존 저장값 (수동 수정 시 완료/거절/배차취소 보존용)
 
 // ── 세트수 관리 ──────────────────────────────────────
@@ -1794,6 +1801,8 @@ function showAdmin(){
   const k = getBranchDateKey(branchDateOffset);
   lastUploadedAcceptData = null; // 관리자 화면 새로 열 때마다 초기화 (이전 파일 결과 재사용 방지)
   slotUploadPages = [];
+  slotRidersAccum = [];
+  { const sectionEl = document.getElementById('admin-rider-accept-section'); if(sectionEl) sectionEl.style.display = 'none'; }
   db.ref('branch/daily/'+k).once('value').then(snap=>{
     const saved = snap.val() || {};
     currentAdminSavedData = saved;
@@ -3248,8 +3257,43 @@ function applySlotPagesSum(){
   return sum;
 }
 
+// 오늘 업로드한 자료 기준, 기사님별 수락률을 높은 순으로 정렬해서 보여줍니다
+// (배민 공식 수락률 공식: 푸드 완료/(푸드완료+푸드거절+푸드배차취소), 비마트·배민스토어 제외)
+function renderAdminRiderAcceptList(riders){
+  const sectionEl = document.getElementById('admin-rider-accept-section');
+  const listEl = document.getElementById('admin-rider-accept-list');
+  if(!sectionEl || !listEl) return;
+
+  const withRate = riders.map(r=>{
+    const denom = (r.completeSla||0) + (r.reject||0) + (r.cancel||0);
+    const rate = denom > 0 ? Math.round((r.completeSla||0)/denom*1000)/10 : null;
+    return { name: r.name, complete: r.completeSla||0, reject: r.reject||0, cancel: r.cancel||0, rate };
+  });
+
+  // 수락률 높은 순으로 정렬 (데이터 없는 분은 맨 아래로)
+  withRate.sort((a,b)=>{
+    if(a.rate===null && b.rate===null) return 0;
+    if(a.rate===null) return 1;
+    if(b.rate===null) return -1;
+    return b.rate - a.rate;
+  });
+
+  sectionEl.style.display = 'block';
+  listEl.innerHTML = withRate.map(r=>{
+    const color = r.rate===null?'#ccc':r.rate>=80?'#1D9E75':r.rate>=60?'#BA7517':'#E24B4A';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:0.5px solid #eee">
+      <div>
+        <span style="font-size:13px;font-weight:600;color:#333">${r.name}</span>
+        <span style="font-size:11px;color:#aaa;margin-left:6px">완료${r.complete}·거절${r.reject}·취소${r.cancel}(푸드)</span>
+      </div>
+      <span style="font-size:14px;font-weight:700;color:${color}">${r.rate!=null?r.rate+'%':'-'}</span>
+    </div>`;
+  }).join('');
+}
+
 function resetSlotPages(){
   slotUploadPages = [];
+  slotRidersAccum = [];
   ['lunch','afternoon','evening','night'].forEach(key=>{
     const el = document.getElementById('ai-'+key);
     if(el) el.value = 0;
@@ -3257,6 +3301,8 @@ function resetSlotPages(){
   lastUploadedAcceptData = null;
   const statusEl = document.getElementById('slot-file-status');
   if(statusEl){ statusEl.style.color='#888'; statusEl.textContent = '초기화됐어요. 파일을 다시 올려주세요.'; }
+  const sectionEl = document.getElementById('admin-rider-accept-section');
+  if(sectionEl) sectionEl.style.display = 'none';
 }
 
 function handleSlotPaste(event){
@@ -3273,8 +3319,13 @@ function handleSlotPaste(event){
     const result = parseSlotDataFromRows(rows);
     slotUploadPages.push(result);
     const sum = applySlotPagesSum();
-    // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용)
-    try{ updateRosterFromRiders(parseRiderRowsFromRows(rows)); }catch(e){}
+    // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용) + 오늘 기사님별 수락률 목록에도 반영
+    try{
+      const riders = parseRiderRowsFromRows(rows);
+      updateRosterFromRiders(riders);
+      slotRidersAccum = slotRidersAccum.concat(riders);
+      renderAdminRiderAcceptList(slotRidersAccum);
+    }catch(e){}
     let acceptMsg = '';
     if(sum.complete!=null){
       const denom = sum.complete + sum.reject + sum.cancel;
@@ -3302,8 +3353,13 @@ function handleSlotFileUpload(file){
       const result = parseSlotDataFromRows(rows);
       slotUploadPages.push(result);
       const sum = applySlotPagesSum();
-      // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용)
-      try{ updateRosterFromRiders(parseRiderRowsFromRows(rows)); }catch(e){}
+      // 기사님 명단(roster)도 함께 갱신 (정산 조회 등록 시 본인 확인용) + 오늘 기사님별 수락률 목록에도 반영
+      try{
+        const riders = parseRiderRowsFromRows(rows);
+        updateRosterFromRiders(riders);
+        slotRidersAccum = slotRidersAccum.concat(riders);
+        renderAdminRiderAcceptList(slotRidersAccum);
+      }catch(e){}
       let acceptMsg = '';
       if(sum.complete!=null){
         const denom = sum.complete + sum.reject + sum.cancel;
