@@ -1518,9 +1518,8 @@ function updateNightBanner(data){
   }
 
   const current = parseInt(data.night) || 0;
-  const target = 225; // 9세트 평일 기준 (요일별 자동 적용)
   const nightSlot = SLOTS.find(s => s.key === 'night');
-  const dayTarget = nightSlot ? nightSlot.targets[dayKey] : 225;
+  const dayTarget = nightSlot ? nightSlot.targets[dayKey] * getSetCount() : 225;
   const remaining = dayTarget - current;
   const pct = Math.round(current / dayTarget * 100);
 
@@ -2817,6 +2816,25 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
       }
     </div>
     <div style="font-size:11px;color:#888;margin-bottom:12px">전체 ${settlement.length}명 인식됨${uploadedDaysLabel ? ' · 업로드된 요일: '+uploadedDaysLabel : ''} (검색창에서 보너스 0원인 분도 확인 가능)</div>
+
+    <!-- 이번 주(업로드된 요일 전체 누적) 기사님별 수락률 - 높은순 -->
+    <div style="background:#fff;border-radius:10px;border:1px solid #eee;padding:10px 12px;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">📊 기사님별 수락률 (이번에 올린 요일 누적, 높은순)</div>
+      <div style="max-height:300px;overflow-y:auto">
+        ${(()=>{
+          const withRate = settlement.filter(r => r.acceptRate!=null).slice().sort((a,b)=>b.acceptRate-a.acceptRate);
+          const noData = settlement.filter(r => r.acceptRate==null);
+          if(withRate.length===0) return '<div style="padding:10px;text-align:center;font-size:12px;color:#aaa">수락률 데이터가 없습니다</div>';
+          return withRate.map(r=>{
+            const color = r.acceptRate>=80?'#1D9E75':r.acceptRate>=60?'#BA7517':'#E24B4A';
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:0.5px solid #f5f5f5">
+              <span style="font-size:13px;font-weight:600;color:#333">${r.name}</span>
+              <span style="font-size:14px;font-weight:700;color:${color}">${r.acceptRate}%</span>
+            </div>`;
+          }).join('') + (noData.length>0 ? `<div style="font-size:11px;color:#bbb;text-align:center;padding-top:8px">그 외 ${noData.length}명 (활동 없음)</div>` : '');
+        })()}
+      </div>
+    </div>
 
     <div style="background:#1a3a4a;border-radius:10px;padding:14px 16px;margin-bottom:8px">
       <div style="font-size:12px;color:#9DBEEA;font-weight:600;margin-bottom:4px">💰 이번 주 지사 전체 보너스 지출 총액</div>
