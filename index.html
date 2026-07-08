@@ -2665,6 +2665,21 @@ function loadSettlementDraft(){
   }catch(e){ return {}; }
 }
 
+// "정산 계산하기" 결과도 저장해둬서, 관리자 화면을 닫았다 열어도 다시 계산하기 없이 바로 보이게 합니다.
+function getSettlementCalcStorageKey(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  return 'ru_settlement_calc_' + info.weekKey;
+}
+function saveSettlementCalc(settlement, uploadedDays){
+  try{ localStorage.setItem(getSettlementCalcStorageKey(), JSON.stringify({settlement, uploadedDays})); }catch(e){}
+}
+function loadSettlementCalc(){
+  try{
+    const raw = localStorage.getItem(getSettlementCalcStorageKey());
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+
 function renderSettlementFileSlots(){
   const info = getSettlementWeekInfo(settlementAdminWeekOffset);
   const labelEl = document.getElementById('settlement-admin-week-label');
@@ -2695,6 +2710,26 @@ function renderSettlementFileSlots(){
     </div>
   `;
   }).join('');
+
+  // 이 주에 저장해둔 "정산 계산하기" 결과가 있으면 자동으로 다시 보여줍니다 (다시 계산할 필요 없음)
+  const savedCalc = loadSettlementCalc();
+  const statusEl = document.getElementById('settlement-admin-status');
+  const previewEl = document.getElementById('settlement-admin-preview');
+  const pubBtn = document.getElementById('settlement-publish-btn');
+  if(savedCalc && savedCalc.settlement && savedCalc.settlement.length > 0){
+    lastComputedSettlement = savedCalc.settlement;
+    if(previewEl) previewEl.innerHTML = renderSettlementAdminPreviewHTML(savedCalc.settlement, (savedCalc.uploadedDays||[]).join(', '));
+    if(statusEl){
+      statusEl.style.color = '#1D9E75';
+      statusEl.textContent = `✅ 저장된 계산 결과 (기사님 ${savedCalc.settlement.length}명, 보너스 대상 ${savedCalc.settlement.filter(r=>r.total>0).length}명) - 자료를 새로 올리셨다면 정산 계산하기를 다시 눌러주세요`;
+    }
+    if(pubBtn) pubBtn.style.display = 'block';
+  } else {
+    lastComputedSettlement = null;
+    if(previewEl) previewEl.innerHTML = '';
+    if(statusEl) statusEl.textContent = '';
+    if(pubBtn) pubBtn.style.display = 'none';
+  }
 }
 
 function changeSettlementAdminWeek(delta){
@@ -2782,6 +2817,15 @@ function resetSettlementDaySlot(idx, dayLabel){
 }
 
 // 관리자 정산 미리보기 화면(검색창+명단+총액)을 그리는 공통 함수
+function toggleAdminCollapsible(contentId, arrowId){
+  const el = document.getElementById(contentId);
+  const arrow = document.getElementById(arrowId);
+  if(!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if(arrow) arrow.textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
+}
+
 function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   const bonusRiders = settlement.filter(r=>r.total>0);
   window.__settlementAdminPreviewRiders = bonusRiders;
@@ -2801,25 +2845,36 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
       <button onclick="searchSettlementAdminRider()" style="padding:8px 14px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:600;cursor:pointer">확인</button>
     </div>
     <div id="settlement-admin-search-result" style="margin-bottom:10px"></div>
-    <div style="font-size:11px;color:#9A5B13;margin-bottom:4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
-    <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
-      ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
-        bonusRiders.map((r,i)=>`
-          <div>
-            <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
-              <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
-              <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+
+    <!-- 보너스 대상자 목록 (접기/펼치기) -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;cursor:pointer;padding:8px 10px;background:#FFF7ED;border-radius:8px" onclick="toggleAdminCollapsible('settlement-bonus-list-wrap','settlement-bonus-list-arrow')">
+      <span style="font-size:12px;font-weight:700;color:#9A5B13">💰 보너스 대상자 목록 (${bonusRiders.length}명)</span>
+      <span id="settlement-bonus-list-arrow" style="font-size:12px;color:#9A5B13;font-weight:600">▼ 펼치기</span>
+    </div>
+    <div id="settlement-bonus-list-wrap" style="display:none">
+      <div style="font-size:11px;color:#9A5B13;margin:6px 0 4px">기사님 이름을 탭하면 요일별 세부내역을 볼 수 있어요</div>
+      <div style="max-height:320px;overflow-y:auto;background:#fff;border-radius:8px;border:1px solid #FED7AA;margin-bottom:8px">
+        ${bonusRiders.length===0 ? '<div style="padding:12px;text-align:center;font-size:12px;color:#aaa">보너스 대상 기사님이 없습니다</div>' :
+          bonusRiders.map((r,i)=>`
+            <div>
+              <div onclick="toggleSettlementAdminDetail(${i})" style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:0.5px solid #f0f0f0;font-size:12px;cursor:pointer">
+                <span style="font-weight:600">${r.name} <span style="color:#bbb;font-size:10px">▾</span></span>
+                <span style="color:#1D9E75;font-weight:700">${r.total.toLocaleString()}원</span>
+              </div>
+              <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
             </div>
-            <div id="settlement-admin-detail-${i}" style="display:none;padding:8px 12px;background:#FAFAFA;border-bottom:0.5px solid #f0f0f0"></div>
-          </div>
-        `).join('')
-      }
+          `).join('')
+        }
+      </div>
     </div>
     <div style="font-size:11px;color:#888;margin-bottom:12px">전체 ${settlement.length}명 인식됨${uploadedDaysLabel ? ' · 업로드된 요일: '+uploadedDaysLabel : ''} (검색창에서 보너스 0원인 분도 확인 가능)</div>
 
-    <!-- 이번 주(업로드된 요일 전체 누적) 기사님별 수락률 - 높은순 -->
-    <div style="background:#fff;border-radius:10px;border:1px solid #eee;padding:10px 12px;margin-bottom:8px">
-      <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">📊 기사님별 수락률 (이번에 올린 요일 누적, 높은순)</div>
+    <!-- 기사님별 수락률 (접기/펼치기) -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;cursor:pointer;padding:8px 10px;background:#F0FBF7;border-radius:8px" onclick="toggleAdminCollapsible('settlement-accept-list-wrap','settlement-accept-list-arrow')">
+      <span style="font-size:12px;font-weight:700;color:#0F6E56">📊 기사님별 수락률 (이번에 올린 요일 누적, 높은순)</span>
+      <span id="settlement-accept-list-arrow" style="font-size:12px;color:#0F6E56;font-weight:600">▼ 펼치기</span>
+    </div>
+    <div id="settlement-accept-list-wrap" style="display:none;background:#fff;border-radius:10px;border:1px solid #eee;padding:10px 12px;margin-bottom:8px">
       <div style="max-height:300px;overflow-y:auto">
         ${(()=>{
           const withRate = settlement.filter(r => r.acceptRate!=null).slice().sort((a,b)=>b.acceptRate-a.acceptRate);
@@ -2870,6 +2925,7 @@ function calcSettlement(){
 
   const settlement = computeWeeklySettlement(dayArrays);
   lastComputedSettlement = settlement;
+  saveSettlementCalc(settlement, uploadedDays);
 
   if(statusEl){
     statusEl.style.color = '#1D9E75';
@@ -3001,6 +3057,7 @@ function mergeSettlementAdminEntries(idxCsv){
   lastComputedSettlement = remaining;
   window.__settlementAdminAllRiders = remaining;
   window.__settlementAdminPreviewRiders = remaining.filter(r => r.total > 0);
+  saveSettlementCalc(remaining, Object.keys(settlementFilesData));
 
   alert(`✅ "${name}" ${entries.length}건을 하나로 합쳤어요. (합산 주간완료 ${weekTotal}건)`);
 
