@@ -3814,6 +3814,8 @@ function fillNoticePreset(i){
   if(inp) inp.value = p.text;
 }
 
+let lastNotifiedNoticeTs = null;
+
 function loadNotice(){
   // 실시간 리스너로 공지 감지
   db.ref('notice/latest').on('value', snap=>{
@@ -3827,6 +3829,22 @@ function loadNotice(){
     }
     textEl.textContent = data.text;
     banner.style.display = 'block';
+
+    // 새 공지가 방금 올라온 거라면(20초 이내), 앱이 켜져있는 기사님 폰에 알림도 띄웁니다
+    if(data.updatedAt && data.updatedAt !== lastNotifiedNoticeTs){
+      const isRecent = (Date.now() - new Date(data.updatedAt).getTime()) < 20000;
+      lastNotifiedNoticeTs = data.updatedAt;
+      if(isRecent){
+        try{
+          if('Notification' in window && Notification.permission === 'granted'){
+            new Notification('📢 새 공지사항', {
+              body: data.text,
+              icon: './icon-192.png'
+            });
+          }
+        }catch(e){}
+      }
+    }
   });
 }
 
