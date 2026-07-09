@@ -686,6 +686,30 @@ input[type=number]{-moz-appearance:textfield}
         </button>
       </div>
 
+      <!-- ⚡ 깜짝미션 -->
+      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:600">⚡ 깜짝미션 (특정 요일·시간대 추가 보상)</div>
+      <div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #FED7AA">
+        <div id="surprise-mission-list" style="margin-bottom:10px"></div>
+        <div style="font-size:11px;color:#9A5B13;font-weight:600;margin-bottom:6px">새 깜짝미션 추가</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <select id="sm-day-select" style="padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
+          <div style="display:flex;gap:4px;align-items:center">
+            <select id="sm-start-select" style="flex:1;padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
+            <span style="font-size:11px;color:#9A5B13">~</span>
+            <select id="sm-end-select" style="flex:1;padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+          <input type="number" id="sm-target-input" placeholder="목표 건수 (예: 10)" style="padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit">
+          <input type="number" id="sm-price-input" placeholder="건당 보상(원) (예: 500)" style="padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit">
+        </div>
+        <input type="text" id="sm-desc-input" placeholder="기사님께 보여질 설명 (예: 토요일 저녁 5~8시 10건↑ 건당 500원 추가지급)" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit;margin-bottom:8px;box-sizing:border-box">
+        <button onclick="addSurpriseMission()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
+          ⚡ 깜짝미션 추가
+        </button>
+        <div style="font-size:10px;color:#aaa;margin-top:6px">추가하면 지금까지 올리신 요일 자료에 바로 반영되고 자동으로 다시 게시돼요. 기사님들께 알리려면 위 "공지 등록"에도 따로 올려주세요.</div>
+      </div>
+
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
       <button class="btn-reset" onclick="closeAdmin()">닫기</button>
     </div>
@@ -1803,6 +1827,8 @@ function showAdmin(){
   settlementAdminWeekOffset = 0;
   lastComputedSettlement = null;
   renderSettlementFileSlots();
+  populateSurpriseMissionSelects();
+  renderSurpriseMissionList();
   renderNoticePresets();
   loadLotteryConfigForAdmin();
   loadWeeklyAcceptRate();
@@ -2161,13 +2187,38 @@ function playLotteryDrawAnimation(candidates, winners){
 
 // 애니메이션이 끝난 뒤 필요한 뒷정리(버튼 비활성화, 본인 당첨 시 폭죽)만 하고,
 // 화면(슬롯머신 결과)은 그대로 유지합니다.
+// 추첨 결과를 항상 카지노 스타일(어두운 배경 + 금색 판)로 보여주는 공통 함수
+// - 실시간으로 애니메이션 보고 난 직후든, 나중에 다시 들어와서 봐도 항상 이 모양입니다
+function renderLotteryCasinoResult(winners, prizeName){
+  const dateKey = getLotteryDateKey();
+  const enteredName = lsGet('lottery_entered_'+dateKey);
+  const reelsHtml = winners.map(w=>{
+    const isMe = w === enteredName;
+    return `<div style="flex:1;min-width:90px;max-width:150px;font-size:14px;font-weight:800;color:#1a1a2e;background:linear-gradient(135deg,${isMe?'#FFF59D,#FFD54F':'#FFD180,#FF8F00'});border-radius:10px;padding:16px 4px;border:3px solid #FFD180;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${w} 기사님${isMe?' 🎊':''}</div>`;
+  }).join('');
+  return `
+    <div style="width:100%;text-align:center">
+      <div style="font-size:13px;color:#FFD180;font-weight:700;margin-bottom:10px;letter-spacing:1px">🎰 행운의 추첨 🎰</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">${reelsHtml}</div>
+      <div style="font-size:12px;color:#FFD180;margin-top:10px;font-weight:600">🎉🎊 축하합니다! 🎊🎉</div>
+      <div style="font-size:11px;color:#FFD180;opacity:0.9;margin-top:6px">${prizeName}</div>
+    </div>
+  `;
+}
+
 function finalizeLotteryAfterAnimation(winners){
   const dateKey = getLotteryDateKey();
   const btnEl = document.getElementById('lottery-btn');
   const msgEl = document.getElementById('lottery-msg');
+  const resultEl = document.getElementById('lottery-result');
   const enteredName = lsGet('lottery_entered_'+dateKey);
   const isMe = winners.includes(enteredName);
 
+  // 실시간 애니메이션이 끝난 직후에도, 나중에 다시 봤을 때와 똑같은 화면으로 고정합니다
+  if(resultEl){
+    resultEl.style.background = 'linear-gradient(135deg,#2b2b3d,#1a1a2e)';
+    resultEl.innerHTML = renderLotteryCasinoResult(winners, lotteryPrizeName);
+  }
   if(btnEl){
     btnEl.textContent = '🏆 추첨 완료';
     btnEl.style.background = '#aaa';
@@ -2227,22 +2278,8 @@ function loadLottery(){
     if(winnersData){
       const winners = Object.values(winnersData).map(w=>w.name);
       const isMe = winners.includes(enteredName);
-      resultEl.style.background = isMe ? 'linear-gradient(135deg,#FFF3E0,#FFE0B2)' : '#FFF8E1';
-      resultEl.innerHTML = '<div style="width:100%">'
-        +'<div style="font-size:11px;color:#888;margin-bottom:8px">🏆 오늘의 당첨자 ('+winners.length+'명)</div>'
-        + winners.map((w,i)=>{
-            const isMeThis = w===enteredName;
-            return '<div style="display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:4px">'
-              +'<span style="font-size:14px">'+(isMeThis?'🎊':'☕')+'</span>'
-              +'<span style="font-size:15px;font-weight:700;color:'+(isMeThis?'#E65100':'#333')+'">'+w+' 기사님</span>'
-              +'</div>';
-          }).join('')
-        +'<div style="font-size:11px;color:#FF8F00;font-weight:600;margin-top:6px">'+prizeName+'</div>'
-        +(isMe
-          ?''
-          :'<div style="font-size:11px;color:#888;margin-top:4px">다음 추첨에 도전하세요! 🍀</div>'
-        )
-        +'</div>';
+      resultEl.style.background = 'linear-gradient(135deg,#2b2b3d,#1a1a2e)';
+      resultEl.innerHTML = renderLotteryCasinoResult(winners, prizeName);
       if(isMe) setTimeout(()=>showLotteryConfetti(prizeName), 300);
       // 추첨 완료 후 버튼 비활성화
       if(btnEl){
@@ -2638,16 +2675,36 @@ function parseRiderRowsFromRows(rows){
     night: toNum(r[idx22]) + toNum(r[idx23]),
     completeSla: idxCompleteSla>=0 ? toNum(r[idxCompleteSla]) : 0,
     reject: idxReject>=0 ? toNum(r[idxReject]) : 0,
-    cancel: idxCancel>=0 ? toNum(r[idxCancel]) : 0
+    cancel: idxCancel>=0 ? toNum(r[idxCancel]) : 0,
+    // 시간대별(6시~다음날5시) 완료건수 - 깜짝미션(특정 시간대 목표) 계산용
+    hourly: hourIdxs.map(idx => toNum(r[idx]))
   })).filter(r => r.name); // 빈 행 제외
 }
 
 // 요일별 라이더 데이터 배열 여러 개(최대 7개)를 받아 기사님별로 합산하고,
 // 확정된 보너스 규정대로 요일별 미션보너스+개근보너스+물량보너스+심야보너스를 계산합니다.
-function computeWeeklySettlement(dayArrays){
+// hourly 배열은 6시~다음날5시 순서(24개)입니다. 실제 시각(0~23)을 그 배열의 인덱스로 변환합니다.
+function hourToHourlyIndex(h){
+  if(h >= 6) return h - 6;   // 6~23시 -> 0~17
+  return h + 18;             // 0~5시(다음날) -> 18~23
+}
+// [startHour, endHour) 범위(반열림구간, 예: 17~20이면 17,18,19시)의 완료건수 합
+function sumHourlyRange(hourly, startHour, endHour){
+  if(!hourly || hourly.length === 0) return 0;
+  let sum = 0;
+  for(let h = startHour; h < endHour; h++){
+    const idx = hourToHourlyIndex(((h % 24) + 24) % 24);
+    sum += hourly[idx] || 0;
+  }
+  return sum;
+}
+
+function computeWeeklySettlement(dayArrays, surpriseMissions){
   // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
+  // surpriseMissions: [{dayLabel, startHour, endHour, target, unitPrice, description}, ...] (선택, 관리자가 설정한 깜짝미션)
   const GOALS = [30,40,50,60,70];
   const TIER_BONUS = {30:8000,40:16000,50:24000,60:32000,70:40000};
+  surpriseMissions = surpriseMissions || [];
 
   // 같은 사람을 "이름+전화번호"로 먼저 묶습니다 (아이디만 보고 묶으면, 어떤 날짜 파일에는
   // 아이디가 비어있거나 다르게 기록된 경우 같은 사람이 두 명으로 쪼개질 위험이 있어서
@@ -2660,7 +2717,7 @@ function computeWeeklySettlement(dayArrays){
       const key = r.name + '|' + normPhone;
       if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', days:[] };
       if(r.id && !riders[key].id) riders[key].id = r.id; // 대표 아이디가 아직 없으면 채워넣기
-      riders[key].days.push({ dayLabel, complete:r.complete, night:r.night, completeSla:r.completeSla||0, reject:r.reject||0, cancel:r.cancel||0 });
+      riders[key].days.push({ dayLabel, complete:r.complete, night:r.night, completeSla:r.completeSla||0, reject:r.reject||0, cancel:r.cancel||0, hourly:r.hourly||[] });
     });
   });
 
@@ -2697,12 +2754,26 @@ function computeWeeklySettlement(dayArrays){
     const attend = eligible ? (missionDays >= 6 ? 20000 : (missionDays >= 5 ? 10000 : 0)) : 0;
     const vol = eligible ? (weekTotal >= 450 ? 50000 : (weekTotal >= 400 ? 30000 : (weekTotal >= 350 ? 20000 : 0))) : 0;
     const night = nightTotal >= 30 ? 30000 : (nightTotal >= 15 ? 15000 : 0);
-    const total = mission + attend + vol + night;
+
+    // 깜짝미션 계산: 지정한 요일·시간대의 완료건수가 목표 이상이면 건수×건당보상 지급
+    let surpriseBonus = 0;
+    const surpriseDetails = [];
+    surpriseMissions.forEach(m=>{
+      const dayData = rider.days.find(d => d.dayLabel === m.dayLabel);
+      const hourly = dayData ? dayData.hourly : [];
+      const count = sumHourlyRange(hourly, m.startHour, m.endHour);
+      const achieved = count >= m.target;
+      const reward = achieved ? count * m.unitPrice : 0;
+      surpriseBonus += reward;
+      surpriseDetails.push({ description:m.description, dayLabel:m.dayLabel, count, target:m.target, achieved, reward });
+    });
+
+    const total = mission + attend + vol + night + surpriseBonus;
 
     result.push({
       name: rider.name, phone: rider.phone, id: rider.id,
       weekTotal, missionDays, nightTotal,
-      breakdown, mission, attend, vol, night, total, eligible,
+      breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, total, eligible,
       dailyAccept, acceptRate
     });
   });
@@ -2760,6 +2831,94 @@ function loadSettlementCalc(){
     const raw = localStorage.getItem(getSettlementCalcStorageKey());
     return raw ? JSON.parse(raw) : null;
   }catch(e){ return null; }
+}
+
+// ── 깜짝미션 (특정 요일·시간대 목표 달성 시 건당 추가 보상) ──────────────────
+function getSurpriseMissionsStorageKey(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  return 'ru_surprise_missions_' + info.weekKey;
+}
+function loadSurpriseMissions(){
+  try{
+    const raw = localStorage.getItem(getSurpriseMissionsStorageKey());
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveSurpriseMissions(missions){
+  try{ localStorage.setItem(getSurpriseMissionsStorageKey(), JSON.stringify(missions)); }catch(e){}
+}
+
+function addSurpriseMission(){
+  const dayEl = document.getElementById('sm-day-select');
+  const startEl = document.getElementById('sm-start-select');
+  const endEl = document.getElementById('sm-end-select');
+  const targetEl = document.getElementById('sm-target-input');
+  const priceEl = document.getElementById('sm-price-input');
+  const descEl = document.getElementById('sm-desc-input');
+
+  const dayLabel = dayEl.value;
+  const startHour = parseInt(startEl.value);
+  const endHour = parseInt(endEl.value);
+  const target = parseInt(targetEl.value) || 0;
+  const unitPrice = parseInt(priceEl.value) || 0;
+  const description = descEl.value.trim();
+
+  if(endHour <= startHour){ alert('종료 시각은 시작 시각보다 늦어야 해요'); return; }
+  if(target <= 0){ alert('목표 건수를 입력해주세요'); return; }
+  if(unitPrice <= 0){ alert('건당 보상 금액을 입력해주세요'); return; }
+  if(!description){ alert('미션 설명을 입력해주세요 (기사님들께 보여질 문구예요)'); return; }
+
+  const missions = loadSurpriseMissions();
+  missions.push({ dayLabel, startHour, endHour, target, unitPrice, description });
+  saveSurpriseMissions(missions);
+  renderSurpriseMissionList();
+  targetEl.value = ''; priceEl.value = ''; descEl.value = '';
+
+  // 저장된 요일 자료가 있으면 즉시 반영해서 재게시
+  if(Object.keys(settlementFilesData).length > 0) autoCalcAndPublishSettlement();
+}
+
+function removeSurpriseMission(idx){
+  const missions = loadSurpriseMissions();
+  missions.splice(idx, 1);
+  saveSurpriseMissions(missions);
+  renderSurpriseMissionList();
+  if(Object.keys(settlementFilesData).length > 0) autoCalcAndPublishSettlement();
+}
+
+// 깜짝미션 입력 폼의 select(요일/시작시각/종료시각)를 채웁니다 (정적 HTML이라 JS로 채워야 함)
+function populateSurpriseMissionSelects(){
+  const dayEl = document.getElementById('sm-day-select');
+  const startEl = document.getElementById('sm-start-select');
+  const endEl = document.getElementById('sm-end-select');
+  if(dayEl && dayEl.options.length === 0){
+    dayEl.innerHTML = SETTLEMENT_DAY_LABELS.map(d=>`<option value="${d}">${d}</option>`).join('');
+  }
+  if(startEl && startEl.options.length === 0){
+    startEl.innerHTML = Array.from({length:24},(_,h)=>`<option value="${h}">${h}시</option>`).join('');
+  }
+  if(endEl && endEl.options.length === 0){
+    endEl.innerHTML = Array.from({length:24},(_,h)=>`<option value="${h+1}" ${h+1===20?'selected':''}>${h+1}시</option>`).join('');
+  }
+}
+
+function renderSurpriseMissionList(){
+  const listEl = document.getElementById('surprise-mission-list');
+  if(!listEl) return;
+  const missions = loadSurpriseMissions();
+  if(missions.length === 0){
+    listEl.innerHTML = '<div style="font-size:11px;color:#aaa;text-align:center;padding:8px">등록된 깜짝미션이 없습니다</div>';
+    return;
+  }
+  listEl.innerHTML = missions.map((m,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px;border:1px solid #FFD180">
+      <div style="font-size:12px;color:#333">
+        <b>${m.dayLabel} ${m.startHour}시~${m.endHour}시</b> · ${m.target}건↑ 달성 시 건당 ${m.unitPrice.toLocaleString()}원<br>
+        <span style="color:#888">${m.description}</span>
+      </div>
+      <button onclick="removeSurpriseMission(${i})" style="background:none;border:none;color:#E24B4A;font-size:16px;cursor:pointer;flex-shrink:0;margin-left:8px">✕</button>
+    </div>
+  `).join('');
 }
 
 function renderSettlementFileSlots(){
@@ -2824,6 +2983,7 @@ function changeSettlementAdminWeek(delta){
   const pubBtn = document.getElementById('settlement-publish-btn');
   if(pubBtn) pubBtn.style.display = 'none';
   renderSettlementFileSlots(); // 여기서 해당 주의 임시 저장분을 다시 불러옴
+  renderSurpriseMissionList();
 }
 
 // 기사님 이름/전화번호/아이디 명단을 Firebase에 누적 저장 (정산 조회 등록 시 본인 확인용)
@@ -2853,6 +3013,7 @@ function handleSettlementFileUpload(idx, dayLabel, file){
       const total = settlementFilesData[dayLabel].length;
       if(statusEl) statusEl.textContent = '✅';
       if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 총 ${total}명 인식됨 (100명 넘으면 이어서 다음 페이지도 업로드해주세요)`; }
+      autoCalcAndPublishSettlement();
     })
     .catch(err=>{
       if(statusEl) statusEl.textContent = '❌';
@@ -2881,6 +3042,7 @@ function handleSettlementPaste(event, idx, dayLabel){
     const total = settlementFilesData[dayLabel].length;
     if(statusEl) statusEl.textContent = '✅';
     if(msgEl){ msgEl.style.color='#1D9E75'; msgEl.textContent = `✅ ${dayLabel} 총 ${total}명 인식됨 (100명 넘으면 이어서 다음 페이지도 업로드해주세요)`; }
+    autoCalcAndPublishSettlement();
   }catch(err){
     if(statusEl) statusEl.textContent = '❌';
     if(msgEl){ msgEl.style.color='#E24B4A'; msgEl.textContent = '❌ 인식 실패: ' + err.message; }
@@ -2994,6 +3156,45 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   `;
 }
 
+// 요일 파일을 올릴 때마다 자동으로 계산 + 게시까지 한번에 처리합니다
+// (기사님들이 "정산 계산하기/게시하기"를 따로 안 눌러도 바로 조회 가능하도록)
+function autoCalcAndPublishSettlement(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  const uploadedDays = Object.keys(settlementFilesData);
+  if(uploadedDays.length === 0) return;
+
+  const dayArrays = uploadedDays.map(dayLabel => ({ dayLabel, riders: settlementFilesData[dayLabel] }));
+  const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions());
+  lastComputedSettlement = settlement;
+  saveSettlementCalc(settlement, uploadedDays);
+
+  // 관리자가 지금 이 화면을 보고 있다면 미리보기도 함께 갱신
+  const previewEl = document.getElementById('settlement-admin-preview');
+  if(previewEl) previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
+  const statusEl = document.getElementById('settlement-admin-status');
+  if(statusEl){
+    statusEl.style.color = '#1D9E75';
+    statusEl.textContent = `✅ ${uploadedDays.length}일치 자료 자동 계산+게시 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
+  }
+  const pubBtn = document.getElementById('settlement-publish-btn');
+  if(pubBtn) pubBtn.style.display = 'block';
+
+  // 실제 게시 (확인창 없이 자동으로, 기사님들이 바로 조회할 수 있게)
+  const ridersMap = {};
+  settlement.forEach(r=>{
+    const key = r.id || ('name:'+r.name);
+    ridersMap[key] = r;
+  });
+  const payload = {
+    weekKey: info.weekKey,
+    rangeLabel: info.rangeLabel,
+    uploadedDays,
+    publishedAt: new Date().toISOString(),
+    riders: ridersMap
+  };
+  db.ref('settlement/'+info.weekKey).set(payload);
+}
+
 function calcSettlement(){
   const statusEl = document.getElementById('settlement-admin-status');
   const uploadedDays = Object.keys(settlementFilesData);
@@ -3005,7 +3206,7 @@ function calcSettlement(){
     .filter(label => settlementFilesData[label])
     .map(label => ({ dayLabel: label, riders: settlementFilesData[label] }));
 
-  const settlement = computeWeeklySettlement(dayArrays);
+  const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions());
   lastComputedSettlement = settlement;
   saveSettlementCalc(settlement, uploadedDays);
 
@@ -3129,7 +3330,12 @@ function mergeSettlementAdminEntries(idxCsv){
   });
   const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
 
-  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, total, eligible, dailyAccept, acceptRate };
+  // 깜짝미션 보너스도 합쳐서 유지 (쪼개진 조각 중 하나에만 있었을 수 있으므로 합산)
+  const surpriseBonus = entries.reduce((s,e)=>s+(e.surpriseBonus||0), 0);
+  const surpriseDetails = entries.reduce((arr,e)=>arr.concat(e.surpriseDetails||[]), []);
+  const totalWithSurprise = total + surpriseBonus;
+
+  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, total: totalWithSurprise, eligible, dailyAccept, acceptRate };
 
   // 기존 쪼개진 항목들을 제거하고 합쳐진 항목 하나로 교체
   const remaining = all.filter(r => !entries.includes(r));
@@ -3350,6 +3556,16 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>개근보너스 <span style="font-size:11px;color:#888">(미션달성 ${r.missionDays}일)</span></span><span style="font-weight:600;color:${r.attend>0?'#1D9E75':'#bbb'}">${r.attend.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>물량보너스</span><span style="font-weight:600;color:${r.vol>0?'#1D9E75':'#bbb'}">${r.vol.toLocaleString()}원</span></div>
       <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>심야보너스 <span style="font-size:11px;color:#888">(${r.nightTotal}건)</span></span><span style="font-weight:600;color:${r.night>0?'#1D9E75':'#bbb'}">${r.night.toLocaleString()}원</span></div>
+      ${(r.surpriseDetails && r.surpriseDetails.length>0) ? `
+      <div style="background:#FFF7ED;border-radius:8px;padding:8px 10px;margin:8px 0">
+        <div style="font-size:11px;color:#9A5B13;font-weight:600;margin-bottom:4px">⚡ 깜짝미션</div>
+        ${r.surpriseDetails.map(sd=>`
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+            <span style="color:${sd.achieved?'#333':'#bbb'}">${sd.description} <span style="color:#aaa;font-size:10px">(${sd.count}/${sd.target}건)</span></span>
+            <span style="font-weight:700;color:${sd.achieved?'#EA8C1E':'#bbb'}">${sd.achieved?sd.reward.toLocaleString()+'원':'미달성'}</span>
+          </div>
+        `).join('')}
+      </div>` : ''}
       <div style="height:1px;background:#d0eed8;margin:8px 0"></div>
       <div style="display:flex;justify-content:space-between;font-size:16px"><span style="font-weight:700;color:#0F6E56">총 보너스</span><span style="font-weight:800;color:#1D9E75;font-size:19px">${r.total.toLocaleString()}원</span></div>
     </div>
