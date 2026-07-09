@@ -3168,6 +3168,33 @@ function toggleAdminCollapsible(contentId, arrowId){
   if(arrow) arrow.textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
 }
 
+// 보너스 지급 명세서 CSV 다운로드 (User ID + 이름 + 항목별 내역 + 총보너스, 전체 기사님 포함)
+function downloadSettlementPayoutCSV(){
+  const settlement = window.__settlementAdminAllRiders;
+  if(!settlement || settlement.length===0){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
+
+  const rows = [['User ID','이름','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','총보너스']];
+  settlement.slice().sort((a,b)=>b.total-a.total).forEach(r=>{
+    rows.push([r.id||'', r.name, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.total]);
+  });
+
+  const csv = '\uFEFF' + rows.map(row => row.map(v => {
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\r\n');
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  a.href = url;
+  a.download = `보너스지급명세서_${info.weekKey}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   const bonusRiders = settlement.filter(r=>r.total>0);
   window.__settlementAdminPreviewRiders = bonusRiders;
@@ -3180,6 +3207,9 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   const totalNight = settlement.reduce((s,r)=>s+r.night, 0);
 
   return `
+    <button onclick="downloadSettlementPayoutCSV()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
+      📥 보너스 지급 명세서 CSV 다운로드 (전체 ${settlement.length}명)
+    </button>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
         style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #ddd;font-size:12px;font-family:inherit"
