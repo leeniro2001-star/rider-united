@@ -526,21 +526,14 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-stats" class="screen">
   <div style="margin-top:4px">
 
-    <!-- 연속 달성 -->
-    <!-- 연속달성 + 월간보너스 한 카드에 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <div style="background:#fff;border-radius:12px;border:0.5px solid #e8e8e8;padding:10px 8px;text-align:center">
-        <div style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">연속 달성</div>
-        <div style="font-size:24px;margin-bottom:2px" id="streak-emoji">🔥</div>
-        <div style="font-size:20px;font-weight:700;color:#E24B4A" id="streak-count">0일</div>
-        <div style="font-size:11px;color:#888;margin-top:2px" id="streak-label">연속 달성 중</div>
+    <!-- 전체 기사님 누적콜 현황 (관리자만 볼 수 있음) -->
+    <div class="card" id="admin-cumul-ranking-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="card-title" style="margin:0">🏆 전체 기사님 누적콜 현황</div>
+        <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
       </div>
-      <div style="background:#fff;border-radius:12px;border:0.5px solid #e8e8e8;padding:10px 8px;text-align:center">
-        <div style="font-size:10px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">이번 달 보너스</div>
-        <div style="font-size:10px;color:#888;margin-bottom:2px" id="monthly-period"></div>
-        <div style="font-size:18px;font-weight:700;color:#1D9E75" id="monthly-bonus">0원</div>
-        <div style="font-size:11px;color:#888;margin-top:2px" id="monthly-days">달성일 0일</div>
-      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">7/1주부터 게시된 정산 자료 기준 자동 합산 (누적 1000콜마다 3만원 보너스)</div>
+      <div id="admin-cumul-ranking-list" style="max-height:400px;overflow-y:auto"></div>
     </div>
 
     <!-- 주간 현황판 -->
@@ -1242,6 +1235,44 @@ function computeAutoCumulCalls(id){
       if(rider && rider.weekTotal) total += rider.weekTotal;
     });
     return total;
+  });
+}
+
+// 관리자 전용: 전체 기사님 누적콜 순위 (7/1주부터 게시된 정산 자료 기준, 주 단위로 한번에 불러와서 합산)
+function renderAdminCumulRanking(){
+  const listEl = document.getElementById('admin-cumul-ranking-list');
+  const cardEl = document.getElementById('admin-cumul-ranking-card');
+  if(!listEl || !cardEl || cardEl.style.display === 'none') return;
+
+  listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">불러오는 중...</div>';
+
+  const weekKeys = getWeekKeysFromStart();
+  const fetches = weekKeys.map(wk => db.ref('settlement/'+wk).once('value'));
+  Promise.all(fetches).then(snaps=>{
+    const totals = {}; // key(아이디 또는 이름) -> {name, total}
+    snaps.forEach(snap=>{
+      const data = snap.val();
+      if(!data || !data.riders) return;
+      Object.values(data.riders).forEach(r=>{
+        const key = r.id || ('name:'+r.name);
+        if(!totals[key]) totals[key] = { name: r.name, total: 0 };
+        totals[key].total += r.weekTotal || 0;
+      });
+    });
+    const arr = Object.values(totals).sort((a,b)=>b.total-a.total);
+    if(arr.length === 0){
+      listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">아직 게시된 정산 자료가 없습니다</div>';
+      return;
+    }
+    listEl.innerHTML = arr.map((r,i)=>{
+      const milestones = Math.floor(r.total / 1000);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:0.5px solid #f0f0f0">
+        <span style="font-size:13px;color:#333"><b style="color:#bbb;margin-right:8px">${i+1}</b>${r.name}</span>
+        <span style="font-size:14px;font-weight:700;color:#1D9E75">${r.total.toLocaleString()}콜${milestones>0?` <span style="font-size:11px;color:#EA8C1E;font-weight:600">(💰${milestones}회 달성)</span>`:''}</span>
+      </div>`;
+    }).join('');
+  }).catch(err=>{
+    listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
   });
 }
 
@@ -3879,49 +3910,8 @@ function clearNotice(){
 
 // ── 통계 탭 ──────────────────────────────────────────────
 function renderStats(){
-  renderStreak();
-  renderMonthlyBonus();
   renderWeeklyGrid();
-}
-
-function renderStreak(){
-  const today = toKST(new Date());
-  let streak = 0;
-  for(let i=0;i<60;i++){
-    const d = new Date(today);
-    d.setUTCDate(today.getUTCDate()-i);
-    const k = dateKey(d);
-    const rec = lsGet(k);
-    if(rec && BONUS_TABLE.find(b=>rec.complete>=b.min)){
-      streak++;
-    } else if(i>0) break;
-  }
-  const emojis = streak>=14?'👑':streak>=7?'🔥':streak>=3?'💪':streak>=1?'✅':'😴';
-  const labels = streak>=14?'전설의 라이더!':streak>=7?'일주일 연속 달성!':streak>=3?'연속 달성 중!':streak>=1?'오늘 달성!':'아직 미달성';
-  document.getElementById('streak-emoji').textContent = emojis;
-  document.getElementById('streak-count').textContent = streak+'일';
-  document.getElementById('streak-count').style.color = streak>=7?'#E24B4A':streak>=3?'#EF9F27':'#1D9E75';
-  document.getElementById('streak-label').textContent = labels;
-}
-
-function renderMonthlyBonus(){
-  const now = toKST(new Date());
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
-  let total = 0, days = 0;
-  for(let d=1;d<=daysInMonth;d++){
-    const dt = new Date(Date.UTC(year, month, d));
-    const k = dateKey(dt);
-    const rec = lsGet(k);
-    if(rec){
-      const b = BONUS_TABLE.find(b=>rec.complete>=b.min);
-      if(b){ total+=b.won; days++; }
-    }
-  }
-  document.getElementById('monthly-period').textContent = `${month+1}월 1일 ~ ${now.getUTCDate()}일`;
-  document.getElementById('monthly-bonus').textContent = total.toLocaleString()+'원';
-  document.getElementById('monthly-days').textContent = `미션 달성일 ${days}일 / ${daysInMonth}일`;
+  renderAdminCumulRanking();
 }
 
 function calcSlotBonus(processed, target) {
@@ -4311,13 +4301,16 @@ function adminLogoTap(){
     const btn = document.getElementById('admin-btn');
     if(!btn) return;
     const wCard = document.getElementById('weekly-grid-card');
+    const cCard = document.getElementById('admin-cumul-ranking-card');
     if(btn.style.display === 'none'){
       btn.style.display = 'flex';
       if(wCard) wCard.style.display = 'block';
+      if(cCard){ cCard.style.display = 'block'; renderAdminCumulRanking(); }
       renderWeeklyGrid();
     } else {
       btn.style.display = 'none';
       if(wCard) wCard.style.display = 'none';
+      if(cCard) cCard.style.display = 'none';
     }
   }
 }
