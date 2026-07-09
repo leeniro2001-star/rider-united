@@ -326,7 +326,7 @@ input[type=number]{-moz-appearance:textfield}
           style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 3px 10px rgba(255,111,0,0.3)">
           🍀 오늘 응모하기
         </button>
-        <div style="font-size:13px;color:#E65100;font-weight:700;text-align:center;margin-top:8px" id="lottery-msg">📅 화·목·토 오후 2시 추첨 · 매회 2명 당첨</div>
+        <div style="font-size:13px;color:#E65100;font-weight:700;text-align:center;margin-top:8px" id="lottery-msg">📅 화·목·토 오후 2시 추첨</div>
       </div>
     </div>
 
@@ -1928,6 +1928,12 @@ function enterLottery(){
     alert('🙏 아직 오늘 출근 도장을 안 찍으셨네요!\n한 콜이라도 완료하시면 응모가 가능해요 🍀');
     return;
   }
+  // 당첨되면 폰 알림으로 바로 알려드리기 위해 알림 권한을 요청합니다 (이미 허용/거부했으면 다시 안 물어봄)
+  try{
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  }catch(e){}
   const btn = document.getElementById('lottery-btn');
   const msg = document.getElementById('lottery-msg');
   const dateKey = getLotteryDateKey();
@@ -2069,6 +2075,21 @@ function attachLotteryAnimationListener(){
     if(isRecent && data.candidates && data.candidates.length > 0 && data.winners && data.winners.length > 0){
       playLotteryDrawAnimation(data.candidates, data.winners);
     }
+    // 앱이 켜져있는 상태(포그라운드/백그라운드)라면, 내가 당첨자에 포함될 때 폰 알림도 띄웁니다
+    // (isRecent 체크로, 나중에 앱을 열었을 때 예전 발표까지 알림이 뜨지 않도록 합니다)
+    if(isRecent && data.winners && data.winners.length > 0){
+      const enteredName = lsGet('lottery_entered_'+dateKey);
+      if(enteredName && data.winners.includes(enteredName)){
+        try{
+          if('Notification' in window && Notification.permission === 'granted'){
+            new Notification('🎉 축하드려요! 당첨되셨습니다', {
+              body: (data.prizeName||lotteryPrizeName||'행운 추첨') + ' 받으실 수 있어요! 앱에서 확인해보세요 🍀',
+              icon: './icon-192.png'
+            });
+          }
+        }catch(e){}
+      }
+    }
   });
 }
 
@@ -2177,7 +2198,7 @@ function loadLottery(){
     lotteryPrizeName = prizeName;
     lotteryWinnerCount = winnerCount;
 
-    if(subtitleEl) subtitleEl.textContent = `${prizeName} · 매회 ${winnerCount}명 당첨`;
+    if(subtitleEl) subtitleEl.textContent = `${prizeName} · ${winnerCount}명 당첨`;
 
   // 내 응모 상태 표시
   if(myStatusEl){
@@ -2358,7 +2379,7 @@ function drawLotteryWinner(){
         updates['lottery/week/'+weekKey+'/winners/'+w] = {drawnAt:new Date().toISOString()};
       });
       // 전체 기사님 화면에 슬롯머신 추첨 애니메이션을 동시에 보여주기 위한 데이터
-      updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now() };
+      updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now(), prizeName: lotteryPrizeName };
       // 상품명/인원 설정도 함께 저장 (관리자가 안 건드렸어도 현재 값으로 저장됨)
       updates['lottery/'+dateKey+'/config'] = { prizeName: lotteryPrizeName, winnerCount: lotteryWinnerCount };
 
@@ -4070,6 +4091,35 @@ function adminLogoTap(){
 function initLongPress(){ /* 미사용 */ }
 
 // 초기화
+// 추첨 30분 전, 아직 응모 안 한 기사님께 알림으로 리마인드 (앱이 켜져있을 때만 동작)
+function checkLotteryReminder(){
+  try{
+    if(!('Notification' in window) || Notification.permission !== 'granted') return;
+    const kst = toKST(new Date());
+    const dow = kst.getUTCDay();
+    if(!getLotteryDrawDays().includes(dow)) return; // 추첨일(화·목·토)이 아니면 패스
+
+    const h = kst.getUTCHours(), m = kst.getUTCMinutes();
+    const minutesNow = h*60+m;
+    const drawMinutes = 14*60; // 오후 2시
+    const remain = drawMinutes - minutesNow;
+    if(remain > 30 || remain <= 0) return; // 추첨 30분 전~추첨 직전 구간이 아니면 패스
+
+    const dateKey = getLotteryDateKey();
+    const enteredName = lsGet('lottery_entered_'+dateKey);
+    if(enteredName) return; // 이미 응모했으면 알림 안 보냄
+
+    const reminderKey = 'lottery_reminder_shown_'+dateKey;
+    if(lsGet(reminderKey)) return; // 오늘 이미 알림 보냈으면 중복 방지
+    lsSet(reminderKey, true);
+
+    new Notification('⏰ 곧 추첨 시간입니다!', {
+      body: '오후 2시 행운 추첨 마감이 얼마 안 남았어요. 아직 응모 안 하셨다면 서둘러주세요 🍀',
+      icon: './icon-192.png'
+    });
+  }catch(e){}
+}
+
 function init(){
   const now=toKST(new Date());
   document.getElementById('today-date').textContent=`${now.getUTCMonth()+1}월 ${now.getUTCDate()}일 ${DAY_FULL[now.getUTCDay()]}`;
@@ -4083,6 +4133,8 @@ function init(){
   loadNightCalls();
   loadSetCount();
   loadLottery();
+  checkLotteryReminder();
+  setInterval(checkLotteryReminder, 60000); // 1분마다 추첨 임박 여부 확인
   // 주간 보너스 정산 조회 초기화
   const settleInfo = getSettlementWeekInfo(0);
   const settleLabelEl = document.getElementById('settlement-week-label');
