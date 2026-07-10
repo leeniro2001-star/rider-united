@@ -2327,7 +2327,11 @@ function finalizeLotteryAfterAnimation(winners){
     btnEl.disabled = true;
   }
   if(msgEl) msgEl.textContent = '📅 다음 추첨: '+( getNextLotteryDate()?.label || '추후 공지')+' 오후 2시';
-  if(isMe) setTimeout(()=>showLotteryConfetti(), 300);
+  const confettiShownKey = 'lottery_confetti_shown_'+dateKey;
+  if(isMe && !lsGet(confettiShownKey)){
+    lsSet(confettiShownKey, true);
+    setTimeout(()=>showLotteryConfetti(), 300);
+  }
 }
 
 function loadLottery(){
@@ -2382,7 +2386,12 @@ function loadLottery(){
       const isMe = winners.includes(enteredName);
       resultEl.style.background = 'linear-gradient(135deg,#2b2b3d,#1a1a2e)';
       resultEl.innerHTML = renderLotteryCasinoResult(winners, prizeName);
-      if(isMe) setTimeout(()=>showLotteryConfetti(prizeName), 300);
+      // 당첨 축하 팝업은 하루에 한 번만 (페이지 새로 열 때마다 반복해서 뜨지 않도록)
+      const confettiShownKey = 'lottery_confetti_shown_'+dateKey;
+      if(isMe && !lsGet(confettiShownKey)){
+        lsSet(confettiShownKey, true);
+        setTimeout(()=>showLotteryConfetti(prizeName), 300);
+      }
       // 추첨 완료 후 버튼 비활성화
       if(btnEl){
         btnEl.textContent = '🏆 추첨 완료';
