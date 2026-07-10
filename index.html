@@ -533,7 +533,11 @@ input[type=number]{-moz-appearance:textfield}
         <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
       </div>
       <div style="font-size:11px;color:#888;margin-bottom:8px">7/1주부터 게시된 정산 자료 기준 자동 합산 (누적 1000콜마다 3만원 보너스)</div>
-      <div id="admin-cumul-ranking-list" style="max-height:400px;overflow-y:auto"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;cursor:pointer;padding:8px 10px;background:#F8F8F8;border-radius:8px" onclick="toggleAdminCollapsible('admin-cumul-ranking-list','admin-cumul-ranking-arrow')">
+        <span style="font-size:12px;font-weight:700;color:#555">전체 명단 보기</span>
+        <span id="admin-cumul-ranking-arrow" style="font-size:12px;color:#555;font-weight:600">▼ 펼치기</span>
+      </div>
+      <div id="admin-cumul-ranking-list" style="display:none;max-height:400px;overflow-y:auto"></div>
     </div>
 
     <!-- 주간 현황판 -->
