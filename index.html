@@ -2025,10 +2025,10 @@ function isDrawDay(){
   return getLotteryDrawDays().includes(dow) && h >= BRANCH_CONFIG.lotteryDrawHour;
 }
 
-function getWeekKey(){
-  // 이번 주 키 (월요일 기준)
-  const {start} = getWeekRange(0);
-  return start.toISOString().slice(0,10);
+function getLotteryMonthKey(){
+  // 당첨 제외 기준: 이번 달 키 (예: '2026-07') - 한 달에 한 번만 당첨되도록
+  const kst = toKST(new Date());
+  return `${kst.getUTCFullYear()}-${String(kst.getUTCMonth()+1).padStart(2,'0')}`;
 }
 
 function getLotteryWinner(dateKey){
@@ -2451,12 +2451,12 @@ function loadLottery(){
 
 // 관리자 - 당첨자 추첨
 function resetLottery(){
-  if(!confirm('테스트 데이터를 초기화할까요?\n(오늘 응모자·당첨자·이번 주 당첨 기록 삭제)')) return;
+  if(!confirm('테스트 데이터를 초기화할까요?\n(오늘 응모자·당첨자·이번 달 당첨 기록 삭제)')) return;
   const dateKey = getLotteryDateKey();
-  const weekKey = getWeekKey();
+  const monthKey = getLotteryMonthKey();
   const updates = {};
   updates['lottery/'+dateKey] = null;
-  updates['lottery/week/'+weekKey] = null;
+  updates['lottery/month/'+monthKey] = null;
   db.ref().update(updates).then(()=>{
     // 로컬 응모 기록도 삭제
     localStorage.removeItem('ru_lottery_entered_'+dateKey);
@@ -2501,14 +2501,14 @@ function loadLotteryConfigForAdmin(){
 
 function drawLotteryWinner(){
   const dateKey = getLotteryDateKey();
-  const weekKey = getWeekKey();
+  const monthKey = getLotteryMonthKey();
 
   // 지사장 등 응모는 되지만 당첨은 제외할 이름
   const LOTTERY_EXCLUDED_NAMES = BRANCH_CONFIG.lotteryExcludedNames;
 
-  // 이번 주 당첨자 목록 가져오기
-  db.ref('lottery/week/'+weekKey+'/winners').once('value').then(wSnap=>{
-    const weekWinners = wSnap.val() ? Object.keys(wSnap.val()) : [];
+  // 이번 달 당첨자 목록 가져오기
+  db.ref('lottery/month/'+monthKey+'/winners').once('value').then(wSnap=>{
+    const monthWinners = wSnap.val() ? Object.keys(wSnap.val()) : [];
 
     db.ref('lottery/'+dateKey+'/entries').once('value').then(snap=>{
       const entries = snap.val();
@@ -2516,11 +2516,11 @@ function drawLotteryWinner(){
         alert('응모자가 없습니다!'); return;
       }
 
-      // 이번 주 당첨자 + 당첨 제외 명단 제외
-      let candidates = Object.keys(entries).filter(n => !weekWinners.includes(n) && !LOTTERY_EXCLUDED_NAMES.includes(n));
+      // 이번 달 당첨자 + 당첨 제외 명단 제외
+      let candidates = Object.keys(entries).filter(n => !monthWinners.includes(n) && !LOTTERY_EXCLUDED_NAMES.includes(n));
 
       if(candidates.length === 0){
-        if(!confirm('이번 주 당첨자를 제외하면 응모자가 없습니다.\n전체 응모자 중 추첨할까요?')) return;
+        if(!confirm('이번 달 당첨자를 제외하면 응모자가 없습니다.\n전체 응모자 중 추첨할까요?')) return;
         candidates = Object.keys(entries).filter(n => !LOTTERY_EXCLUDED_NAMES.includes(n));
       }
       if(candidates.length === 0){
@@ -2541,7 +2541,7 @@ function drawLotteryWinner(){
       const updates = {};
       winners.forEach((w,i)=>{
         updates['lottery/'+dateKey+'/winners/'+i] = {name:w, drawnAt:new Date().toISOString()};
-        updates['lottery/week/'+weekKey+'/winners/'+w] = {drawnAt:new Date().toISOString()};
+        updates['lottery/month/'+monthKey+'/winners/'+w] = {drawnAt:new Date().toISOString()};
       });
       // 전체 기사님 화면에 슬롯머신 추첨 애니메이션을 동시에 보여주기 위한 데이터
       updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now(), prizeName: lotteryPrizeName };
