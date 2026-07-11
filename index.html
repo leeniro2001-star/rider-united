@@ -2046,16 +2046,6 @@ function enterLottery(){
     alert('🍀 응모는 화·목·토 오후 2시 전까지만 가능합니다.');
     return;
   }
-  // 오늘 완료건이 1건 이상이어야 응모 가능 (아직 콜을 안 탄 기사님 응모 방지)
-  const todayRecGuard = lsGet(todayKey());
-  const todayCompleteGuard = Math.max(
-    (typeof cnt !== 'undefined' ? cnt.complete||0 : 0),
-    (todayRecGuard && todayRecGuard.complete) ? parseInt(todayRecGuard.complete)||0 : 0
-  );
-  if(todayCompleteGuard <= 0){
-    alert('🙏 아직 오늘 출근 도장을 안 찍으셨네요!\n한 콜이라도 완료하시면 응모가 가능해요 🍀');
-    return;
-  }
   // 당첨되면 폰 알림으로 바로 알려드리기 위해 알림 권한을 요청합니다 (이미 허용/거부했으면 다시 안 물어봄)
   try{
     if('Notification' in window && Notification.permission === 'default'){
