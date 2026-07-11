@@ -2037,12 +2037,20 @@ function getLotteryWinner(dateKey){
   return db.ref('lottery/'+dateKey).once('value');
 }
 
+// ⚠️ 임시: 오늘(2026-07-11)만 마감시간 지나도 응모 가능하게 예외 허용 (업데이트 중 마감을 놓쳐서 하루만 풀어드림)
+// 다음날부터는 이 조건이 자동으로 안 맞아서 원래대로 돌아갑니다. 안 쓰게 되면 이 블록 지워도 됩니다.
+const LOTTERY_DEADLINE_OVERRIDE_DATE = '2026-07-11';
+function isLotteryOverrideToday(){
+  const kst = toKST(new Date());
+  return kst.toISOString().slice(0,10) === LOTTERY_DEADLINE_OVERRIDE_DATE;
+}
+
 function enterLottery(){
   // 화/목/토 오후 2시 이전에만 응모 허용 (버튼 우회 클릭 방지)
   const kstGuard = toKST(new Date());
   const isDrawDayGuard = getLotteryDrawDays().includes(kstGuard.getUTCDay());
   const isPast14Guard = kstGuard.getUTCHours() >= BRANCH_CONFIG.lotteryDrawHour;
-  if(!isDrawDayGuard || isPast14Guard){
+  if((!isDrawDayGuard || isPast14Guard) && !isLotteryOverrideToday()){
     alert('🍀 응모는 화·목·토 오후 2시 전까지만 가능합니다.');
     return;
   }
@@ -2116,13 +2124,30 @@ function enterLottery(){
     if(!name || name.trim().length < 2){ alert('이름을 입력해주세요! (2글자 이상)'); return; }
     const name2 = name.trim();
     lsSet('lottery_name_key', name2);
-    // Firebase에 응모 등록
-    const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name2);
-    entryRef.set({name:name2, time: new Date().toISOString()}).then(()=>{
-      overlay.remove();
-      lsSet('lottery_entered_'+dateKey, name2);
-      loadLottery();
 
+    // 오늘 사장님이 올리신 지사현황 자료에 이 이름으로 완료건수가 있는지 확인 (서버 데이터 기준, 폰 저장값에 안 흔들림)
+    const todayBranchKey = getBranchDateKey(0);
+    applyBtn.disabled = true;
+    applyBtn.textContent = '확인 중...';
+    db.ref('branch/daily/'+todayBranchKey+'/riderActivity/'+name2).once('value').then(snap=>{
+      const todayComplete = snap.val();
+      if(!todayComplete || todayComplete <= 0){
+        applyBtn.disabled = false;
+        applyBtn.textContent = '🍀 응모하기';
+        alert('🙏 오늘 자료에서 "'+name2+'" 님의 완료 콜을 찾을 수 없어요.\n이름을 정확히 입력하셨는지 확인해주시고, 아직 콜을 안 타셨다면 한 콜이라도 완료 후 다시 응모해주세요 🍀');
+        return;
+      }
+      // Firebase에 응모 등록
+      const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name2);
+      entryRef.set({name:name2, time: new Date().toISOString()}).then(()=>{
+        overlay.remove();
+        lsSet('lottery_entered_'+dateKey, name2);
+        loadLottery();
+      });
+    }).catch(()=>{
+      applyBtn.disabled = false;
+      applyBtn.textContent = '🍀 응모하기';
+      alert('확인 중 오류가 발생했어요. 다시 시도해주세요.');
     });
   };
 
@@ -2358,7 +2383,7 @@ function loadLottery(){
       const kstCheck = toKST(new Date());
       const isDrawDayCheck = getLotteryDrawDays().includes(kstCheck.getUTCDay());
       const isPast14Check = kstCheck.getUTCHours() >= BRANCH_CONFIG.lotteryDrawHour;
-      if(isDrawDayCheck && !isPast14Check){
+      if((isDrawDayCheck && !isPast14Check) || isLotteryOverrideToday()){
         if(btnEl){ btnEl.textContent = '🍀 오늘 응모하기'; btnEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)'; btnEl.disabled = false; }
       } else if(isDrawDayCheck && isPast14Check){
         if(btnEl){ btnEl.textContent = '⏰ 오늘 응모 마감'; btnEl.style.background = '#bbb'; btnEl.disabled = true; }
@@ -2402,7 +2427,9 @@ function loadLottery(){
         const dayNames2 = ['일','월','화','수','목','금','토'];
         
         let statusText, statusIcon;
-        if(isDrawToday && todayH >= BRANCH_CONFIG.lotteryDrawHour){
+        if(isLotteryOverrideToday()){
+          statusText = '오늘 응모 가능! (임시 연장)'; statusIcon = '🍀';
+        } else if(isDrawToday && todayH >= BRANCH_CONFIG.lotteryDrawHour){
           statusText = '추첨 준비 중...'; statusIcon = '⏳';
         } else if(isDrawToday && todayH < 14){
           statusText = '오늘 오후 2시 추첨!'; statusIcon = '🎰';
@@ -3901,6 +3928,16 @@ function submitAdmin(){
   }
   db.ref('branch/daily/'+k).set(data)
     .then(()=>{
+      // 오늘 실제로 운행한 기사님 명단(완료건수>0)도 함께 저장 (행운추첨 응모 시 확인용)
+      try{
+        if(slotRidersAccum && slotRidersAccum.length > 0){
+          const activity = {};
+          slotRidersAccum.forEach(r=>{
+            if(r.complete > 0) activity[r.name] = (activity[r.name]||0) + r.complete;
+          });
+          db.ref('branch/daily/'+k+'/riderActivity').set(activity);
+        }
+      }catch(e){}
       try {
         lsSet('branch_'+k, data);
         closeAdmin();
