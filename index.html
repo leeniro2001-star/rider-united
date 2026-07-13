@@ -1785,9 +1785,12 @@ let branchDateOffset = 0;
 let branchListener = null;
 
 function getBranchDateKey(offset){
-  const d = toKST(new Date());
-  d.setUTCDate(d.getUTCDate() + offset);
-  return d.toISOString().slice(0,10);
+  const now = toKST(new Date());
+  if(now.getUTCHours() < 6){
+    now.setUTCDate(now.getUTCDate()-1); // 새벽 6시 전이면 아직 전날 영업일(영업시간 06:00~다음날05:59 기준)
+  }
+  now.setUTCDate(now.getUTCDate() + offset);
+  return now.toISOString().slice(0,10);
 }
 
 function changeBranchDate(delta){
@@ -1799,6 +1802,9 @@ function changeBranchDate(delta){
 
 function updateBranchDateLabel(){
   const d = toKST(new Date());
+  if(d.getUTCHours() < 6){
+    d.setUTCDate(d.getUTCDate()-1); // 새벽 6시 전이면 아직 전날 영업일 (getBranchDateKey와 동일한 기준)
+  }
   d.setUTCDate(d.getUTCDate() + branchDateOffset);
   const label = branchDateOffset === 0
     ? `오늘 (${d.getUTCMonth()+1}/${d.getUTCDate()})`
