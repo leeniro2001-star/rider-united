@@ -409,7 +409,7 @@ input[type=number]{-moz-appearance:textfield}
     <!-- 지사 전체 완료/거절/배차취소/수락률 요약 -->
     <div class="card" id="branch-accept-card">
       <div class="card-title">📊 지사 전체 오늘 현황</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
           <div style="font-size:9px;color:#aaa">완료</div>
           <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-total-complete">-</div>
@@ -425,10 +425,6 @@ input[type=number]{-moz-appearance:textfield}
         <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
           <div style="font-size:9px;color:#aaa">수락률</div>
           <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-accept-rate">-</div>
-        </div>
-        <div style="text-align:center;background:#F0F0FF;border-radius:6px;padding:8px 2px">
-          <div style="font-size:9px;color:#888">시간외(0~9시)</div>
-          <div style="font-size:16px;font-weight:700;color:#534AB7" id="branch-off-hours">-</div>
         </div>
       </div>
     </div>
@@ -542,6 +538,25 @@ input[type=number]{-moz-appearance:textfield}
         <span id="admin-cumul-ranking-arrow" style="font-size:12px;color:#555;font-weight:600">▼ 펼치기</span>
       </div>
       <div id="admin-cumul-ranking-list" style="display:none;max-height:400px;overflow-y:auto"></div>
+    </div>
+
+    <!-- 시간외(0~9시) 콜 현황 (관리자만 볼 수 있음, 주간 보너스 정산에 올린 자료 기준) -->
+    <div class="card" id="admin-offhours-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="card-title" style="margin:0">🌙 시간외(0~9시) 콜 현황</div>
+        <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">주간 보너스 정산에 올리신 요일별 자료 기준 (자정~오전 9시대, SLA 시간외 구간)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <button onclick="changeOffHoursWeekOffset(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer"><i class="ti ti-chevron-left"></i></button>
+        <span id="admin-offhours-week-label" style="font-size:12px;color:#888">-</span>
+        <button onclick="changeOffHoursWeekOffset(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer"><i class="ti ti-chevron-right"></i></button>
+      </div>
+      <div id="admin-offhours-days" style="margin-bottom:8px"></div>
+      <div style="background:#F0F0FF;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#534AB7;font-weight:600">주간 누적 시간외 콜</span>
+        <span id="admin-offhours-total" style="font-size:20px;font-weight:800;color:#534AB7">-</span>
+      </div>
     </div>
 
     <!-- 주간 현황판 -->
@@ -1314,6 +1329,45 @@ function computeAutoCumulCalls(id){
 }
 
 // 관리자 전용: 전체 기사님 누적콜 순위 (7/1주부터 게시된 정산 자료 기준, 주 단위로 한번에 불러와서 합산)
+// 관리자 전용: 시간외(0~9시) 콜 현황 (주간 보너스 정산에 게시된 자료 기준)
+let offHoursWeekOffset = 0;
+function changeOffHoursWeekOffset(delta){
+  offHoursWeekOffset += delta;
+  renderAdminOffHours();
+}
+
+function renderAdminOffHours(){
+  const cardEl = document.getElementById('admin-offhours-card');
+  const daysEl = document.getElementById('admin-offhours-days');
+  const totalEl = document.getElementById('admin-offhours-total');
+  const labelEl = document.getElementById('admin-offhours-week-label');
+  if(!cardEl || !daysEl || !totalEl || !labelEl || cardEl.style.display === 'none') return;
+
+  const info = getSettlementWeekInfo(offHoursWeekOffset);
+  labelEl.textContent = (offHoursWeekOffset===0?'이번 주':offHoursWeekOffset<0?`지난 ${-offHoursWeekOffset}주`:`다음 ${offHoursWeekOffset}주`) + ' · ' + info.rangeLabel;
+  daysEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">불러오는 중...</div>';
+
+  db.ref('settlement/'+info.weekKey).once('value').then(snap=>{
+    const data = snap.val();
+    if(!data || !data.offHoursByDay){
+      daysEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">이 주에 게시된 시간외 콜 자료가 없습니다</div>';
+      totalEl.textContent = '-';
+      return;
+    }
+    daysEl.innerHTML = SETTLEMENT_DAY_LABELS.map(dayLabel=>{
+      const v = data.offHoursByDay[dayLabel];
+      const hasData = v!=null;
+      return `<div style="display:flex;justify-content:space-between;padding:6px 4px;border-bottom:0.5px solid #f0f0f0;font-size:13px">
+        <span style="color:${hasData?'#333':'#ccc'}">${dayLabel}</span>
+        <span style="font-weight:700;color:${hasData?'#534AB7':'#ccc'}">${hasData?v.toLocaleString()+'건':'미집계'}</span>
+      </div>`;
+    }).join('');
+    totalEl.textContent = (data.offHoursTotal!=null ? data.offHoursTotal.toLocaleString() : '0') + '건';
+  }).catch(err=>{
+    daysEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
+  });
+}
+
 function renderAdminCumulRanking(){
   const listEl = document.getElementById('admin-cumul-ranking-list');
   const cardEl = document.getElementById('admin-cumul-ranking-card');
@@ -1731,10 +1785,6 @@ function renderBranch(data, offset){
       bcEl.textContent = '-'; brEl.textContent = '-'; bxEl.textContent = '-'; baEl.textContent = '-';
     }
   }
-  const ohEl = document.getElementById('branch-off-hours');
-  if(ohEl){
-    ohEl.textContent = (data && data.offHours!=null) ? parseInt(data.offHours).toLocaleString()+'건' : '-';
-  }
 
 
   if(cur){
@@ -1884,7 +1934,6 @@ function loadWeeklyAcceptRate(){
 // 관리자
 let adminAuthed = false; // 한번 인증하면 앱 종료 전까지 유지
 let lastUploadedAcceptData = null; // 파일 업로드로 읽은 완료/거절/배차취소 (제출 전 임시 보관)
-let lastUploadedOffHours = null; // 파일 업로드로 읽은 시간외(0~9시) 콜 건수 (제출 전 임시 보관)
 let slotUploadPages = []; // 100명 넘어 페이지가 나뉜 경우, 여러 파일을 업로드한 결과를 누적
 let slotRidersAccum = []; // 오늘 기사님별 수락률 목록용 (여러 페이지 업로드 시 누적)
 let currentAdminSavedData = null; // 관리자 화면 열 때 불러온 기존 저장값 (수동 수정 시 완료/거절/배차취소 보존용)
@@ -1952,7 +2001,6 @@ function showAdmin(){
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
   lastUploadedAcceptData = null; // 관리자 화면 새로 열 때마다 초기화 (이전 파일 결과 재사용 방지)
-  lastUploadedOffHours = null;
   slotUploadPages = [];
   slotRidersAccum = [];
   { const sectionEl = document.getElementById('admin-rider-accept-section'); if(sectionEl) sectionEl.style.display = 'none'; }
@@ -2742,10 +2790,6 @@ function parseSlotDataFromRows(rows){
     throw new Error('구간별 컬럼(아침점심피크 등)을 찾지 못했습니다');
   }
 
-  // 시간외 콜(SLA 신규 기준: 자정 0시~오전 9시대, 즉 오전 10시 되기 전까지) 컬럼 찾기
-  const OFF_HOUR_LABELS = ['0시','1시','2시','3시','4시','5시','6시','7시','8시','9시'];
-  const offHourIdxs = OFF_HOUR_LABELS.map(h => findSingleIdx(h));
-
   // "합계" 라벨이 있는 데이터 행 찾기 (보통 헤더 다음 첫 데이터 행)
   const totalRow = rows.slice(2).find(r=>r[idx.name]==='합계');
   if(!totalRow) throw new Error('합계 행을 찾지 못했습니다');
@@ -2760,7 +2804,6 @@ function parseSlotDataFromRows(rows){
     complete: idx.complete>=0 ? toNum(totalRow[idx.complete]) : null,
     reject: idx.reject>=0 ? toNum(totalRow[idx.reject]) : null,
     cancel: idx.cancel>=0 ? toNum(totalRow[idx.cancel]) : null,
-    offHours: offHourIdxs.every(i=>i>=0) ? offHourIdxs.reduce((sum,i)=>sum+toNum(totalRow[i]),0) : null,
     riderCount: rows.length - 3 // 헤더 2행 + 합계행 제외
   };
 }
@@ -2937,6 +2980,17 @@ const SETTLEMENT_DAY_LABELS = ['수요일','목요일','금요일','토요일','
 let settlementAdminWeekOffset = 0;
 let settlementFilesData = {}; // { '수요일': [riders...], ... } 이번에 업로드/계산 중인 주 기준
 let lastComputedSettlement = null;
+
+// 시간외(자정~오전 9시대, 즉 오전 10시 되기 전까지) 콜 건수를 요일별로 계산
+// (이미 업로드된 기사님별 시간대별 데이터에서 추출 - 별도 재업로드 필요 없음)
+function computeOffHoursByDay(){
+  const result = {};
+  Object.keys(settlementFilesData).forEach(dayLabel=>{
+    const riders = settlementFilesData[dayLabel] || [];
+    result[dayLabel] = riders.reduce((sum,r)=> sum + sumHourlyRange(r.hourly||[], 0, 10), 0);
+  });
+  return result;
+}
 
 function getSettlementWeekInfo(offset){
   const {start} = getWeekRange(offset);
@@ -3364,12 +3418,15 @@ function autoCalcAndPublishSettlement(){
     const key = r.id || ('name:'+r.name);
     ridersMap[key] = r;
   });
+  const offHoursByDay = computeOffHoursByDay();
   const payload = {
     weekKey: info.weekKey,
     rangeLabel: info.rangeLabel,
     uploadedDays,
     publishedAt: new Date().toISOString(),
-    riders: ridersMap
+    riders: ridersMap,
+    offHoursByDay,
+    offHoursTotal: Object.values(offHoursByDay).reduce((s,v)=>s+v,0)
   };
   db.ref('settlement/'+info.weekKey).set(payload);
 }
@@ -3552,12 +3609,15 @@ function publishSettlement(){
     ridersMap[key] = r;
   });
 
+  const offHoursByDay = computeOffHoursByDay();
   const payload = {
     weekKey: info.weekKey,
     rangeLabel: info.rangeLabel,
     uploadedDays,
     publishedAt: new Date().toISOString(),
-    riders: ridersMap
+    riders: ridersMap,
+    offHoursByDay,
+    offHoursTotal: Object.values(offHoursByDay).reduce((s,v)=>s+v,0)
   };
 
   db.ref('settlement/'+info.weekKey).set(payload).then(()=>{
@@ -3786,9 +3846,8 @@ function loadMySettlement(id){
 
 
 function applySlotPagesSum(){
-  const sum = {lunch:0, afternoon:0, evening:0, night:0, complete:0, reject:0, cancel:0, riderCount:0, offHours:0};
+  const sum = {lunch:0, afternoon:0, evening:0, night:0, complete:0, reject:0, cancel:0, riderCount:0};
   let hasAccept = true;
-  let hasOffHours = true;
   slotUploadPages.forEach(p=>{
     sum.lunch += p.lunch; sum.afternoon += p.afternoon; sum.evening += p.evening; sum.night += p.night;
     sum.riderCount += p.riderCount;
@@ -3797,7 +3856,6 @@ function applySlotPagesSum(){
     } else {
       hasAccept = false;
     }
-    if(p.offHours!=null){ sum.offHours += p.offHours; } else { hasOffHours = false; }
   });
   ['lunch','afternoon','evening','night'].forEach(key=>{
     const el = document.getElementById('ai-'+key);
@@ -3808,7 +3866,6 @@ function applySlotPagesSum(){
   } else {
     lastUploadedAcceptData = null;
   }
-  lastUploadedOffHours = (hasOffHours && slotUploadPages.length > 0) ? sum.offHours : null;
   return sum;
 }
 
@@ -3854,7 +3911,6 @@ function resetSlotPages(){
     if(el) el.value = 0;
   });
   lastUploadedAcceptData = null;
-  lastUploadedOffHours = null;
   const statusEl = document.getElementById('slot-file-status');
   if(statusEl){ statusEl.style.color='#888'; statusEl.textContent = '초기화됐어요. 파일을 다시 올려주세요.'; }
   const sectionEl = document.getElementById('admin-rider-accept-section');
@@ -3886,7 +3942,7 @@ function handleSlotPaste(event){
     if(sum.complete!=null){
       const denom = sum.complete + sum.reject + sum.cancel;
       const rate = denom>0 ? Math.round(sum.complete/denom*1000)/10 : null;
-      acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}` + (sum.offHours>0 ? ` · 시간외 ${sum.offHours}건` : '');
+      acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
     }
     const pageInfo = slotUploadPages.length > 1 ? ` (${slotUploadPages.length}개 파일 합산, 100명 넘어 페이지 나뉜 경우 이어서 올려주세요)` : '';
     if(statusEl){
@@ -3920,7 +3976,7 @@ function handleSlotFileUpload(file){
       if(sum.complete!=null){
         const denom = sum.complete + sum.reject + sum.cancel;
         const rate = denom>0 ? Math.round(sum.complete/denom*1000)/10 : null;
-        acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}` + (sum.offHours>0 ? ` · 시간외 ${sum.offHours}건` : '');
+        acceptMsg = ` · 완료 ${sum.complete} 거절 ${sum.reject} 배차취소 ${sum.cancel} · 수락률 ${rate!=null?rate+'%':'-'}`;
       }
       const pageInfo = slotUploadPages.length > 1 ? ` (${slotUploadPages.length}개 파일 합산, 100명 넘어 페이지 나뉜 경우 이어서 올려주세요)` : '';
       if(statusEl){
@@ -3950,12 +4006,6 @@ function submitAdmin(){
     if(currentAdminSavedData.complete!=null) data.complete = currentAdminSavedData.complete;
     if(currentAdminSavedData.reject!=null) data.reject = currentAdminSavedData.reject;
     if(currentAdminSavedData.cancel!=null) data.cancel = currentAdminSavedData.cancel;
-  }
-  // 시간외(자정~오전 9시대) 콜 건수: 방금 업로드한 파일 값이 있으면 그걸 쓰고, 없으면 기존 저장값 유지
-  if(lastUploadedOffHours!=null){
-    data.offHours = lastUploadedOffHours;
-  } else if(currentAdminSavedData && currentAdminSavedData.offHours!=null){
-    data.offHours = currentAdminSavedData.offHours;
   }
   db.ref('branch/daily/'+k).set(data)
     .then(()=>{
@@ -4080,6 +4130,7 @@ function clearNotice(){
 function renderStats(){
   renderWeeklyGrid();
   renderAdminCumulRanking();
+  renderAdminOffHours();
 }
 
 function calcSlotBonus(processed, target) {
@@ -4465,15 +4516,18 @@ function adminLogoTap(){
     if(!btn) return;
     const wCard = document.getElementById('weekly-grid-card');
     const cCard = document.getElementById('admin-cumul-ranking-card');
+    const oCard = document.getElementById('admin-offhours-card');
     if(btn.style.display === 'none'){
       btn.style.display = 'flex';
       if(wCard) wCard.style.display = 'block';
       if(cCard){ cCard.style.display = 'block'; renderAdminCumulRanking(); }
+      if(oCard){ oCard.style.display = 'block'; renderAdminOffHours(); }
       renderWeeklyGrid();
     } else {
       btn.style.display = 'none';
       if(wCard) wCard.style.display = 'none';
       if(cCard) cCard.style.display = 'none';
+      if(oCard) oCard.style.display = 'none';
     }
   }
 }
