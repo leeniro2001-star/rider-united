@@ -1753,6 +1753,9 @@ function closeSlotAchieve(){
 function renderBranch(data, offset){
   offset = offset || 0;
   const n=toKST(new Date());
+  if(n.getUTCHours() < 6){
+    n.setUTCDate(n.getUTCDate()-1); // 새벽 6시 전이면 아직 전날 영업일 (getBranchDateKey와 동일한 기준)
+  }
   n.setUTCDate(n.getUTCDate() + offset);
   const dayKey=DAY_KEY[n.getUTCDay()];
   // 오늘이 아니면 현재슬롯 표시 안함
@@ -2007,7 +2010,9 @@ function showAdmin(){
   db.ref('branch/daily/'+k).once('value').then(snap=>{
     const saved = snap.val() || {};
     currentAdminSavedData = saved;
-    const todayDayKey = DAY_KEY[toKST(new Date()).getUTCDay()];
+    // k(getBranchDateKey로 정확히 계산된, 지금 편집 중인 그 날짜)를 기준으로 요일을 구합니다.
+    // (실시간 "지금"의 요일이 아니라, 화살표로 이동한 그 날짜의 요일이어야 정확합니다)
+    const todayDayKey = DAY_KEY[new Date(k+'T00:00:00Z').getUTCDay()];
     const inputs = `<div class="admin-grid">${SLOTS.map(s=>{
       const val = saved[s.key] || '';
       const target = s.targets[todayDayKey] * getSetCount();
@@ -2189,29 +2194,12 @@ function enterLottery(){
     const name2 = name.trim();
     lsSet('lottery_name_key', name2);
 
-    // 오늘 사장님이 올리신 지사현황 자료에 이 이름으로 완료건수가 있는지 확인 (서버 데이터 기준, 폰 저장값에 안 흔들림)
-    const todayBranchKey = getBranchDateKey(0);
-    applyBtn.disabled = true;
-    applyBtn.textContent = '확인 중...';
-    db.ref('branch/daily/'+todayBranchKey+'/riderActivity/'+name2).once('value').then(snap=>{
-      const todayComplete = snap.val();
-      if(!todayComplete || todayComplete <= 0){
-        applyBtn.disabled = false;
-        applyBtn.textContent = '🍀 응모하기';
-        alert('🙏 오늘 자료에서 "'+name2+'" 님의 완료 콜을 찾을 수 없어요.\n이름을 정확히 입력하셨는지 확인해주시고, 아직 콜을 안 타셨다면 한 콜이라도 완료 후 다시 응모해주세요 🍀');
-        return;
-      }
-      // Firebase에 응모 등록
-      const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name2);
-      entryRef.set({name:name2, time: new Date().toISOString()}).then(()=>{
-        overlay.remove();
-        lsSet('lottery_entered_'+dateKey, name2);
-        loadLottery();
-      });
-    }).catch(()=>{
-      applyBtn.disabled = false;
-      applyBtn.textContent = '🍀 응모하기';
-      alert('확인 중 오류가 발생했어요. 다시 시도해주세요.');
+    // Firebase에 응모 등록
+    const entryRef = db.ref('lottery/'+dateKey+'/entries/'+name2);
+    entryRef.set({name:name2, time: new Date().toISOString()}).then(()=>{
+      overlay.remove();
+      lsSet('lottery_entered_'+dateKey, name2);
+      loadLottery();
     });
   };
 
@@ -3200,6 +3188,27 @@ function updateRosterFromRiders(riders){
   }
 }
 
+// 같은 요일에 이미 자료가 있는 상태에서, 겹치는 기사님이 많이 보이면
+// "페이지 추가"가 아니라 "같은 파일을 실수로 또 올린 것"일 가능성이 높으므로 경고합니다.
+function checkDuplicateOverlap(dayLabel, newRiders){
+  const existing = settlementFilesData[dayLabel];
+  if(!existing || existing.length === 0) return true; // 처음 올리는 거면 문제없음
+
+  const existingKeys = new Set(existing.map(r => r.name + '|' + (r.phone||'').replace(/[^0-9]/g,'')));
+  const overlapCount = newRiders.filter(r => existingKeys.has(r.name + '|' + (r.phone||'').replace(/[^0-9]/g,''))).length;
+  const overlapRatio = newRiders.length > 0 ? overlapCount / newRiders.length : 0;
+
+  if(overlapRatio > 0.5){
+    return confirm(
+      `⚠️ ${dayLabel}에 이미 ${existing.length}명 자료가 있는데, 지금 올리신 파일도 ${overlapCount}명이 겹쳐요.\n\n` +
+      `100명 넘어 다음 페이지를 올리시는 거라면 "확인"을 눌러 계속하시고,\n` +
+      `혹시 같은 파일을 실수로 다시 올리신 거라면 "취소" 누르시고 먼저 이 요일을 "초기화"한 후 다시 올려주세요.\n\n` +
+      `(계속하면 겹치는 기사님은 그 요일에 중복 합산됩니다)`
+    );
+  }
+  return true;
+}
+
 function handleSettlementFileUpload(idx, dayLabel, file){
   const statusEl = document.getElementById('settlement-file-status-'+idx);
   if(!file) return;
@@ -3208,6 +3217,12 @@ function handleSettlementFileUpload(idx, dayLabel, file){
     .then(zip=>getDocxTableRows(zip))
     .then(rows=>{
       const riders = parseRiderRowsFromRows(rows);
+      if(!checkDuplicateOverlap(dayLabel, riders)){
+        if(statusEl) statusEl.textContent = '';
+        const msgEl = document.getElementById('settlement-paste-msg-'+idx);
+        if(msgEl){ msgEl.style.color='#888'; msgEl.textContent = '업로드를 취소했어요. 필요하면 초기화 후 다시 올려주세요.'; }
+        return;
+      }
       // 100명 넘어 페이지가 나뉜 경우를 위해 덮어쓰지 않고 이어붙임
       settlementFilesData[dayLabel] = (settlementFilesData[dayLabel] || []).concat(riders);
       saveSettlementDraft();
@@ -3238,6 +3253,11 @@ function handleSettlementPaste(event, idx, dayLabel){
   try{
     const rows = parseHtmlTableToRows(html);
     const riders = parseRiderRowsFromRows(rows);
+    if(!checkDuplicateOverlap(dayLabel, riders)){
+      if(statusEl) statusEl.textContent = '';
+      if(msgEl){ msgEl.style.color='#888'; msgEl.textContent = '업로드를 취소했어요. 필요하면 초기화 후 다시 올려주세요.'; }
+      return;
+    }
     // 100명 넘어 페이지가 나뉜 경우를 위해 덮어쓰지 않고 이어붙임
     settlementFilesData[dayLabel] = (settlementFilesData[dayLabel] || []).concat(riders);
     saveSettlementDraft();
