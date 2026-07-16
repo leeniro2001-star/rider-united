@@ -656,6 +656,11 @@ input[type=number]{-moz-appearance:textfield}
         style="width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
         🎯 지금 당첨자 추첨하기
       </button>
+      <button onclick="showLotteryEntrantList()"
+        style="width:100%;padding:9px;border-radius:10px;border:1px solid #FED7AA;background:#FFFBF5;color:#9A5B13;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">
+        📋 오늘 응모자 명단 보기
+      </button>
+      <div id="lottery-entrant-list" style="margin-bottom:8px"></div>
       <button onclick="resetLottery()"
         style="width:100%;padding:9px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;color:#aaa;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:14px">
         🔄 추첨 데이터 초기화 (테스트용)
@@ -2548,6 +2553,40 @@ function loadLotteryConfigForAdmin(){
     if(prizeInput) prizeInput.value = lotteryPrizeName;
     const countEl = document.getElementById('lottery-winner-count-display');
     if(countEl) countEl.textContent = lotteryWinnerCount;
+  });
+}
+
+// 관리자 전용: 오늘 응모한 기사님 명단 확인
+function showLotteryEntrantList(){
+  const listEl = document.getElementById('lottery-entrant-list');
+  if(!listEl) return;
+  const dateKey = getLotteryDateKey();
+  listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:10px">불러오는 중...</div>';
+
+  db.ref('lottery/'+dateKey+'/entries').once('value').then(snap=>{
+    const entries = snap.val();
+    if(!entries || Object.keys(entries).length === 0){
+      listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:10px">오늘 응모자가 없습니다</div>';
+      return;
+    }
+    const names = Object.keys(entries).sort((a,b)=>{
+      const ta = entries[a].time || '';
+      const tb = entries[b].time || '';
+      return ta.localeCompare(tb);
+    });
+    listEl.innerHTML = `
+      <div style="background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:10px 12px">
+        <div style="font-size:12px;font-weight:600;color:#9A5B13;margin-bottom:8px">오늘 응모자 (${names.length}명)</div>
+        ${names.map((n,i)=>`
+          <div style="display:flex;justify-content:space-between;padding:5px 2px;border-bottom:0.5px solid #f5f5f5;font-size:13px">
+            <span style="color:#333"><b style="color:#bbb;margin-right:6px">${i+1}</b>${n}</span>
+            <span style="color:#aaa;font-size:11px">${entries[n].time ? new Date(entries[n].time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }).catch(err=>{
+    listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:12px;padding:10px">불러오기 실패: ${err.message}</div>`;
   });
 }
 
