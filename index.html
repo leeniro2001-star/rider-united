@@ -1319,6 +1319,42 @@ function getWeekKeysFromStart(){
   return keys;
 }
 
+// ── 누적콜 마일스톤 보너스 (1000/2000/3000/4000콜 → 각 3만원, 5000콜 → 10만원 + 사이클 리셋) ──
+function getMilestoneReward(absoluteMilestone){
+  return (absoluteMilestone % 5000 === 0) ? 100000 : 30000;
+}
+// prevTotal(이전 누적)과 newTotal(이번 주 반영 후 누적) 사이에 새로 넘은 1000단위 마일스톤들을 찾아 보너스 합산
+function computeMilestoneBonusCrossed(prevTotal, newTotal){
+  let bonus = 0;
+  const details = [];
+  const firstMilestone = Math.floor(prevTotal/1000)*1000 + 1000;
+  for(let m = firstMilestone; m <= newTotal; m += 1000){
+    const reward = getMilestoneReward(m);
+    bonus += reward;
+    details.push({ milestone:m, reward });
+  }
+  return { bonus, details };
+}
+// 특정 주(excludeWeekKey) "이전"까지 게시된 모든 주의 누적콜을 기사님별로 한 번에 계산
+// (renderAdminCumulRanking과 같은 방식: 주 단위로 한 번에 불러와서 효율적으로 합산)
+function fetchPriorCumulativeMap(excludeWeekKey){
+  const weekKeys = getWeekKeysFromStart().filter(wk => wk < excludeWeekKey);
+  if(weekKeys.length === 0) return Promise.resolve({});
+  const fetches = weekKeys.map(wk => db.ref('settlement/'+wk).once('value'));
+  return Promise.all(fetches).then(snaps=>{
+    const totals = {};
+    snaps.forEach(snap=>{
+      const data = snap.val();
+      if(!data || !data.riders) return;
+      Object.values(data.riders).forEach(r=>{
+        const key = r.id || ('name:'+r.name);
+        totals[key] = (totals[key]||0) + (r.weekTotal||0);
+      });
+    });
+    return totals;
+  });
+}
+
 // 등록된 아이디 기준으로, 지금까지 게시된 모든 주간 정산의 완료건을 합산합니다.
 function computeAutoCumulCalls(id){
   const weekKeys = getWeekKeysFromStart();
@@ -2918,12 +2954,14 @@ function sumHourlyRange(hourly, startHour, endHour){
   return sum;
 }
 
-function computeWeeklySettlement(dayArrays, surpriseMissions){
+function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap){
   // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
   // surpriseMissions: [{dayLabel, startHour, endHour, target, unitPrice, description}, ...] (선택, 관리자가 설정한 깜짝미션)
+  // priorCumulMap: { '아이디' 또는 'name:이름' -> 이번 주 이전까지의 누적콜 } (선택, 1000콜 마일스톤 보너스 계산용)
   const GOALS = BRANCH_CONFIG.dailyMissionTiers.map(t=>t.min);
   const TIER_BONUS = {}; BRANCH_CONFIG.dailyMissionTiers.forEach(t=>TIER_BONUS[t.min]=t.won);
   surpriseMissions = surpriseMissions || [];
+  priorCumulMap = priorCumulMap || {};
 
   // 같은 사람을 "이름+전화번호"로 먼저 묶습니다 (아이디만 보고 묶으면, 어떤 날짜 파일에는
   // 아이디가 비어있거나 다르게 기록된 경우 같은 사람이 두 명으로 쪼개질 위험이 있어서
@@ -2989,10 +3027,20 @@ function computeWeeklySettlement(dayArrays, surpriseMissions){
 
     const total = mission + attend + vol + night + surpriseBonus;
 
+    // 누적콜 마일스톤 보너스: 이번 주 반영 전/후 누적콜 사이에 새로 넘은 1000단위가 있으면 지급
+    const cumulKey = rider.id || ('name:'+rider.name);
+    const priorCumul = priorCumulMap[cumulKey] || 0;
+    const newCumul = priorCumul + weekTotal;
+    const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul);
+
+    const totalWithMilestone = total + cumulMilestoneBonus;
+
     result.push({
       name: rider.name, phone: rider.phone, id: rider.id,
       weekTotal, missionDays, nightTotal,
-      breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, total, eligible,
+      breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails,
+      cumulMilestoneBonus, cumulMilestoneDetails, priorCumul, newCumul,
+      total: totalWithMilestone, eligible,
       dailyAccept, acceptRate
     });
   });
@@ -3337,9 +3385,9 @@ function downloadSettlementPayoutCSV(){
   const settlement = window.__settlementAdminAllRiders;
   if(!settlement || settlement.length===0){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
 
-  const rows = [['User ID','이름','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','총보너스']];
+  const rows = [['User ID','이름','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','누적콜마일스톤','총보너스']];
   settlement.slice().sort((a,b)=>b.total-a.total).forEach(r=>{
-    rows.push([r.id||'', r.name, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.total]);
+    rows.push([r.id||'', r.name, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.cumulMilestoneBonus||0, r.total]);
   });
 
   const csv = '\uFEFF' + rows.map(row => row.map(v => {
@@ -3369,6 +3417,8 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   const totalAttend = settlement.reduce((s,r)=>s+r.attend, 0);
   const totalVol = settlement.reduce((s,r)=>s+r.vol, 0);
   const totalNight = settlement.reduce((s,r)=>s+r.night, 0);
+  const totalSurprise = settlement.reduce((s,r)=>s+(r.surpriseBonus||0), 0);
+  const totalMilestone = settlement.reduce((s,r)=>s+(r.cumulMilestoneBonus||0), 0);
 
   return `
     <button onclick="downloadSettlementPayoutCSV()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
@@ -3430,7 +3480,7 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
     <div style="background:#1a3a4a;border-radius:10px;padding:14px 16px;margin-bottom:8px">
       <div style="font-size:12px;color:#9DBEEA;font-weight:600;margin-bottom:4px">💰 이번 주 지사 전체 보너스 지출 총액</div>
       <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:10px">${totalPayout.toLocaleString()}<span style="font-size:14px;font-weight:700">원</span></div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;font-size:10px;color:#9DBEEA">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:10px;color:#9DBEEA">
         <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
           <div>일일미션</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalMission.toLocaleString()}원</div>
         </div>
@@ -3442,6 +3492,12 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
         </div>
         <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
           <div>심야</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalNight.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>깜짝미션</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalSurprise.toLocaleString()}원</div>
+        </div>
+        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
+          <div>누적마일스톤</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalMilestone.toLocaleString()}원</div>
         </div>
       </div>
     </div>
@@ -3456,38 +3512,41 @@ function autoCalcAndPublishSettlement(){
   if(uploadedDays.length === 0) return;
 
   const dayArrays = uploadedDays.map(dayLabel => ({ dayLabel, riders: settlementFilesData[dayLabel] }));
-  const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions());
-  lastComputedSettlement = settlement;
-  saveSettlementCalc(settlement, uploadedDays);
 
-  // 관리자가 지금 이 화면을 보고 있다면 미리보기도 함께 갱신
-  const previewEl = document.getElementById('settlement-admin-preview');
-  if(previewEl) previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
-  const statusEl = document.getElementById('settlement-admin-status');
-  if(statusEl){
-    statusEl.style.color = '#1D9E75';
-    statusEl.textContent = `✅ ${uploadedDays.length}일치 자료 자동 계산+게시 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
-  }
-  const pubBtn = document.getElementById('settlement-publish-btn');
-  if(pubBtn) pubBtn.style.display = 'block';
+  fetchPriorCumulativeMap(info.weekKey).then(priorCumulMap=>{
+    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap);
+    lastComputedSettlement = settlement;
+    saveSettlementCalc(settlement, uploadedDays);
 
-  // 실제 게시 (확인창 없이 자동으로, 기사님들이 바로 조회할 수 있게)
-  const ridersMap = {};
-  settlement.forEach(r=>{
-    const key = r.id || ('name:'+r.name);
-    ridersMap[key] = r;
+    // 관리자가 지금 이 화면을 보고 있다면 미리보기도 함께 갱신
+    const previewEl = document.getElementById('settlement-admin-preview');
+    if(previewEl) previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
+    const statusEl = document.getElementById('settlement-admin-status');
+    if(statusEl){
+      statusEl.style.color = '#1D9E75';
+      statusEl.textContent = `✅ ${uploadedDays.length}일치 자료 자동 계산+게시 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
+    }
+    const pubBtn = document.getElementById('settlement-publish-btn');
+    if(pubBtn) pubBtn.style.display = 'block';
+
+    // 실제 게시 (확인창 없이 자동으로, 기사님들이 바로 조회할 수 있게)
+    const ridersMap = {};
+    settlement.forEach(r=>{
+      const key = r.id || ('name:'+r.name);
+      ridersMap[key] = r;
+    });
+    const offHoursByDay = computeOffHoursByDay();
+    const payload = {
+      weekKey: info.weekKey,
+      rangeLabel: info.rangeLabel,
+      uploadedDays,
+      publishedAt: new Date().toISOString(),
+      riders: ridersMap,
+      offHoursByDay,
+      offHoursTotal: Object.values(offHoursByDay).reduce((s,v)=>s+v,0)
+    };
+    db.ref('settlement/'+info.weekKey).set(payload);
   });
-  const offHoursByDay = computeOffHoursByDay();
-  const payload = {
-    weekKey: info.weekKey,
-    rangeLabel: info.rangeLabel,
-    uploadedDays,
-    publishedAt: new Date().toISOString(),
-    riders: ridersMap,
-    offHoursByDay,
-    offHoursTotal: Object.values(offHoursByDay).reduce((s,v)=>s+v,0)
-  };
-  db.ref('settlement/'+info.weekKey).set(payload);
 }
 
 function calcSettlement(){
@@ -3501,22 +3560,27 @@ function calcSettlement(){
     .filter(label => settlementFilesData[label])
     .map(label => ({ dayLabel: label, riders: settlementFilesData[label] }));
 
-  const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions());
-  lastComputedSettlement = settlement;
-  saveSettlementCalc(settlement, uploadedDays);
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  if(statusEl){ statusEl.style.color='#888'; statusEl.textContent = '계산 중...'; }
 
-  if(statusEl){
-    statusEl.style.color = '#1D9E75';
-    statusEl.textContent = `✅ ${uploadedDays.length}일치 자료로 계산 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
-  }
+  fetchPriorCumulativeMap(info.weekKey).then(priorCumulMap=>{
+    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap);
+    lastComputedSettlement = settlement;
+    saveSettlementCalc(settlement, uploadedDays);
 
-  const previewEl = document.getElementById('settlement-admin-preview');
-  if(previewEl){
-    previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
-  }
+    if(statusEl){
+      statusEl.style.color = '#1D9E75';
+      statusEl.textContent = `✅ ${uploadedDays.length}일치 자료로 계산 완료 (기사님 ${settlement.length}명, 보너스 대상 ${settlement.filter(r=>r.total>0).length}명)`;
+    }
 
-  const pubBtn = document.getElementById('settlement-publish-btn');
-  if(pubBtn) pubBtn.style.display = 'block';
+    const previewEl = document.getElementById('settlement-admin-preview');
+    if(previewEl){
+      previewEl.innerHTML = renderSettlementAdminPreviewHTML(settlement, uploadedDays.join(', '));
+    }
+
+    const pubBtn = document.getElementById('settlement-publish-btn');
+    if(pubBtn) pubBtn.style.display = 'block';
+  });
 }
 
 function toggleSettlementAdminDetail(i){
@@ -3628,9 +3692,15 @@ function mergeSettlementAdminEntries(idxCsv){
   // 깜짝미션 보너스도 합쳐서 유지 (쪼개진 조각 중 하나에만 있었을 수 있으므로 합산)
   const surpriseBonus = entries.reduce((s,e)=>s+(e.surpriseBonus||0), 0);
   const surpriseDetails = entries.reduce((arr,e)=>arr.concat(e.surpriseDetails||[]), []);
-  const totalWithSurprise = total + surpriseBonus;
 
-  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, total: totalWithSurprise, eligible, dailyAccept, acceptRate };
+  // 누적콜 마일스톤 보너스도 합쳐진 weekTotal 기준으로 다시 계산 (이전 누적은 조각들 중 하나의 값을 그대로 사용 - 같은 사람이라 동일해야 함)
+  const priorCumul = entries.map(e=>e.priorCumul||0).find(v=>v>0) || 0;
+  const newCumul = priorCumul + weekTotal;
+  const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul);
+
+  const totalWithSurprise = total + surpriseBonus + cumulMilestoneBonus;
+
+  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, cumulMilestoneBonus, cumulMilestoneDetails, priorCumul, newCumul, total: totalWithSurprise, eligible, dailyAccept, acceptRate };
 
   // 기존 쪼개진 항목들을 제거하고 합쳐진 항목 하나로 교체
   const remaining = all.filter(r => !entries.includes(r));
@@ -3861,6 +3931,16 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
           <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
             <span style="color:${sd.achieved?'#333':'#bbb'}">${sd.description} <span style="color:#aaa;font-size:10px">(${sd.count}/${sd.target}건)</span></span>
             <span style="font-weight:700;color:${sd.achieved?'#EA8C1E':'#bbb'}">${sd.achieved?sd.reward.toLocaleString()+'원':'미달성'}</span>
+          </div>
+        `).join('')}
+      </div>` : ''}
+      ${(r.cumulMilestoneDetails && r.cumulMilestoneDetails.length>0) ? `
+      <div style="background:#F0F4FF;border-radius:8px;padding:8px 10px;margin:8px 0">
+        <div style="font-size:11px;color:#3B5BDB;font-weight:600;margin-bottom:4px">🏆 누적콜 마일스톤 달성! (누적 ${r.priorCumul.toLocaleString()}→${r.newCumul.toLocaleString()}콜)</div>
+        ${r.cumulMilestoneDetails.map(md=>`
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+            <span style="color:#333">${md.milestone.toLocaleString()}콜 달성</span>
+            <span style="font-weight:700;color:#3B5BDB">${md.reward.toLocaleString()}원</span>
           </div>
         `).join('')}
       </div>` : ''}
