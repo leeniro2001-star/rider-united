@@ -644,6 +644,20 @@ input[type=number]{-moz-appearance:textfield}
             onchange="updateLotteryConfig()">
         </div>
       </div>
+
+      <!-- 추첨 일정 (요일/시각) 자유 설정 -->
+      <div style="background:#FFF7ED;border-radius:10px;padding:8px 14px;margin-bottom:8px">
+        <div style="font-size:12px;color:#9A5B13;font-weight:600;margin-bottom:8px">추첨 요일 · 시각 설정</div>
+        <div id="lottery-day-checks" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:12px;color:#9A5B13">추첨 시각(마감)</span>
+          <select id="lottery-draw-hour-input" style="padding:6px 8px;border-radius:6px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
+        </div>
+        <button onclick="saveLotteryScheduleConfig()" style="width:100%;padding:8px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:12px;font-weight:700;cursor:pointer">
+          💾 추첨 일정 저장
+        </button>
+        <div id="lottery-schedule-status" style="font-size:11px;margin-top:6px;text-align:center"></div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;background:#FFF7ED;border-radius:10px;padding:8px 14px;margin-bottom:8px">
         <span style="font-size:13px;color:#9A5B13;font-weight:600">당첨 인원</span>
         <div style="display:flex;align-items:center;gap:10px">
@@ -2058,6 +2072,7 @@ function showAdmin(){
   renderSurpriseMissionList();
   renderNoticePresets();
   loadLotteryConfigForAdmin();
+  populateLotteryScheduleUI();
   loadWeeklyAcceptRate();
   // 기존 저장값 불러오기
   const k = getBranchDateKey(branchDateOffset);
@@ -2099,7 +2114,73 @@ const LOTTERY_RIDERS = [
   '이형곤','정교진','정덕종','정은자','조형기','한경호','함정재','허준혁','황윤철'
 ];
 
-function getLotteryDrawDays(){ return BRANCH_CONFIG.lotteryDrawDays; } // 화(2),목(4),토(6)
+// 행운추첨 요일/시간 - 관리자가 자유롭게 바꿀 수 있도록, 기본값(BRANCH_CONFIG)에서 시작해서
+// Firebase에 저장된 설정이 있으면 그걸로 덮어씁니다. (앱 시작 시 한 번 불러옴)
+let currentLotteryDrawDays = BRANCH_CONFIG.lotteryDrawDays.slice();
+let currentLotteryDrawHour = BRANCH_CONFIG.lotteryDrawHour;
+function getLotteryDrawDays(){ return currentLotteryDrawDays; }
+function getLotteryDrawHour(){ return currentLotteryDrawHour; }
+
+// 앱 시작 시(또는 관리자 화면 열 때) Firebase에서 저장된 추첨 일정을 불러와서 위 변수에 반영
+function loadLotteryScheduleConfig(){
+  return db.ref('lottery/scheduleConfig').once('value').then(snap=>{
+    const cfg = snap.val();
+    if(cfg){
+      if(Array.isArray(cfg.drawDays) && cfg.drawDays.length > 0) currentLotteryDrawDays = cfg.drawDays;
+      if(cfg.drawHour != null) currentLotteryDrawHour = cfg.drawHour;
+    }
+  }).catch(()=>{});
+}
+
+// 관리자가 요일 체크박스 + 시각을 저장할 때 호출 (Firebase에 저장 + 바로 현재 세션에도 반영)
+function saveLotteryScheduleConfig(){
+  const dayCheckboxes = document.querySelectorAll('.lottery-day-check');
+  const drawDays = Array.from(dayCheckboxes).filter(cb=>cb.checked).map(cb=>parseInt(cb.value));
+  const hourInput = document.getElementById('lottery-draw-hour-input');
+  const drawHour = parseInt(hourInput.value) || 14;
+
+  if(drawDays.length === 0){ alert('추첨 요일을 하나 이상 선택해주세요'); return; }
+
+  currentLotteryDrawDays = drawDays;
+  currentLotteryDrawHour = drawHour;
+
+  db.ref('lottery/scheduleConfig').set({ drawDays, drawHour }).then(()=>{
+    const statusEl = document.getElementById('lottery-schedule-status');
+    if(statusEl){ statusEl.style.color='#1D9E75'; statusEl.textContent = '✅ 저장 완료! 오늘부터 바로 적용됩니다.'; }
+    loadLottery();
+  });
+}
+
+// 관리자 화면 열 때 현재 설정값을 체크박스/입력창에 반영
+// 정적 HTML이라 JS로 요일 체크박스/시각 드롭다운을 채워야 함 (관리자 화면 열 때 1회)
+function populateLotteryScheduleUI(){
+  const dayContainer = document.getElementById('lottery-day-checks');
+  if(dayContainer && dayContainer.children.length === 0){
+    const dayNames = ['일','월','화','수','목','금','토'];
+    dayContainer.innerHTML = dayNames.map((d,i)=>`
+      <label style="display:flex;align-items:center;gap:3px;background:#fff;border:1px solid #FED7AA;border-radius:6px;padding:5px 8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" class="lottery-day-check" value="${i}" style="margin:0">${d}
+      </label>
+    `).join('');
+  }
+  const hourSelect = document.getElementById('lottery-draw-hour-input');
+  if(hourSelect && hourSelect.options.length === 0){
+    hourSelect.innerHTML = Array.from({length:24},(_,h)=>`<option value="${h}">${h}시</option>`).join('');
+  }
+  renderLotteryScheduleAdminUI();
+}
+
+function renderLotteryScheduleAdminUI(){
+  const dayCheckboxes = document.querySelectorAll('.lottery-day-check');
+  dayCheckboxes.forEach(cb=>{
+    cb.checked = currentLotteryDrawDays.includes(parseInt(cb.value));
+  });
+  const hourInput = document.getElementById('lottery-draw-hour-input');
+  if(hourInput) hourInput.value = currentLotteryDrawHour;
+  const statusEl = document.getElementById('lottery-schedule-status');
+  if(statusEl) statusEl.textContent = '';
+}
+
 
 function getLotteryDateKey(){
   // 오늘이 추첨일(화/목/토)이면 시간과 상관없이 오늘 날짜 (오전에 응모해도 오늘 날짜함에 쌓여야 함)
@@ -2136,7 +2217,7 @@ function getNextLotteryDate(){
     next.setUTCDate(kst.getUTCDate()+i);
     const nextDow = next.getUTCDay();
     if(drawDays.includes(nextDow)){
-      if(i===0 && h>=BRANCH_CONFIG.lotteryDrawHour) continue; // 오늘 이미 추첨 완료
+      if(i===0 && h>=getLotteryDrawHour()) continue; // 오늘 이미 추첨 완료
       const month = next.getUTCMonth()+1;
       const day = next.getUTCDate();
       return {date:next, label:month+'/'+day+'('+dayNames[nextDow]+')'};
@@ -2149,7 +2230,7 @@ function isDrawDay(){
   const kst = toKST(new Date());
   const dow = kst.getUTCDay();
   const h = kst.getUTCHours();
-  return getLotteryDrawDays().includes(dow) && h >= BRANCH_CONFIG.lotteryDrawHour;
+  return getLotteryDrawDays().includes(dow) && h >= getLotteryDrawHour();
 }
 
 function getLotteryMonthKey(){
@@ -2176,7 +2257,7 @@ function enterLottery(){
   // 화/목/토 오후 2시 이전에만 응모 허용 (버튼 우회 클릭 방지)
   const kstGuard = toKST(new Date());
   const isDrawDayGuard = getLotteryDrawDays().includes(kstGuard.getUTCDay());
-  const isPast14Guard = kstGuard.getUTCHours() >= BRANCH_CONFIG.lotteryDrawHour;
+  const isPast14Guard = kstGuard.getUTCHours() >= getLotteryDrawHour();
   if((!isDrawDayGuard || isPast14Guard) && !isLotteryOverrideToday()){
     alert('🍀 응모는 화·목·토 오후 2시 전까지만 가능합니다.');
     return;
@@ -2294,7 +2375,7 @@ function updateLotteryCountdown(){
     const rh = 13 - h;
     const rm = 59 - m;
     el.innerHTML = rh+'시간 '+rm+'분<br><span style="font-size:9px">오늘 추첨!</span>';
-  } else if(isToday && h >= BRANCH_CONFIG.lotteryDrawHour){
+  } else if(isToday && h >= getLotteryDrawHour()){
     el.innerHTML = '추첨완료<br><span style="font-size:9px">다음 추첨 대기</span>';
   } else {
     const next = getNextLotteryDate();
@@ -2492,7 +2573,7 @@ function loadLottery(){
       // 화/목/토 오후 2시 이전에만 응모 가능, 그 외에는 전부 마감
       const kstCheck = toKST(new Date());
       const isDrawDayCheck = getLotteryDrawDays().includes(kstCheck.getUTCDay());
-      const isPast14Check = kstCheck.getUTCHours() >= BRANCH_CONFIG.lotteryDrawHour;
+      const isPast14Check = kstCheck.getUTCHours() >= getLotteryDrawHour();
       if((isDrawDayCheck && !isPast14Check) || isLotteryOverrideToday()){
         if(btnEl){ btnEl.textContent = '🍀 오늘 응모하기'; btnEl.style.background = 'linear-gradient(135deg,#FF8F00,#FF6F00)'; btnEl.disabled = false; }
       } else if(isDrawDayCheck && isPast14Check){
@@ -2539,7 +2620,7 @@ function loadLottery(){
         let statusText, statusIcon;
         if(isLotteryOverrideToday()){
           statusText = '오늘 응모 가능! (임시 연장)'; statusIcon = '🍀';
-        } else if(isDrawToday && todayH >= BRANCH_CONFIG.lotteryDrawHour){
+        } else if(isDrawToday && todayH >= getLotteryDrawHour()){
           statusText = '추첨 준비 중...'; statusIcon = '⏳';
         } else if(isDrawToday && todayH < 14){
           statusText = '오늘 오후 2시 추첨!'; statusIcon = '🎰';
@@ -4776,7 +4857,7 @@ function checkLotteryReminder(){
 
     const h = kst.getUTCHours(), m = kst.getUTCMinutes();
     const minutesNow = h*60+m;
-    const drawMinutes = BRANCH_CONFIG.lotteryDrawHour*60; // 오후 2시
+    const drawMinutes = getLotteryDrawHour()*60; // 오후 2시
     const remain = drawMinutes - minutesNow;
     if(remain > 30 || remain <= 0) return; // 추첨 30분 전~추첨 직전 구간이 아니면 패스
 
@@ -4807,7 +4888,7 @@ function init(){
   loadCumulCalls();
   loadNightCalls();
   loadSetCount();
-  loadLottery();
+  loadLotteryScheduleConfig().then(()=>{ loadLottery(); });
   checkLotteryReminder();
   setInterval(checkLotteryReminder, 60000); // 1분마다 추첨 임박 여부 확인
   // 주간 보너스 정산 조회 초기화
