@@ -538,6 +538,9 @@ input[type=number]{-moz-appearance:textfield}
         <span id="admin-cumul-ranking-arrow" style="font-size:12px;color:#555;font-weight:600">▼ 펼치기</span>
       </div>
       <div id="admin-cumul-ranking-list" style="display:none;max-height:400px;overflow-y:auto"></div>
+      <button onclick="downloadCumulRankingCSV()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #C7D5FF;background:#F0F4FF;color:#3B5BDB;font-size:12px;font-weight:700;cursor:pointer">
+        📥 누적콜 현황 CSV 다운로드 (마일스톤 분석용)
+      </button>
     </div>
 
     <!-- 시간외(0~9시) 콜 현황 (관리자만 볼 수 있음, 주간 보너스 정산에 올린 자료 기준) -->
@@ -1450,16 +1453,19 @@ function renderAdminCumulRanking(){
   const weekKeys = getWeekKeysFromStart();
   const fetches = weekKeys.map(wk => db.ref('settlement/'+wk).once('value'));
   Promise.all(fetches).then(snaps=>{
-    const totals = {}; // key(아이디 또는 이름) -> {name, total}
+    const totals = {}; // key(아이디 또는 이름) -> {name, total, weeksActive}
     snaps.forEach(snap=>{
       const data = snap.val();
       if(!data || !data.riders) return;
       Object.values(data.riders).forEach(r=>{
         const key = r.id || ('name:'+r.name);
-        if(!totals[key]) totals[key] = { name: r.name, total: 0 };
+        if(!totals[key]) totals[key] = { name: r.name, total: 0, weeksActive: 0 };
         totals[key].total += r.weekTotal || 0;
+        if((r.weekTotal||0) > 0) totals[key].weeksActive += 1;
       });
     });
+    window.__cumulRankingData = totals; // CSV 다운로드용으로 보관
+    window.__cumulRankingTotalWeeks = weekKeys.length;
     const arr = Object.values(totals).sort((a,b)=>b.total-a.total);
     if(arr.length === 0){
       listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:12px">아직 게시된 정산 자료가 없습니다</div>';
@@ -1475,6 +1481,35 @@ function renderAdminCumulRanking(){
   }).catch(err=>{
     listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
   });
+}
+
+// 누적콜 현황 CSV 다운로드 (이름, 누적콜, 활동주수, 주당평균, 다음마일스톤까지 남은 콜)
+function downloadCumulRankingCSV(){
+  const data = window.__cumulRankingData;
+  if(!data){ alert('먼저 목록을 펼쳐서 불러온 후 다운로드해주세요'); return; }
+
+  const rows = [['이름','누적콜','활동한주수','주당평균콜','다음마일스톤','다음마일스톤까지남은콜']];
+  Object.values(data).sort((a,b)=>b.total-a.total).forEach(r=>{
+    const avgPerWeek = r.weeksActive > 0 ? Math.round(r.total / r.weeksActive) : 0;
+    const nextMilestone = (Math.floor(r.total/1000)+1)*1000;
+    const remaining = nextMilestone - r.total;
+    rows.push([r.name, r.total, r.weeksActive, avgPerWeek, nextMilestone, remaining]);
+  });
+
+  const csv = '\uFEFF' + rows.map(row => row.map(v => {
+    const s = String(v);
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\r\n');
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `누적콜현황_${todayKey()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function renderCumulRegisterArea(){
