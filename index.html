@@ -851,13 +851,23 @@ const BRANCH_CONFIG = {
   // 주간 보너스 지급 조건(gate): 아래 둘 다 충족해야 일일미션/개근/물량보너스 지급
   weeklyGate: { minWeekTotal: 150, minMissionDays: 3 },
 
+  // 8/12부터 배민 SLA 제도 변경으로 지사 수입이 줄어들어, 그 주(수요일)부터 아래 조정된 단가가 자동 적용됩니다.
+  slaChangeWeekKey: '2026-08-12',
+
+  // 주간 보너스 지급 조건(gate): 아래 둘 다 충족해야 일일미션/개근/물량보너스 지급
+  weeklyGate: { minWeekTotal: 150, minMissionDays: 3 },
+
   // 개근보너스: 미션 달성일수 구간별 지급액 (내림차순으로 검사)
   attendBonusTiers: [
     {minDays:6, won:20000},
     {minDays:5, won:10000},
   ],
+  // 8/12부터: 5일 조건 삭제, 6일 단가 축소
+  attendBonusTiersAfterSLA: [
+    {minDays:6, won:7000},
+  ],
 
-  // 물량보너스: 주간 완료건수 구간별 지급액 (내림차순으로 검사)
+  // 물량보너스: 주간 완료건수 구간별 지급액 (내림차순으로 검사) - SLA 변경과 무관하게 유지
   volumeBonusTiers: [
     {minTotal:450, won:50000},
     {minTotal:400, won:30000},
@@ -868,6 +878,11 @@ const BRANCH_CONFIG = {
   nightBonusTiers: [
     {minCount:30, won:30000},
     {minCount:15, won:15000},
+  ],
+  // 8/12부터 조정
+  nightBonusTiersAfterSLA: [
+    {minCount:30, won:20000},
+    {minCount:15, won:10000},
   ],
 
   // 행운 추첨: 요일(0=일~6=토)과 마감 시각
@@ -1354,16 +1369,18 @@ function getWeekKeysFromStart(){
 }
 
 // ── 누적콜 마일스톤 보너스 (1000/2000/3000/4000콜 → 각 3만원, 5000콜 → 10만원 + 사이클 리셋) ──
-function getMilestoneReward(absoluteMilestone){
+function getMilestoneReward(absoluteMilestone, weekKey){
+  const afterSLA = weekKey && weekKey >= BRANCH_CONFIG.slaChangeWeekKey;
+  if(afterSLA) return (absoluteMilestone % 5000 === 0) ? 37000 : 11000;
   return (absoluteMilestone % 5000 === 0) ? 100000 : 30000;
 }
 // prevTotal(이전 누적)과 newTotal(이번 주 반영 후 누적) 사이에 새로 넘은 1000단위 마일스톤들을 찾아 보너스 합산
-function computeMilestoneBonusCrossed(prevTotal, newTotal){
+function computeMilestoneBonusCrossed(prevTotal, newTotal, weekKey){
   let bonus = 0;
   const details = [];
   const firstMilestone = Math.floor(prevTotal/1000)*1000 + 1000;
   for(let m = firstMilestone; m <= newTotal; m += 1000){
-    const reward = getMilestoneReward(m);
+    const reward = getMilestoneReward(m, weekKey);
     bonus += reward;
     details.push({ milestone:m, reward });
   }
@@ -3087,14 +3104,18 @@ function sumHourlyRange(hourly, startHour, endHour){
   return sum;
 }
 
-function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap){
+function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, weekKey){
   // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
   // surpriseMissions: [{dayLabel, startHour, endHour, target, unitPrice, description}, ...] (선택, 관리자가 설정한 깜짝미션)
   // priorCumulMap: { '아이디' 또는 'name:이름' -> 이번 주 이전까지의 누적콜 } (선택, 1000콜 마일스톤 보너스 계산용)
+  // weekKey: 이 주의 시작일('2026-08-12' 형식) - 8/12 SLA 변경 전/후 단가를 자동으로 구분하는 데 사용
   const GOALS = BRANCH_CONFIG.dailyMissionTiers.map(t=>t.min);
   const TIER_BONUS = {}; BRANCH_CONFIG.dailyMissionTiers.forEach(t=>TIER_BONUS[t.min]=t.won);
   surpriseMissions = surpriseMissions || [];
   priorCumulMap = priorCumulMap || {};
+  const afterSLA = weekKey && weekKey >= BRANCH_CONFIG.slaChangeWeekKey;
+  const attendTiers = afterSLA ? BRANCH_CONFIG.attendBonusTiersAfterSLA : BRANCH_CONFIG.attendBonusTiers;
+  const nightTiers = afterSLA ? BRANCH_CONFIG.nightBonusTiersAfterSLA : BRANCH_CONFIG.nightBonusTiers;
 
   // 같은 사람을 "이름+전화번호"로 먼저 묶습니다 (아이디만 보고 묶으면, 어떤 날짜 파일에는
   // 아이디가 비어있거나 다르게 기록된 경우 같은 사람이 두 명으로 쪼개질 위험이 있어서
@@ -3141,9 +3162,9 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap){
 
     const eligible = weekTotal >= BRANCH_CONFIG.weeklyGate.minWeekTotal && missionDays >= BRANCH_CONFIG.weeklyGate.minMissionDays;
     const mission = eligible ? dailyMissionSum : 0;
-    const attend = eligible ? (BRANCH_CONFIG.attendBonusTiers.find(t=>missionDays>=t.minDays)||{won:0}).won : 0;
+    const attend = eligible ? (attendTiers.find(t=>missionDays>=t.minDays)||{won:0}).won : 0;
     const vol = eligible ? (BRANCH_CONFIG.volumeBonusTiers.find(t=>weekTotal>=t.minTotal)||{won:0}).won : 0;
-    const night = (BRANCH_CONFIG.nightBonusTiers.find(t=>nightTotal>=t.minCount)||{won:0}).won;
+    const night = (nightTiers.find(t=>nightTotal>=t.minCount)||{won:0}).won;
 
     // 깜짝미션 계산: 지정한 요일·시간대의 완료건수가 목표 이상이면 건수×건당보상 지급
     let surpriseBonus = 0;
@@ -3164,7 +3185,7 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap){
     const cumulKey = rider.id || ('name:'+rider.name);
     const priorCumul = priorCumulMap[cumulKey] || 0;
     const newCumul = priorCumul + weekTotal;
-    const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul);
+    const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul, weekKey);
 
     const totalWithMilestone = total + cumulMilestoneBonus;
 
@@ -3518,9 +3539,9 @@ function downloadSettlementPayoutCSV(){
   const settlement = window.__settlementAdminAllRiders;
   if(!settlement || settlement.length===0){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
 
-  const rows = [['User ID','이름','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','누적콜마일스톤','총보너스']];
+  const rows = [['User ID','이름','미션달성일수','주간완료건수','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','누적콜마일스톤','총보너스']];
   settlement.slice().sort((a,b)=>b.total-a.total).forEach(r=>{
-    rows.push([r.id||'', r.name, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.cumulMilestoneBonus||0, r.total]);
+    rows.push([r.id||'', r.name, r.missionDays||0, r.weekTotal||0, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.cumulMilestoneBonus||0, r.total]);
   });
 
   const csv = '\uFEFF' + rows.map(row => row.map(v => {
@@ -3722,7 +3743,7 @@ function autoCalcAndPublishSettlement(){
   const dayArrays = uploadedDays.map(dayLabel => ({ dayLabel, riders: settlementFilesData[dayLabel] }));
 
   fetchPriorCumulativeMap(info.weekKey).then(priorCumulMap=>{
-    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap);
+    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap, info.weekKey);
     lastComputedSettlement = settlement;
     saveSettlementCalc(settlement, uploadedDays);
 
@@ -3772,7 +3793,7 @@ function calcSettlement(){
   if(statusEl){ statusEl.style.color='#888'; statusEl.textContent = '계산 중...'; }
 
   fetchPriorCumulativeMap(info.weekKey).then(priorCumulMap=>{
-    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap);
+    const settlement = computeWeeklySettlement(dayArrays, loadSurpriseMissions(), priorCumulMap, info.weekKey);
     lastComputedSettlement = settlement;
     saveSettlementCalc(settlement, uploadedDays);
 
@@ -3904,7 +3925,7 @@ function mergeSettlementAdminEntries(idxCsv){
   // 누적콜 마일스톤 보너스도 합쳐진 weekTotal 기준으로 다시 계산 (이전 누적은 조각들 중 하나의 값을 그대로 사용 - 같은 사람이라 동일해야 함)
   const priorCumul = entries.map(e=>e.priorCumul||0).find(v=>v>0) || 0;
   const newCumul = priorCumul + weekTotal;
-  const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul);
+  const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul, getSettlementWeekInfo(settlementAdminWeekOffset).weekKey);
 
   const totalWithSurprise = total + surpriseBonus + cumulMilestoneBonus;
 
