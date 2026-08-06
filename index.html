@@ -669,13 +669,31 @@ input[type=number]{-moz-appearance:textfield}
           <button onclick="changeLotteryWinnerCount(1)" style="width:28px;height:28px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:16px;cursor:pointer">+</button>
         </div>
       </div>
-      <button onclick="drawLotteryWinner()"
+      <!-- 추첨 방식: 자동(랜덤) / 직접 지정 -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button id="lottery-mode-auto-btn" onclick="setLotteryMode(false)"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid #FED7AA;background:#FF8F00;color:#fff;font-size:12px;font-weight:700;cursor:pointer">
+          🎲 자동 추첨
+        </button>
+        <button id="lottery-mode-manual-btn" onclick="setLotteryMode(true)"
+          style="flex:1;padding:9px;border-radius:8px;border:1px solid #FED7AA;background:#FFFBF5;color:#9A5B13;font-size:12px;font-weight:700;cursor:pointer">
+          👆 직접 지정
+        </button>
+      </div>
+      <button id="lottery-draw-btn" onclick="drawLotteryWinner()"
         style="width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#FF8F00,#FF6F00);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
         🎯 지금 당첨자 추첨하기
       </button>
+      <div id="lottery-manual-confirm-wrap" style="display:none;margin-bottom:8px">
+        <div id="lottery-manual-selected-msg" style="font-size:12px;color:#9A5B13;text-align:center;margin-bottom:6px">아래 명단에서 당첨자를 탭해서 선택하세요</div>
+        <button onclick="finalizeManualWinners()"
+          style="width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#2E7D32,#1B5E20);color:#fff;font-size:14px;font-weight:700;cursor:pointer">
+          ✅ 선택한 당첨자로 확정
+        </button>
+      </div>
       <button onclick="showLotteryEntrantList()"
         style="width:100%;padding:9px;border-radius:10px;border:1px solid #FED7AA;background:#FFFBF5;color:#9A5B13;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">
-        📋 오늘 응모자 명단 보기
+        📋 오늘 응모자 명단 보기 (당첨횟수 포함)
       </button>
       <div id="lottery-entrant-list" style="margin-bottom:8px"></div>
       <button onclick="resetLottery()"
@@ -2742,15 +2760,20 @@ function loadLotteryConfigForAdmin(){
   });
 }
 
-// 관리자 전용: 오늘 응모한 기사님 명단 확인
+// 관리자 전용: 오늘 응모한 기사님 명단 확인 (누적 당첨 횟수 함께 표시, 직접지정 모드면 탭으로 선택 가능)
 function showLotteryEntrantList(){
   const listEl = document.getElementById('lottery-entrant-list');
   if(!listEl) return;
   const dateKey = getLotteryDateKey();
   listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:10px">불러오는 중...</div>';
 
-  db.ref('lottery/'+dateKey+'/entries').once('value').then(snap=>{
-    const entries = snap.val();
+  Promise.all([
+    db.ref('lottery/'+dateKey+'/entries').once('value'),
+    db.ref('lottery/winCounts').once('value')
+  ]).then(([entriesSnap, winCountsSnap])=>{
+    const entries = entriesSnap.val();
+    const winCounts = winCountsSnap.val() || {};
+    lastLotteryEntrantNames = entries ? Object.keys(entries) : []; // 직접지정 모드에서 참조용으로 저장
     if(!entries || Object.keys(entries).length === 0){
       listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:10px">오늘 응모자가 없습니다</div>';
       return;
@@ -2762,17 +2785,103 @@ function showLotteryEntrantList(){
     });
     listEl.innerHTML = `
       <div style="background:#fff;border:1px solid #FED7AA;border-radius:10px;padding:10px 12px">
-        <div style="font-size:12px;font-weight:600;color:#9A5B13;margin-bottom:8px">오늘 응모자 (${names.length}명)</div>
-        ${names.map((n,i)=>`
-          <div style="display:flex;justify-content:space-between;padding:5px 2px;border-bottom:0.5px solid #f5f5f5;font-size:13px">
-            <span style="color:#333"><b style="color:#bbb;margin-right:6px">${i+1}</b>${n}</span>
+        <div style="font-size:12px;font-weight:600;color:#9A5B13;margin-bottom:8px">오늘 응모자 (${names.length}명)${lotteryManualMode ? ' · 탭해서 당첨자 선택' : ''}</div>
+        ${names.map((n,i)=>{
+          const wc = winCounts[n]||0;
+          const selected = lotterySelectedWinners.includes(n);
+          const clickable = lotteryManualMode;
+          return `
+          <div id="lottery-entrant-row-${i}" onclick="${clickable ? `toggleManualWinnerSelect('${n.replace(/'/g,"\\'")}')` : ''}"
+            style="display:flex;justify-content:space-between;align-items:center;padding:7px 6px;border-bottom:0.5px solid #f5f5f5;font-size:13px;${clickable?'cursor:pointer;':''}${selected?'background:#FFF3E0;border-radius:6px;':''}">
+            <span style="color:#333">${clickable ? (selected?'✅ ':'⬜ ') : ''}<b style="color:#bbb;margin-right:6px">${i+1}</b>${n}${wc>0?` <span style="color:#EA8C1E;font-size:11px;font-weight:600">🏆 ${wc}회 당첨</span>`:''}</span>
             <span style="color:#aaa;font-size:11px">${entries[n].time ? new Date(entries[n].time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) : ''}</span>
-          </div>
-        `).join('')}
+          </div>`;
+        }).join('')}
       </div>
     `;
   }).catch(err=>{
     listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:12px;padding:10px">불러오기 실패: ${err.message}</div>`;
+  });
+}
+
+let lastLotteryEntrantNames = [];
+
+// ── 추첨 방식 전환 (자동 랜덤 / 관리자 직접 지정) ──────────────────
+let lotteryManualMode = false;
+let lotterySelectedWinners = [];
+
+function setLotteryMode(manual){
+  lotteryManualMode = manual;
+  lotterySelectedWinners = [];
+  const autoBtn = document.getElementById('lottery-mode-auto-btn');
+  const manualBtn = document.getElementById('lottery-mode-manual-btn');
+  const drawBtn = document.getElementById('lottery-draw-btn');
+  const confirmWrap = document.getElementById('lottery-manual-confirm-wrap');
+  if(autoBtn && manualBtn){
+    autoBtn.style.background = manual ? '#FFFBF5' : '#FF8F00';
+    autoBtn.style.color = manual ? '#9A5B13' : '#fff';
+    manualBtn.style.background = manual ? '#FF8F00' : '#FFFBF5';
+    manualBtn.style.color = manual ? '#fff' : '#9A5B13';
+  }
+  if(drawBtn) drawBtn.style.display = manual ? 'none' : 'block';
+  if(confirmWrap) confirmWrap.style.display = manual ? 'block' : 'none';
+  // 응모자 명단이 이미 열려있으면 새 모드에 맞게 다시 그려줍니다
+  if(document.getElementById('lottery-entrant-list').innerHTML.trim()) showLotteryEntrantList();
+}
+
+// 직접 지정 모드: 명단에서 이름을 탭하면 선택/해제
+function toggleManualWinnerSelect(name){
+  const idx = lotterySelectedWinners.indexOf(name);
+  if(idx>-1){
+    lotterySelectedWinners.splice(idx,1);
+  } else {
+    if(lotterySelectedWinners.length >= lotteryWinnerCount){
+      alert(`당첨 인원(${lotteryWinnerCount}명)을 초과해서 선택할 수 없어요.\n인원을 늘리려면 위에서 '당첨 인원' 숫자를 조정해주세요.`);
+      return;
+    }
+    lotterySelectedWinners.push(name);
+  }
+  const msgEl = document.getElementById('lottery-manual-selected-msg');
+  if(msgEl) msgEl.textContent = lotterySelectedWinners.length
+    ? `선택됨: ${lotterySelectedWinners.join(', ')} (${lotterySelectedWinners.length}/${lotteryWinnerCount}명)`
+    : '아래 명단에서 당첨자를 탭해서 선택하세요';
+  showLotteryEntrantList();
+}
+
+// 직접 지정 모드: 선택한 사람들을 최종 당첨자로 확정 (자동추첨과 동일한 방식으로 Firebase에 기록)
+function finalizeManualWinners(){
+  if(lotterySelectedWinners.length === 0){ alert('먼저 당첨자를 한 명 이상 선택해주세요.'); return; }
+  const dateKey = getLotteryDateKey();
+  const monthKey = getLotteryMonthKey();
+  const winners = [...lotterySelectedWinners];
+
+  if(!confirm(`${winners.join(', ')}\n위 ${winners.length}명을 당첨자로 확정할까요?`)) return;
+
+  db.ref('lottery/'+dateKey+'/entries').once('value').then(snap=>{
+    const entries = snap.val() || {};
+    const candidates = Object.keys(entries);
+    finishLotteryDraw(dateKey, monthKey, candidates, winners);
+    lotterySelectedWinners = [];
+  });
+}
+
+// 자동추첨/직접지정 공통: 당첨자를 Firebase에 기록 + 누적 당첨횟수 증가 + 애니메이션 트리거
+function finishLotteryDraw(dateKey, monthKey, candidates, winners){
+  const updates = {};
+  winners.forEach((w,i)=>{
+    updates['lottery/'+dateKey+'/winners/'+i] = {name:w, drawnAt:new Date().toISOString()};
+    updates['lottery/month/'+monthKey+'/winners/'+w] = {drawnAt:new Date().toISOString()};
+    // 누적 당첨 횟수(전체 기간) +1 - 서버에서 원자적으로 증가
+    updates['lottery/winCounts/'+w] = firebase.database.ServerValue.increment(1);
+  });
+  updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now(), prizeName: lotteryPrizeName };
+  updates['lottery/'+dateKey+'/config'] = { prizeName: lotteryPrizeName, winnerCount: lotteryWinnerCount };
+
+  db.ref().update(updates).then(()=>{
+    closeAdmin();
+    switchTab('today', document.querySelector('.tab-btn'));
+    // 여기서 바로 loadLottery()를 부르지 않습니다 - 실시간 애니메이션 리스너가
+    // drawAnimation 변경을 감지해서 슬롯머신 연출 후 자동으로 최종 결과를 보여줍니다.
   });
 }
 
@@ -2814,24 +2923,7 @@ function drawLotteryWinner(){
         pool.splice(idx,1);
       }
 
-      // Firebase 저장
-      const updates = {};
-      winners.forEach((w,i)=>{
-        updates['lottery/'+dateKey+'/winners/'+i] = {name:w, drawnAt:new Date().toISOString()};
-        updates['lottery/month/'+monthKey+'/winners/'+w] = {drawnAt:new Date().toISOString()};
-      });
-      // 전체 기사님 화면에 슬롯머신 추첨 애니메이션을 동시에 보여주기 위한 데이터
-      updates['lottery/'+dateKey+'/drawAnimation'] = { candidates: candidates, winners: winners, ts: Date.now(), prizeName: lotteryPrizeName };
-      // 상품명/인원 설정도 함께 저장 (관리자가 안 건드렸어도 현재 값으로 저장됨)
-      updates['lottery/'+dateKey+'/config'] = { prizeName: lotteryPrizeName, winnerCount: lotteryWinnerCount };
-
-      db.ref().update(updates).then(()=>{
-        // 관리자 본인도 애니메이션을 볼 수 있게 관리자 화면을 닫고 현황 탭으로 이동
-        closeAdmin();
-        switchTab('today', document.querySelector('.tab-btn'));
-        // 여기서 바로 loadLottery()를 부르지 않습니다 - 실시간 애니메이션 리스너가
-        // drawAnimation 변경을 감지해서 슬롯머신 연출 후 자동으로 최종 결과를 보여줍니다.
-      });
+      finishLotteryDraw(dateKey, monthKey, candidates, winners);
     });
   });
 }
