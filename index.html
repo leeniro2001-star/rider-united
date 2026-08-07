@@ -3626,6 +3626,58 @@ function toggleAdminCollapsible(contentId, arrowId){
   if(arrow) arrow.textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
 }
 
+// 시간대별(09~24시 vs 00~09시/시간외) 완료건수 CSV 다운로드
+// - 업로드된 요일별 원자료(settlementFilesData)의 hourly[24]에서 직접 계산합니다.
+// - 09~24시만 인정하는 타 지사 프로모션 방식과 비교 시뮬레이션할 때 쓰는 원본 데이터입니다.
+function downloadHourlyBreakdownCSV(){
+  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
+  const uploadedDays = SETTLEMENT_DAY_LABELS.filter(label => settlementFilesData[label]);
+  if(uploadedDays.length === 0){ alert('업로드된 요일 자료가 없습니다'); return; }
+
+  const dayArrays = uploadedDays.map(dayLabel => ({ dayLabel, riders: settlementFilesData[dayLabel] }));
+
+  // computeWeeklySettlement과 동일한 방식(이름+전화번호)으로 기사님을 묶습니다
+  const riders = {}; // key -> {name, phone, id, byDay: {dayLabel: {day9to24, night0to9}}}
+  dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
+    (dayRiders||[]).forEach(r=>{
+      const normPhone = (r.phone || '').replace(/[^0-9]/g,'');
+      const key = r.name + '|' + normPhone;
+      if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', byDay:{} };
+      if(r.id && !riders[key].id) riders[key].id = r.id;
+      const day9to24 = sumHourlyRange(r.hourly||[], 9, 24);
+      const night0to9 = sumHourlyRange(r.hourly||[], 0, 9);
+      riders[key].byDay[dayLabel] = { day9to24, night0to9 };
+    });
+  });
+
+  const header = ['User ID','이름'];
+  uploadedDays.forEach(label=>{ header.push(label+' 09~24시'); header.push(label+' 00~09시(시간외)'); });
+  header.push('주간 09~24시 합계','주간 00~09시(시간외) 합계','주간 전체 합계');
+
+  const rows = [header];
+  Object.values(riders).forEach(rider=>{
+    let sum9to24 = 0, sum0to9 = 0;
+    const line = [rider.id || '', rider.name];
+    uploadedDays.forEach(label=>{
+      const d = rider.byDay[label] || {day9to24:0, night0to9:0};
+      line.push(d.day9to24); line.push(d.night0to9);
+      sum9to24 += d.day9to24; sum0to9 += d.night0to9;
+    });
+    line.push(sum9to24, sum0to9, sum9to24+sum0to9);
+    rows.push(line);
+  });
+
+  const csv = '\uFEFF' + rows.map(row => row.map(v => {
+    const s = String(v ?? '');
+    return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  }).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `시간대별완료건수_${info.weekKey}.csv`;
+  a.click();
+}
+
 // 보너스 지급 명세서 CSV 다운로드 (User ID + 이름 + 항목별 내역 + 총보너스, 전체 기사님 포함)
 function downloadSettlementPayoutCSV(){
   const settlement = window.__settlementAdminAllRiders;
@@ -3744,6 +3796,9 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   return `
     <button onclick="downloadSettlementPayoutCSV()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #9FE1CB;background:#F0FBF7;color:#0F6E56;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
       📥 보너스 지급 명세서 CSV 다운로드 (전체 ${settlement.length}명)
+    </button>
+    <button onclick="downloadHourlyBreakdownCSV()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #C7D5FF;background:#F0F4FF;color:#3B5BDB;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
+      ⏰ 시간대별(09~24시 / 00~09시) 완료건수 CSV 다운로드
     </button>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
