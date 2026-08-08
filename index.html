@@ -3626,44 +3626,59 @@ function toggleAdminCollapsible(contentId, arrowId){
   if(arrow) arrow.textContent = isOpen ? '▼ 펼치기' : '▲ 접기';
 }
 
-// 시간대별(09~24시 vs 00~09시/시간외) 완료건수 CSV 다운로드
+// 시간대별(SLA 인정구간 vs 그 외/시간외) 완료건수 CSV 다운로드
 // - 업로드된 요일별 원자료(settlementFilesData)의 hourly[24]에서 직접 계산합니다.
-// - 09~24시만 인정하는 타 지사 프로모션 방식과 비교 시뮬레이션할 때 쓰는 원본 데이터입니다.
+// - 인정 시작/종료 시각을 매번 입력받습니다. 종료시각에 24보다 큰 값(예: 25=다음날 새벽1시)을 넣으면
+//   자정을 넘어가는 구간(예: 9시~다음날1시)도 계산할 수 있습니다.
 function downloadHourlyBreakdownCSV(){
+  const startStr = prompt('SLA(슬롯) 인정 시작 시각을 입력하세요.\n예: 9를 입력하면 09:00부터 인정 시간으로 계산합니다.', '9');
+  if(startStr === null) return;
+  const start = parseInt(startStr, 10);
+  const endStr = prompt('SLA(슬롯) 인정 종료 시각을 입력하세요.\n예: 24 = 자정(24:00)까지, 25 = 다음날 새벽 1시까지(자정을 넘기는 경우 24보다 큰 값 입력)', '24');
+  if(endStr === null) return;
+  const end = parseInt(endStr, 10);
+  if(isNaN(start) || isNaN(end) || start < 0 || start > 30 || end <= start || end > 48){
+    alert('시각을 다시 확인해주세요 (시작 0~30, 종료는 시작보다 크고 48 이하)'); return;
+  }
+
   const info = getSettlementWeekInfo(settlementAdminWeekOffset);
   const uploadedDays = SETTLEMENT_DAY_LABELS.filter(label => settlementFilesData[label]);
   if(uploadedDays.length === 0){ alert('업로드된 요일 자료가 없습니다'); return; }
 
   const dayArrays = uploadedDays.map(dayLabel => ({ dayLabel, riders: settlementFilesData[dayLabel] }));
 
-  // computeWeeklySettlement과 동일한 방식(이름+전화번호)으로 기사님을 묶습니다
-  const riders = {}; // key -> {name, phone, id, byDay: {dayLabel: {day9to24, night0to9}}}
+  const riders = {}; // key -> {name, phone, id, byDay: {dayLabel: {inRange, outOfRange}}}
   dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
     (dayRiders||[]).forEach(r=>{
       const normPhone = (r.phone || '').replace(/[^0-9]/g,'');
       const key = r.name + '|' + normPhone;
       if(!riders[key]) riders[key] = { name:r.name, phone:r.phone, id:r.id||'', byDay:{} };
       if(r.id && !riders[key].id) riders[key].id = r.id;
-      const day9to24 = sumHourlyRange(r.hourly||[], 9, 24);
-      const night0to9 = sumHourlyRange(r.hourly||[], 0, 9);
-      riders[key].byDay[dayLabel] = { day9to24, night0to9 };
+      const hourly = r.hourly || [];
+      const dayTotal = sumHourlyRange(hourly, 0, 24);
+      const inRange = sumHourlyRange(hourly, start, end);
+      const outOfRange = dayTotal - inRange;
+      riders[key].byDay[dayLabel] = { inRange, outOfRange };
     });
   });
 
+  const rangeLabel = `${start}시~${end}시`.replace(/(\d+)시~24시/, '$1시~24시').replace(/~(2[5-9]|3\d)시/, m => '~다음날'+(parseInt(m.slice(1))-24)+'시');
+  const inLabel = rangeLabel+' 인정';
+  const outLabel = rangeLabel+' 시간외';
   const header = ['User ID','이름'];
-  uploadedDays.forEach(label=>{ header.push(label+' 09~24시'); header.push(label+' 00~09시(시간외)'); });
-  header.push('주간 09~24시 합계','주간 00~09시(시간외) 합계','주간 전체 합계');
+  uploadedDays.forEach(label=>{ header.push(label+' '+inLabel); header.push(label+' '+outLabel); });
+  header.push('주간 '+inLabel+' 합계','주간 '+outLabel+' 합계','주간 전체 합계');
 
   const rows = [header];
   Object.values(riders).forEach(rider=>{
-    let sum9to24 = 0, sum0to9 = 0;
+    let sumIn = 0, sumOut = 0;
     const line = [rider.id || '', rider.name];
     uploadedDays.forEach(label=>{
-      const d = rider.byDay[label] || {day9to24:0, night0to9:0};
-      line.push(d.day9to24); line.push(d.night0to9);
-      sum9to24 += d.day9to24; sum0to9 += d.night0to9;
+      const d = rider.byDay[label] || {inRange:0, outOfRange:0};
+      line.push(d.inRange); line.push(d.outOfRange);
+      sumIn += d.inRange; sumOut += d.outOfRange;
     });
-    line.push(sum9to24, sum0to9, sum9to24+sum0to9);
+    line.push(sumIn, sumOut, sumIn+sumOut);
     rows.push(line);
   });
 
@@ -3674,7 +3689,7 @@ function downloadHourlyBreakdownCSV(){
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `시간대별완료건수_${info.weekKey}.csv`;
+  a.download = `시간대별완료건수_${start}시~${end}시_${info.weekKey}.csv`;
   a.click();
 }
 
