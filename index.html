@@ -4510,10 +4510,15 @@ function renderVehicleCard(){
 function renderVehicleBody(id, vehicle, fuelLogs, maintLogs){
   const bodyEl = document.getElementById('vehicle-body');
   const latestMpg = fuelLogs.length>0 && fuelLogs[0][1].mpg ? fuelLogs[0][1].mpg : null;
+  const hasVehicle = vehicle && vehicle.type;
 
   bodyEl.innerHTML = `
-    <div style="display:flex;gap:6px;margin-bottom:10px">
-      <input type="text" id="vehicle-type-input" placeholder="내 오토바이 종류 (예: 혼다 PCX125)" value="${vehicle && vehicle.type ? vehicle.type : ''}"
+    <div id="vehicle-type-display" style="display:${hasVehicle?'flex':'none'};justify-content:space-between;align-items:center;background:#F0F4FF;border-radius:8px;padding:9px 12px;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:700;color:#3B5BDB">🏍️ ${hasVehicle?vehicle.type:''}</span>
+      <button onclick="showVehicleTypeInput()" style="font-size:11px;color:#3B5BDB;background:none;border:none;text-decoration:underline;cursor:pointer">변경</button>
+    </div>
+    <div id="vehicle-type-input-wrap" style="display:${hasVehicle?'none':'flex'};gap:6px;margin-bottom:10px">
+      <input type="text" id="vehicle-type-input" placeholder="내 오토바이 종류 (예: 야마하 XMAX300)" value="${hasVehicle ? vehicle.type : ''}"
         style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
       <button onclick="saveMyVehicleType('${id}')" style="padding:9px 14px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
     </div>
@@ -4536,6 +4541,13 @@ function renderVehicleBody(id, vehicle, fuelLogs, maintLogs){
       ${renderVehicleHistory(fuelLogs, maintLogs)}
     </div>
   `;
+}
+
+function showVehicleTypeInput(){
+  const displayEl = document.getElementById('vehicle-type-display');
+  const inputWrap = document.getElementById('vehicle-type-input-wrap');
+  if(displayEl) displayEl.style.display = 'none';
+  if(inputWrap) inputWrap.style.display = 'flex';
 }
 
 function renderVehicleHistory(fuelLogs, maintLogs){
@@ -4564,7 +4576,9 @@ function renderVehicleHistory(fuelLogs, maintLogs){
 function saveMyVehicleType(id){
   const type = document.getElementById('vehicle-type-input').value.trim();
   if(!type) return;
-  db.ref('myVehicle/'+id).set({ type, updatedAt: new Date().toISOString() });
+  db.ref('myVehicle/'+id).set({ type, updatedAt: new Date().toISOString() }).then(()=>{
+    renderVehicleCard();
+  });
 }
 
 // ── 주유기록 폼 (사진/세차비/메모 없이 핵심 항목만) ──────────────────
@@ -4578,7 +4592,7 @@ function showFuelForm(id){
       <input type="number" id="fuel-amount-input" placeholder="주유금액 (원)" inputmode="numeric" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
       <select id="fuel-type-input" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
         <option value="휘발유">휘발유</option>
-        <option value="경유">경유</option>
+        <option value="고급휘발유">고급휘발유</option>
       </select>
       <input type="number" id="fuel-liters-input" placeholder="주유량 (L)" inputmode="decimal" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:8px;font-family:inherit">
       <div style="display:flex;gap:14px;margin-bottom:10px">
@@ -4615,9 +4629,15 @@ function submitFuelLog(id){
     }
     const newLog = { date: new Date().toISOString(), gasStation, odometer, amount, fuelType, liters, fillType, mpg };
     db.ref('fuelLogs/'+id).push(newLog).then(()=>{
-      statusEl.textContent = '✅ 저장 완료'+(mpg?` (연비 ${mpg}km/L)`:'');
-      statusEl.style.color = '#1D9E75';
-      setTimeout(()=>{ renderVehicleCard(); }, 800);
+      const area = document.getElementById('vehicle-form-area');
+      area.innerHTML = `
+        <div style="background:#F0F4FF;border-radius:10px;padding:16px;text-align:center">
+          <div style="font-size:13px;color:#3B5BDB;font-weight:600;margin-bottom:8px">✅ 주유기록 저장 완료</div>
+          ${mpg !== null
+            ? `<div style="font-size:12px;color:#888;margin-bottom:2px">이번 구간 연비</div><div style="font-size:28px;font-weight:800;color:#3B5BDB">${mpg} km/L</div>`
+            : `<div style="font-size:12px;color:#888">첫 기록이라 연비는 아직 계산 안 돼요.<br>다음 주유기록부터 연비가 표시됩니다.</div>`}
+          <button onclick="renderVehicleCard()" style="margin-top:12px;padding:8px 20px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">확인</button>
+        </div>`;
     }).catch(err=>{
       statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
     });
