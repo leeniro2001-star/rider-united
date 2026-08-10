@@ -355,50 +355,6 @@ input[type=number]{-moz-appearance:textfield}
       <div id="compliance-body"></div>
     </div>
 
-    <!-- 주간 심야 미션 -->
-    <div class="card" id="night-mission-card">
-      <div class="card-title">🌙 주간 심야 미션 (22:00~23:59)</div>
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-          <span style="font-size:13px;color:#555">이번 주 22~23시 완료</span>
-          <span style="font-size:20px;font-weight:700;color:#3B5BDB" id="night-count">0건</span>
-        </div>
-        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
-          <div id="night-bar" style="height:100%;background:linear-gradient(90deg,#3B5BDB,#748FFC);border-radius:6px;width:0%;transition:width 0.5s"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
-          <div id="night-ms-10" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF;border:0.5px solid #748FFC">
-            <div style="font-size:11px;color:#888">주간 15건↑</div>
-            <div style="font-size:15px;font-weight:700;color:#3B5BDB">15,000원</div>
-            <div style="font-size:16px">⬜</div>
-          </div>
-          <div id="night-ms-20" style="text-align:center;padding:8px;border-radius:10px;background:#F0F4FF;border:0.5px solid #748FFC">
-            <div style="font-size:11px;color:#888">주간 30건↑</div>
-            <div style="font-size:15px;font-weight:700;color:#3B5BDB">30,000원</div>
-            <div style="font-size:16px">⬜</div>
-          </div>
-        </div>
-        <div style="background:#F0F4FF;border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
-          <div>
-            <div style="font-size:11px;color:#3B5BDB;font-weight:600">오늘 22~23시 완료건 입력</div>
-            <div style="font-size:10px;color:#888">매일 입력하면 주간 자동합산</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            <input type="number" id="night-input" placeholder="0" inputmode="numeric"
-              style="width:60px;padding:4px 8px;border-radius:8px;border:1px solid #748FFC;font-size:14px;font-weight:600;text-align:right;font-family:inherit;color:#3B5BDB"
-              onkeydown="if(event.key==='Enter'){saveNightCalls(this.value);this.blur();showNightSaved();}">
-            <button onclick="saveNightCalls(document.getElementById('night-input').value);showNightSaved();"
-              style="padding:4px 10px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">확인</button>
-            <span style="font-size:12px;color:#3B5BDB">건</span>
-          </div>
-        </div>
-        <div style="margin-top:8px;text-align:center;font-size:12px;color:#888" id="night-msg"></div>
-        <div style="margin-top:10px;background:#F8F9FF;border-radius:8px;padding:8px 12px;">
-          <div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:600">이번 주 심야 기록</div>
-          <div id="night-history"></div>
-        </div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -4429,6 +4385,27 @@ function renderInsuranceStatusCard(insurance){
       </div>`;
   }
   const daysLeft = computeInsuranceDaysLeft(insurance.expiryDate);
+  if(insurance.autoRenew){
+    // 자동갱신인 경우, 정말 결제가 밀린 게 아니면 초록색으로 "자동갱신 중"만 안내
+    const overdue = daysLeft !== null && daysLeft < -3; // 자동갱신 기대일보다 3일 넘게 지나면 결제 실패 의심
+    const color = overdue ? '#E24B4A' : '#1D9E75';
+    const bg = overdue ? '#FFF0F0' : '#F0FBF7';
+    const border = overdue ? '#FFC9C9' : '#9FE1CB';
+    const statusText = overdue ? '갱신 확인 필요' : '자동갱신 중';
+    return `
+      <div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div style="font-size:12px;color:#888;margin-bottom:2px">🛡️ 가입중인 보험</div>
+            <div style="font-size:14px;font-weight:700;color:#333">${insurance.type||'미등록'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:11px;color:#888">최근 갱신 기준일 ${insurance.expiryDate}</div>
+            <div style="font-size:15px;font-weight:700;color:${color}">🔄 ${statusText}</div>
+          </div>
+        </div>
+      </div>`;
+  }
   let color = '#1D9E75', bg = '#F0FBF7', border='#9FE1CB', statusText = `D-${daysLeft}`;
   if(daysLeft === null){ statusText = '기간 확인 필요'; color='#888'; bg='#F8F8F8'; border='#ddd'; }
   else if(daysLeft < 0){ statusText = '만료됨'; color='#E24B4A'; bg='#FFF0F0'; border='#FFC9C9'; }
@@ -4474,11 +4451,21 @@ function showComplianceReviewList(){
       if(daysSince === null) issues.push('면허 확인기록 없음');
       else if(daysSince > 90) issues.push(`면허 미확인 ${daysSince}일째`);
 
-      if(!ins || !ins.expiryDate) issues.push('보험 미등록');
+      if(!lic || !lic.aptitudeExpiryDate) issues.push('적성검사 기한 미등록');
       else {
+        const aptDaysLeft = computeInsuranceDaysLeft(lic.aptitudeExpiryDate);
+        if(aptDaysLeft !== null && aptDaysLeft < 0) issues.push(`적성검사 기한 지남(${-aptDaysLeft}일 경과)`);
+        else if(aptDaysLeft !== null && aptDaysLeft <= 30) issues.push(`적성검사 D-${aptDaysLeft}`);
+      }
+
+      if(!ins || !ins.expiryDate) issues.push('보험 미등록');
+      else if(!ins.autoRenew) {
         const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
         if(daysLeft !== null && daysLeft < 0) issues.push(`보험 만료됨(${-daysLeft}일 경과)`);
         else if(daysLeft !== null && daysLeft <= 14) issues.push(`보험 D-${daysLeft}`);
+      } else {
+        const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
+        if(daysLeft !== null && daysLeft < -3) issues.push('자동갱신 결제확인 필요');
       }
 
       if(issues.length>0) flagged.push({name, issues});
@@ -4538,12 +4525,23 @@ function renderComplianceAlerts(lic, ins){
     warnings.push('🪪 운전면허 효력을 최근 3개월간 확인 안 하셨어요. 지금 확인해주세요.');
   }
 
+  if(!lic || !lic.aptitudeExpiryDate){
+    warnings.push('📅 운전면허 적성검사 기한이 등록되어 있지 않아요. 아래에서 입력해주세요.');
+  } else {
+    const aptDaysLeft = computeInsuranceDaysLeft(lic.aptitudeExpiryDate);
+    if(aptDaysLeft !== null && aptDaysLeft < 0) warnings.push('📅 운전면허 적성검사 기한이 지났어요! 서둘러 갱신해주세요.');
+    else if(aptDaysLeft !== null && aptDaysLeft <= 30) warnings.push(`📅 적성검사 기한이 ${aptDaysLeft}일 남았어요. 미리 준비해주세요.`);
+  }
+
   if(!ins || !ins.expiryDate){
     warnings.push('🛡️ 보험 정보가 등록되어 있지 않아요. 아래에서 입력해주세요.');
-  } else {
+  } else if(!ins.autoRenew){
     const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
     if(daysLeft !== null && daysLeft < 0) warnings.push('🛡️ 보험이 이미 만료됐어요! 서둘러 갱신해주세요.');
     else if(daysLeft !== null && daysLeft <= 14) warnings.push(`🛡️ 보험이 ${daysLeft}일 후 만료돼요. 갱신을 준비해주세요.`);
+  } else {
+    const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
+    if(daysLeft !== null && daysLeft < -3) warnings.push('🛡️ 자동갱신 보험인데 결제가 늦어지고 있을 수 있어요. 확인해주세요.');
   }
 
   if(warnings.length === 0){ alertEl.innerHTML = ''; return; }
@@ -4556,14 +4554,31 @@ function renderComplianceAlerts(lic, ins){
 function renderComplianceBody(id, lic, ins){
   const bodyEl = document.getElementById('compliance-body');
   const lastChecked = lic && lic.lastCheckedAt ? new Date(lic.lastCheckedAt).toLocaleDateString('ko-KR') : null;
+  const aptitudeCard = renderAptitudeStatusCard(lic);
 
   bodyEl.innerHTML = `
     <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px;margin-bottom:12px">
       <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px">운전면허 효력 확인</div>
-      <div style="font-size:11px;color:#888;margin-bottom:10px">음주·과속 누적으로 면허가 정지됐을 수 있어요. 아래 공식 사이트에서 본인 인증 후 직접 확인해주세요.</div>
-      <a href="https://www.efine.go.kr" target="_blank" rel="noopener" style="display:block;text-align:center;padding:10px;border-radius:8px;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">🔗 안전운전 통합민원(efine.go.kr)에서 확인하기</a>
-      <button onclick="confirmLicenseChecked('${id}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid #9FE1CB;background:#fff;color:#0F6E56;font-size:12px;font-weight:600;cursor:pointer">✅ 방금 확인했어요 (유효함)</button>
+      <div style="font-size:11px;color:#888;margin-bottom:10px">음주·과속 누적으로 면허가 정지됐을 수 있어요. 아래 순서대로 직접 확인해주세요.</div>
+      <div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="display:flex;gap:8px;padding:5px 0"><span style="font-weight:700;color:#1D9E75;flex-shrink:0">①</span><span style="font-size:12px;color:#333">아래 버튼으로 <b>교통민원24(efine.go.kr)</b> 접속 → 간편인증(카카오·PASS 등)으로 로그인</span></div>
+        <div style="display:flex;gap:8px;padding:5px 0"><span style="font-weight:700;color:#1D9E75;flex-shrink:0">②</span><span style="font-size:12px;color:#333">우측 <b>"운전면허"</b> 메뉴 클릭</span></div>
+        <div style="display:flex;gap:8px;padding:5px 0"><span style="font-weight:700;color:#1D9E75;flex-shrink:0">③</span><span style="font-size:12px;color:#333">그 안에서 <b>"운전면허 정지기간"</b> 클릭</span></div>
+        <div style="display:flex;gap:8px;padding:5px 0"><span style="font-weight:700;color:#1D9E75;flex-shrink:0">④</span><span style="font-size:12px;color:#333"><b>"조회된 정지기간 자료가 없습니다"</b>라고 나오면 정상(면허 유효)이에요</span></div>
+        <div style="display:flex;gap:8px;padding:5px 0"><span style="font-weight:700;color:#1D9E75;flex-shrink:0">⑤</span><span style="font-size:12px;color:#333">확인했으면 아래 <b>"방금 확인했어요"</b> 버튼 누르기</span></div>
+      </div>
+      <a href="https://www.efine.go.kr" target="_blank" rel="noopener" style="display:block;text-align:center;padding:10px;border-radius:8px;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">🔗 ① 교통민원24(efine.go.kr) 접속하기</a>
+      <button onclick="confirmLicenseChecked('${id}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid #9FE1CB;background:#fff;color:#0F6E56;font-size:12px;font-weight:600;cursor:pointer">✅ ⑤ 방금 확인했어요 (유효함)</button>
       <div style="font-size:11px;color:#aaa;text-align:center;margin-top:6px">${lastChecked ? `마지막 확인: ${lastChecked}` : '아직 확인 기록이 없어요'}</div>
+    </div>
+
+    <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px">운전면허 적성검사(갱신) 기한</div>
+      <div style="font-size:11px;color:#888;margin-bottom:10px">교통민원24 "운전면허" 메뉴에서 본인 적성검사 기간을 확인하신 뒤, 만료일을 입력해두세요. 기한을 놓치면 면허가 취소될 수 있어요.</div>
+      ${aptitudeCard}
+      <input type="date" id="aptitude-expiry-input" value="${lic && lic.aptitudeExpiryDate ? lic.aptitudeExpiryDate : ''}" style="width:100%;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:8px;font-family:inherit">
+      <button onclick="submitMyAptitudeDate('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">적성검사 기한 저장</button>
+      <div id="aptitude-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
     </div>
 
     <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px">
@@ -4574,14 +4589,57 @@ function renderComplianceBody(id, lic, ins){
         <option value="개인 유상운송보험" ${ins && ins.type==='개인 유상운송보험'?'selected':''}>개인 유상운송보험</option>
         <option value="시간제보험" ${ins && ins.type==='시간제보험'?'selected':''}>시간제보험(배민커넥트 가입)</option>
       </select>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input type="date" id="insurance-expiry-input" value="${ins && ins.expiryDate ? ins.expiryDate : ''}" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 2px;font-size:12px;color:#555;cursor:pointer">
+        <input type="checkbox" id="insurance-autorenew-input" ${ins && ins.autoRenew ? 'checked' : ''} onchange="toggleInsuranceAutoRenewUI(this.checked)" style="width:16px;height:16px">
+        매달(또는 정기적으로) 자동갱신되는 보험이에요 (예: 개인유상 공제보험)
+      </label>
+      <div id="insurance-expiry-wrap" style="display:${ins && ins.autoRenew ? 'none':'block'}">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <input type="date" id="insurance-expiry-input" value="${ins && ins.expiryDate ? ins.expiryDate : ''}" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">↑ 보험증권의 "보험기간" 중 만료일(종료일)을 입력해주세요</div>
       </div>
-      <div style="font-size:11px;color:#aaa;margin-bottom:8px">↑ 보험증권의 "보험기간" 중 만료일(종료일)을 입력해주세요</div>
+      <div id="insurance-autorenew-note" style="display:${ins && ins.autoRenew ? 'block':'none'};font-size:11px;color:#aaa;margin-bottom:8px">↑ 자동갱신이라도 결제가 밀리면 보장이 끊길 수 있어요. 현재 계약이 시작된 날짜(또는 최근 갱신일)를 입력해두시면 이상 여부 확인에 참고할게요.</div>
       <button onclick="submitMyInsurance('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">보험 정보 저장</button>
       <div id="insurance-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
     </div>
   `;
+}
+
+function toggleInsuranceAutoRenewUI(checked){
+  const wrap = document.getElementById('insurance-expiry-wrap');
+  const note = document.getElementById('insurance-autorenew-note');
+  if(wrap) wrap.style.display = checked ? 'none' : 'block';
+  if(note) note.style.display = checked ? 'block' : 'none';
+}
+
+// 적성검사 기한 상태 카드 (보험 상태 카드와 동일한 톤의 D-day 표시)
+function renderAptitudeStatusCard(lic){
+  const expiryDate = lic && lic.aptitudeExpiryDate;
+  if(!expiryDate) return '';
+  const daysLeft = computeInsuranceDaysLeft(expiryDate); // 만료일 D-day 계산 로직 재사용
+  let color = '#1D9E75', bg = '#F0FBF7', border='#9FE1CB', statusText = `D-${daysLeft}`;
+  if(daysLeft === null){ statusText = '기간 확인 필요'; color='#888'; bg='#F8F8F8'; border='#ddd'; }
+  else if(daysLeft < 0){ statusText = '기한 지남'; color='#E24B4A'; bg='#FFF0F0'; border='#FFC9C9'; }
+  else if(daysLeft <= 30){ statusText = `D-${daysLeft} (임박)`; color='#E27A00'; bg='#FFF7EC'; border='#FFD9A0'; }
+  return `
+    <div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:12px;color:#888">적성검사 기한 ${expiryDate}</div>
+      <div style="font-size:14px;font-weight:700;color:${color}">${statusText}</div>
+    </div>`;
+}
+
+function submitMyAptitudeDate(id){
+  const expiryDate = document.getElementById('aptitude-expiry-input').value;
+  const statusEl = document.getElementById('aptitude-submit-status');
+  if(!expiryDate){ statusEl.textContent = '기한을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
+  db.ref('licenseCheck/'+id).update({ aptitudeExpiryDate: expiryDate, aptitudeUpdatedAt: new Date().toISOString() }).then(()=>{
+    statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
+    renderComplianceCard();
+  }).catch(err=>{
+    statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
+  });
 }
 
 function confirmLicenseChecked(id){
@@ -4594,10 +4652,11 @@ function confirmLicenseChecked(id){
 function submitMyInsurance(id){
   const type = document.getElementById('insurance-type-input').value;
   const expiryDate = document.getElementById('insurance-expiry-input').value;
+  const autoRenew = document.getElementById('insurance-autorenew-input').checked;
   const statusEl = document.getElementById('insurance-submit-status');
-  if(!expiryDate){ statusEl.textContent = '만료일을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  if(!expiryDate){ statusEl.textContent = autoRenew ? '기준일을 입력해주세요' : '만료일을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
   statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
-  db.ref('insurance/'+id).set({ type, expiryDate, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
+  db.ref('insurance/'+id).set({ type, expiryDate, autoRenew, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
     statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
     renderComplianceCard();
   }).catch(err=>{
