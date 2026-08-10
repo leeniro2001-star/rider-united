@@ -348,6 +348,13 @@ input[type=number]{-moz-appearance:textfield}
       <div id="settlement-result"></div>
     </div>
 
+    <!-- 운전자격 · 보험 확인 -->
+    <div class="card" id="compliance-card">
+      <div class="card-title" style="font-size:17px;color:#B5590A;font-weight:800;text-transform:none;letter-spacing:normal">🪪 운전자격 · 보험 확인</div>
+      <div id="compliance-alert-area" style="margin-bottom:10px"></div>
+      <div id="compliance-body"></div>
+    </div>
+
     <!-- 주간 심야 미션 -->
     <div class="card" id="night-mission-card">
       <div class="card-title">🌙 주간 심야 미션 (22:00~23:59)</div>
@@ -632,6 +639,17 @@ input[type=number]{-moz-appearance:textfield}
       <div id="admin-rider-accept-section" style="display:none;background:#F8F8F8;border-radius:10px;padding:10px 14px;margin-bottom:14px">
         <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:8px">📊 오늘 기사님별 수락률 (높은순)</div>
         <div id="admin-rider-accept-list" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+
+      <!-- 기사님별 보험가입 현황 관리 (CSV 업로드) -->
+      <div style="background:#FFF7F0;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #FFD9B3">
+        <div style="font-size:12px;font-weight:600;color:#B5590A;margin-bottom:6px">🛡️ 기사님별 보험가입 현황 관리</div>
+        <div style="font-size:11px;color:#B5590A;margin-bottom:8px">CSV 파일(User ID, 보험종류, 만료일) 업로드 시 자동 반영됩니다. 라이더가 앱에서 직접 입력한 정보도 여기 같이 쌓여요.</div>
+        <div style="font-size:10px;color:#C97A33;margin-bottom:6px">CSV 형식 예시: User ID,보험종류,만료일 / simple1220,유상운송보험,2027-03-15</div>
+        <input type="file" id="insurance-csv-input" accept=".csv" style="font-size:12px;width:100%;margin-bottom:6px" onchange="handleInsuranceCSVUpload(this.files[0])">
+        <div id="insurance-csv-status" style="font-size:11px;color:#888;margin-bottom:8px"></div>
+        <button onclick="showComplianceReviewList()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #FFD9B3;background:#fff;color:#B5590A;font-size:12px;font-weight:600;cursor:pointer">⚠️ 면허·보험 점검 필요 라이더 보기</button>
+        <div id="compliance-review-list" style="margin-top:8px"></div>
       </div>
 
       <div id="admin-slot-inputs"></div>
@@ -4349,6 +4367,244 @@ function confirmSettlementRegister(id, name){
 }
 
 // 등록된 아이디로 현재 선택된 주의 정산 내역 자동 로드
+// ── 보험가입 현황 관리 (관리자 CSV 업로드) ─────────────────────────
+// CSV 형식: User ID,보험종류,만료일(YYYY-MM-DD)
+// Firebase: insurance/{User ID} = {type, expiryDate, updatedAt}
+function handleInsuranceCSVUpload(file){
+  const statusEl = document.getElementById('insurance-csv-status');
+  if(!file){ return; }
+  statusEl.textContent = '읽는 중...';
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const text = e.target.result.replace(/^\uFEFF/, ''); // BOM 제거
+      const lines = text.split(/\r?\n/).filter(l=>l.trim());
+      if(lines.length < 2){ statusEl.textContent = '데이터가 없습니다'; return; }
+      const header = lines[0].split(',').map(s=>s.trim());
+      const idIdx = header.findIndex(h=>h.includes('User ID') || h.includes('아이디'));
+      const typeIdx = header.findIndex(h=>h.includes('보험종류') || h.includes('보험'));
+      const expIdx = header.findIndex(h=>h.includes('만료일') || h.includes('종료일'));
+      if(idIdx<0 || typeIdx<0 || expIdx<0){
+        statusEl.textContent = '컬럼을 찾을 수 없어요. "User ID,보험종류,만료일" 형식인지 확인해주세요';
+        return;
+      }
+      const updates = {};
+      let count = 0;
+      for(let i=1;i<lines.length;i++){
+        const cols = lines[i].split(',').map(s=>s.trim());
+        const id = cols[idIdx];
+        const type = cols[typeIdx];
+        const expiryDate = cols[expIdx];
+        if(!id) continue;
+        updates['insurance/'+id] = { type: type||'', expiryDate: expiryDate||'', updatedAt: new Date().toISOString() };
+        count++;
+      }
+      db.ref().update(updates).then(()=>{
+        statusEl.textContent = `✅ ${count}명 보험 정보 반영 완료`;
+      }).catch(err=>{
+        statusEl.textContent = '저장 실패: '+err.message;
+      });
+    }catch(err){
+      statusEl.textContent = '파일을 읽을 수 없어요: '+err.message;
+    }
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// 만료일(YYYY-MM-DD) 기준 잔여일수 계산. 음수면 이미 만료.
+function computeInsuranceDaysLeft(expiryDate){
+  if(!expiryDate) return null;
+  const exp = new Date(expiryDate+'T23:59:59');
+  if(isNaN(exp.getTime())) return null;
+  const now = new Date();
+  return Math.ceil((exp-now)/(1000*60*60*24));
+}
+
+// 보험 상태 카드 HTML (기사님 화면 - 주간보너스정산조회에 함께 표시)
+function renderInsuranceStatusCard(insurance){
+  if(!insurance || !insurance.expiryDate){
+    return `
+      <div style="background:#F8F8F8;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center">
+        <div style="font-size:12px;color:#aaa">🛡️ 등록된 보험 정보가 없어요 (사장님께 문의해주세요)</div>
+      </div>`;
+  }
+  const daysLeft = computeInsuranceDaysLeft(insurance.expiryDate);
+  let color = '#1D9E75', bg = '#F0FBF7', border='#9FE1CB', statusText = `D-${daysLeft}`;
+  if(daysLeft === null){ statusText = '기간 확인 필요'; color='#888'; bg='#F8F8F8'; border='#ddd'; }
+  else if(daysLeft < 0){ statusText = '만료됨'; color='#E24B4A'; bg='#FFF0F0'; border='#FFC9C9'; }
+  else if(daysLeft <= 14){ statusText = `D-${daysLeft} (임박)`; color='#E27A00'; bg='#FFF7EC'; border='#FFD9A0'; }
+  return `
+    <div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;color:#888;margin-bottom:2px">🛡️ 가입중인 보험</div>
+          <div style="font-size:14px;font-weight:700;color:#333">${insurance.type||'미등록'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:#888">만료일 ${insurance.expiryDate}</div>
+          <div style="font-size:15px;font-weight:700;color:${color}">${statusText}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// 관리자 전용: 면허 확인/보험이 점검 필요한 라이더 목록
+// (면허: 3개월 이상 미확인 / 보험: 미등록, 만료임박(14일 이내), 이미 만료)
+function showComplianceReviewList(){
+  const listEl = document.getElementById('compliance-review-list');
+  listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:10px">불러오는 중...</div>';
+
+  Promise.all([
+    db.ref('roster').once('value'),
+    db.ref('licenseCheck').once('value'),
+    db.ref('insurance').once('value')
+  ]).then(([rosterSnap, licSnap, insSnap])=>{
+    const roster = rosterSnap.val() || {};
+    const licAll = licSnap.val() || {};
+    const insAll = insSnap.val() || {};
+    const flagged = [];
+
+    Object.keys(roster).forEach(id=>{
+      const name = roster[id].name || id;
+      const lic = licAll[id];
+      const ins = insAll[id];
+      const issues = [];
+
+      const daysSince = lic && lic.lastCheckedAt ? Math.floor((Date.now()-new Date(lic.lastCheckedAt).getTime())/(1000*60*60*24)) : null;
+      if(daysSince === null) issues.push('면허 확인기록 없음');
+      else if(daysSince > 90) issues.push(`면허 미확인 ${daysSince}일째`);
+
+      if(!ins || !ins.expiryDate) issues.push('보험 미등록');
+      else {
+        const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
+        if(daysLeft !== null && daysLeft < 0) issues.push(`보험 만료됨(${-daysLeft}일 경과)`);
+        else if(daysLeft !== null && daysLeft <= 14) issues.push(`보험 D-${daysLeft}`);
+      }
+
+      if(issues.length>0) flagged.push({name, issues});
+    });
+
+    if(flagged.length===0){
+      listEl.innerHTML = '<div style="text-align:center;color:#1D9E75;font-size:12px;padding:10px">✅ 점검 필요한 라이더가 없어요</div>';
+      return;
+    }
+    listEl.innerHTML = `
+      <div style="background:#fff;border:1px solid #FFD9B3;border-radius:10px;padding:8px 12px;max-height:280px;overflow-y:auto">
+        ${flagged.map(f=>`
+          <div style="padding:6px 0;border-bottom:0.5px solid #f5f5f5;font-size:12px">
+            <span style="font-weight:600;color:#333">${f.name}</span>
+            <span style="color:#C0392B;margin-left:6px">${f.issues.join(' · ')}</span>
+          </div>
+        `).join('')}
+      </div>`;
+  }).catch(err=>{
+    listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:12px;padding:10px">불러오기 실패: ${err.message}</div>`;
+  });
+}
+
+// ── 운전자격(면허효력) · 보험 확인 (기사님 본인 입력/확인) ──────────────────
+// 배민 API 연동이 안 되므로, 라이더 본인이 공식 사이트에서 확인하고 "확인했어요"를
+// 자체 기록하는 방식 + 보험 정보는 본인이 직접 입력하는 방식으로 구현합니다.
+function renderComplianceCard(){
+  const bodyEl = document.getElementById('compliance-body');
+  const alertEl = document.getElementById('compliance-alert-area');
+  if(!bodyEl) return;
+  const identity = getMySettlementIdentity(); // 정산조회와 동일한 본인 등록 정보를 재사용
+  if(!identity){
+    bodyEl.innerHTML = `<div style="font-size:12px;color:#aaa;text-align:center;padding:10px">위 "주간 보너스 정산 조회"에서 먼저 본인 아이디를 등록해주세요</div>`;
+    alertEl.innerHTML = '';
+    return;
+  }
+  const id = identity.id;
+
+  Promise.all([
+    db.ref('licenseCheck/'+id).once('value'),
+    db.ref('insurance/'+id).once('value')
+  ]).then(([licSnap, insSnap])=>{
+    const lic = licSnap.val();
+    const ins = insSnap.val();
+    renderComplianceBody(id, lic, ins);
+    renderComplianceAlerts(lic, ins);
+  });
+}
+
+function renderComplianceAlerts(lic, ins){
+  const alertEl = document.getElementById('compliance-alert-area');
+  if(!alertEl) return;
+  const warnings = [];
+
+  const daysSinceLicenseCheck = lic && lic.lastCheckedAt ? Math.floor((Date.now()-new Date(lic.lastCheckedAt).getTime())/(1000*60*60*24)) : null;
+  if(daysSinceLicenseCheck === null || daysSinceLicenseCheck > 90){
+    warnings.push('🪪 운전면허 효력을 최근 3개월간 확인 안 하셨어요. 지금 확인해주세요.');
+  }
+
+  if(!ins || !ins.expiryDate){
+    warnings.push('🛡️ 보험 정보가 등록되어 있지 않아요. 아래에서 입력해주세요.');
+  } else {
+    const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
+    if(daysLeft !== null && daysLeft < 0) warnings.push('🛡️ 보험이 이미 만료됐어요! 서둘러 갱신해주세요.');
+    else if(daysLeft !== null && daysLeft <= 14) warnings.push(`🛡️ 보험이 ${daysLeft}일 후 만료돼요. 갱신을 준비해주세요.`);
+  }
+
+  if(warnings.length === 0){ alertEl.innerHTML = ''; return; }
+  alertEl.innerHTML = `
+    <div style="background:#FFF0F0;border:1px solid #FFC9C9;border-radius:10px;padding:10px 12px">
+      ${warnings.map(w=>`<div style="font-size:12px;color:#C0392B;font-weight:600;padding:2px 0">${w}</div>`).join('')}
+    </div>`;
+}
+
+function renderComplianceBody(id, lic, ins){
+  const bodyEl = document.getElementById('compliance-body');
+  const lastChecked = lic && lic.lastCheckedAt ? new Date(lic.lastCheckedAt).toLocaleDateString('ko-KR') : null;
+
+  bodyEl.innerHTML = `
+    <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px">운전면허 효력 확인</div>
+      <div style="font-size:11px;color:#888;margin-bottom:10px">음주·과속 누적으로 면허가 정지됐을 수 있어요. 아래 공식 사이트에서 본인 인증 후 직접 확인해주세요.</div>
+      <a href="https://www.efine.go.kr" target="_blank" rel="noopener" style="display:block;text-align:center;padding:10px;border-radius:8px;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;text-decoration:none;margin-bottom:8px">🔗 안전운전 통합민원(efine.go.kr)에서 확인하기</a>
+      <button onclick="confirmLicenseChecked('${id}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid #9FE1CB;background:#fff;color:#0F6E56;font-size:12px;font-weight:600;cursor:pointer">✅ 방금 확인했어요 (유효함)</button>
+      <div style="font-size:11px;color:#aaa;text-align:center;margin-top:6px">${lastChecked ? `마지막 확인: ${lastChecked}` : '아직 확인 기록이 없어요'}</div>
+    </div>
+
+    <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px">
+      <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px">개인 유상운송보험 정보</div>
+      <div style="font-size:11px;color:#888;margin-bottom:10px">보험증권을 보고 아래 정보를 입력해주세요. 만료 전에 미리 알려드려요.</div>
+      ${ins && ins.expiryDate ? renderInsuranceStatusCard(ins) : ''}
+      <select id="insurance-type-input" style="width:100%;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:6px;font-family:inherit">
+        <option value="개인 유상운송보험" ${ins && ins.type==='개인 유상운송보험'?'selected':''}>개인 유상운송보험</option>
+        <option value="시간제보험" ${ins && ins.type==='시간제보험'?'selected':''}>시간제보험(배민커넥트 가입)</option>
+      </select>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="date" id="insurance-expiry-input" value="${ins && ins.expiryDate ? ins.expiryDate : ''}" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+      </div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:8px">↑ 보험증권의 "보험기간" 중 만료일(종료일)을 입력해주세요</div>
+      <button onclick="submitMyInsurance('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">보험 정보 저장</button>
+      <div id="insurance-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
+    </div>
+  `;
+}
+
+function confirmLicenseChecked(id){
+  db.ref('licenseCheck/'+id).set({ lastCheckedAt: new Date().toISOString(), status: 'valid' }).then(()=>{
+    alert('확인 감사합니다! 3개월 뒤 다시 확인 안내드릴게요.');
+    renderComplianceCard();
+  });
+}
+
+function submitMyInsurance(id){
+  const type = document.getElementById('insurance-type-input').value;
+  const expiryDate = document.getElementById('insurance-expiry-input').value;
+  const statusEl = document.getElementById('insurance-submit-status');
+  if(!expiryDate){ statusEl.textContent = '만료일을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
+  db.ref('insurance/'+id).set({ type, expiryDate, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
+    statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
+    renderComplianceCard();
+  }).catch(err=>{
+    statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
+  });
+}
+
 function loadMySettlement(id){
   const resultEl = document.getElementById('settlement-result');
   const info = getSettlementWeekInfo(settlementLookupWeekOffset);
@@ -4365,7 +4621,10 @@ function loadMySettlement(id){
       resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">${info.rangeLabel} 정산은 게시됐지만, 본인 자료를 찾을 수 없어요.<br>업로드하신 요일별 자료에 이 아이디가 포함되어 있는지 사장님께 확인 부탁드려주세요.</div>`;
     } else {
       window.__lastSettlementMatchId = id;
-      resultEl.innerHTML = renderSettlementBreakdown(match, 'settlement-result', true);
+      db.ref('insurance/'+id).once('value').then(insSnap=>{
+        const insuranceHtml = renderInsuranceStatusCard(insSnap.val());
+        resultEl.innerHTML = insuranceHtml + renderSettlementBreakdown(match, 'settlement-result', true);
+      });
     }
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
@@ -4956,7 +5215,7 @@ function switchTab(name,btn){
   if(name==='record'){ renderWeek(); renderMyAcceptRate(); loadCumulCalls(); }
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
-  if(name==='mission'){ loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); }
+  if(name==='mission'){ loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); renderComplianceCard(); }
 }
 
 function loadTodayRec(){
