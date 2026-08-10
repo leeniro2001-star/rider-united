@@ -283,21 +283,6 @@ input[type=number]{-moz-appearance:textfield}
       <div id="bonus-result" style="margin-top:4px"></div>
     </div>
 
-    <!-- 오늘 미션 현황 -->
-    <div class="card" style="padding:10px">
-      <div style="font-size:12px;font-weight:600;color:#333;margin-bottom:6px">🎯 오늘 미션 현황</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-        <span style="font-size:11px;color:#888">현재 <span id="goal-current" style="font-weight:700;color:#1D9E75">0</span>건</span>
-        <span style="font-size:11px;color:#888">목표 <span id="goal-target" style="font-weight:700;color:#E24B4A">30</span>건</span>
-      </div>
-      <div style="background:#eee;border-radius:6px;height:7px;overflow:hidden;margin-bottom:6px">
-        <div id="goal-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;width:0%;transition:width 0.5s"></div>
-      </div>
-      <div id="goal-milestones" style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px"></div>
-      <div style="margin-top:5px;text-align:center;font-size:11px;color:#888" id="goal-message"></div>
-    </div>
-
-
     <!-- 🎟️ 오늘의 행운 추첨 -->
     <div class="card" id="lottery-card" style="padding:0;overflow:hidden;border:1.5px solid #FFD54F">
       <!-- 헤더 -->
@@ -328,6 +313,12 @@ input[type=number]{-moz-appearance:textfield}
         </button>
         <div style="font-size:13px;color:#E65100;font-weight:700;text-align:center;margin-top:8px" id="lottery-msg">📅 화·목·토 오후 2시 추첨</div>
       </div>
+    </div>
+
+    <!-- 🏍️ 내 오토바이 관리 -->
+    <div class="card" id="vehicle-card">
+      <div class="card-title" style="font-size:17px;color:#3B5BDB;font-weight:800;text-transform:none;letter-spacing:normal">🏍️ 내 오토바이 관리</div>
+      <div id="vehicle-body"></div>
     </div>
 
   </div>
@@ -539,7 +530,7 @@ input[type=number]{-moz-appearance:textfield}
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
-  <button class="tab-btn" onclick="switchTab('mission',this)"><i class="ti ti-trophy"></i>미션</button>
+  <button class="tab-btn" onclick="switchTab('mission',this)"><i class="ti ti-user"></i>마이페이지</button>
   <button class="tab-btn" id="branch-tab-btn" onclick="switchTab('branch',this)">
     <i class="ti ti-building-store"></i>지사현황
   </button>
@@ -4378,7 +4369,7 @@ function computeInsuranceDaysLeft(expiryDate){
 
 // 보험 상태 카드 HTML (기사님 화면 - 주간보너스정산조회에 함께 표시)
 function renderInsuranceStatusCard(insurance){
-  if(!insurance || !insurance.expiryDate){
+  if(!insurance || !insurance.type){
     return `
       <div style="background:#F8F8F8;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center">
         <div style="font-size:12px;color:#aaa">🛡️ 등록된 보험 정보가 없어요 (사장님께 문의해주세요)</div>
@@ -4386,12 +4377,14 @@ function renderInsuranceStatusCard(insurance){
   }
   const daysLeft = computeInsuranceDaysLeft(insurance.expiryDate);
   if(insurance.autoRenew){
-    // 자동갱신인 경우, 정말 결제가 밀린 게 아니면 초록색으로 "자동갱신 중"만 안내
-    const overdue = daysLeft !== null && daysLeft < -3; // 자동갱신 기대일보다 3일 넘게 지나면 결제 실패 의심
+    // 자동갱신인 경우: 만료일이 아니라 "이번 달 결제확인" 자율신고 기준으로 판단
+    const daysSinceConfirm = insurance.lastConfirmedAt ? Math.floor((Date.now()-new Date(insurance.lastConfirmedAt).getTime())/(1000*60*60*24)) : null;
+    const overdue = daysSinceConfirm === null || daysSinceConfirm > 35; // 한달+여유 5일
     const color = overdue ? '#E24B4A' : '#1D9E75';
     const bg = overdue ? '#FFF0F0' : '#F0FBF7';
     const border = overdue ? '#FFC9C9' : '#9FE1CB';
-    const statusText = overdue ? '갱신 확인 필요' : '자동갱신 중';
+    const statusText = overdue ? '결제확인 필요' : '🔄 자동갱신 중';
+    const confirmLabel = insurance.lastConfirmedAt ? `최근 확인 ${new Date(insurance.lastConfirmedAt).toLocaleDateString('ko-KR')}` : '아직 확인 기록 없음';
     return `
       <div style="background:${bg};border:1px solid ${border};border-radius:10px;padding:12px 14px;margin-bottom:10px">
         <div style="display:flex;justify-content:space-between;align-items:center">
@@ -4400,8 +4393,8 @@ function renderInsuranceStatusCard(insurance){
             <div style="font-size:14px;font-weight:700;color:#333">${insurance.type||'미등록'}</div>
           </div>
           <div style="text-align:right">
-            <div style="font-size:11px;color:#888">최근 갱신 기준일 ${insurance.expiryDate}</div>
-            <div style="font-size:15px;font-weight:700;color:${color}">🔄 ${statusText}</div>
+            <div style="font-size:11px;color:#888">${confirmLabel}</div>
+            <div style="font-size:15px;font-weight:700;color:${color}">${statusText}</div>
           </div>
         </div>
       </div>`;
@@ -4458,14 +4451,14 @@ function showComplianceReviewList(){
         else if(aptDaysLeft !== null && aptDaysLeft <= 30) issues.push(`적성검사 D-${aptDaysLeft}`);
       }
 
-      if(!ins || !ins.expiryDate) issues.push('보험 미등록');
+      if(!ins || !ins.type) issues.push('보험 미등록');
       else if(!ins.autoRenew) {
         const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
         if(daysLeft !== null && daysLeft < 0) issues.push(`보험 만료됨(${-daysLeft}일 경과)`);
         else if(daysLeft !== null && daysLeft <= 14) issues.push(`보험 D-${daysLeft}`);
       } else {
-        const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
-        if(daysLeft !== null && daysLeft < -3) issues.push('자동갱신 결제확인 필요');
+        const daysSinceConfirm = ins.lastConfirmedAt ? Math.floor((Date.now()-new Date(ins.lastConfirmedAt).getTime())/(1000*60*60*24)) : null;
+        if(daysSinceConfirm === null || daysSinceConfirm > 35) issues.push('자동갱신 결제확인 필요');
       }
 
       if(issues.length>0) flagged.push({name, issues});
@@ -4489,7 +4482,211 @@ function showComplianceReviewList(){
   });
 }
 
-// ── 운전자격(면허효력) · 보험 확인 (기사님 본인 입력/확인) ──────────────────
+// ── 내 오토바이 관리 (주유기록 · 정비기록) ─────────────────────────────
+const MAINTENANCE_ITEMS = ['배터리','브레이크 오일','브레이크 패드','에어클리너','오일필터','점화플러그','타이어'];
+
+function renderVehicleCard(){
+  const bodyEl = document.getElementById('vehicle-body');
+  if(!bodyEl) return;
+  const identity = getMySettlementIdentity();
+  if(!identity){
+    bodyEl.innerHTML = `<div style="font-size:12px;color:#aaa;text-align:center;padding:10px">마이페이지 → "주간 보너스 정산 조회"에서 먼저 본인 아이디를 등록해주세요</div>`;
+    return;
+  }
+  const id = identity.id;
+
+  Promise.all([
+    db.ref('myVehicle/'+id).once('value'),
+    db.ref('fuelLogs/'+id).orderByChild('odometer').limitToLast(5).once('value'),
+    db.ref('maintenanceLogs/'+id).orderByChild('odometer').limitToLast(5).once('value')
+  ]).then(([vSnap, fSnap, mSnap])=>{
+    const vehicle = vSnap.val();
+    const fuelLogs = fSnap.val() ? Object.entries(fSnap.val()).sort((a,b)=>b[1].odometer-a[1].odometer) : [];
+    const maintLogs = mSnap.val() ? Object.entries(mSnap.val()).sort((a,b)=>b[1].odometer-a[1].odometer) : [];
+    renderVehicleBody(id, vehicle, fuelLogs, maintLogs);
+  });
+}
+
+function renderVehicleBody(id, vehicle, fuelLogs, maintLogs){
+  const bodyEl = document.getElementById('vehicle-body');
+  const latestMpg = fuelLogs.length>0 && fuelLogs[0][1].mpg ? fuelLogs[0][1].mpg : null;
+
+  bodyEl.innerHTML = `
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <input type="text" id="vehicle-type-input" placeholder="내 오토바이 종류 (예: 혼다 PCX125)" value="${vehicle && vehicle.type ? vehicle.type : ''}"
+        style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
+      <button onclick="saveMyVehicleType('${id}')" style="padding:9px 14px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+    </div>
+
+    ${latestMpg ? `
+    <div style="background:#F0F4FF;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:12px;color:#3B5BDB;font-weight:600">⛽ 최근 연비</span>
+      <span style="font-size:18px;font-weight:700;color:#3B5BDB">${latestMpg} km/L</span>
+    </div>` : ''}
+
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button onclick="showFuelForm('${id}')" style="flex:1;padding:10px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">⛽ 주유기록 추가</button>
+      <button onclick="showMaintForm('${id}')" style="flex:1;padding:10px;border-radius:8px;border:1px solid #3B5BDB;background:#fff;color:#3B5BDB;font-size:13px;font-weight:600;cursor:pointer">🔧 정비기록 추가</button>
+    </div>
+
+    <div id="vehicle-form-area" style="margin-bottom:10px"></div>
+
+    <div style="font-size:12px;font-weight:600;color:#888;margin-bottom:6px">최근 기록</div>
+    <div style="max-height:220px;overflow-y:auto">
+      ${renderVehicleHistory(fuelLogs, maintLogs)}
+    </div>
+  `;
+}
+
+function renderVehicleHistory(fuelLogs, maintLogs){
+  const all = [
+    ...fuelLogs.map(([logId,l])=>({...l, _type:'fuel', _id:logId})),
+    ...maintLogs.map(([logId,l])=>({...l, _type:'maint', _id:logId}))
+  ].sort((a,b)=>(b.odometer||0)-(a.odometer||0));
+  if(all.length===0) return '<div style="font-size:12px;color:#bbb;text-align:center;padding:10px">아직 기록이 없어요</div>';
+  return all.map(r=>{
+    if(r._type==='fuel'){
+      return `<div style="padding:8px 10px;border-bottom:0.5px solid #f0f0f0;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:#3B5BDB">⛽ ${r.gasStation||'주유'}</span><span style="color:#888">${r.odometer.toLocaleString()}km</span></div>
+        <div style="color:#888;margin-top:2px">${r.liters}L · ${(r.amount||0).toLocaleString()}원${r.mpg?` · 연비 ${r.mpg}km/L`:''}</div>
+      </div>`;
+    } else {
+      const itemNames = (r.items||[]).map(i=>i.name).join(', ');
+      const totalCost = (r.items||[]).reduce((s,i)=>s+(parseInt(i.cost)||0),0);
+      return `<div style="padding:8px 10px;border-bottom:0.5px solid #f0f0f0;font-size:12px">
+        <div style="display:flex;justify-content:space-between"><span style="font-weight:600;color:#B5590A">🔧 ${r.mode||'정비'}</span><span style="color:#888">${r.odometer.toLocaleString()}km</span></div>
+        <div style="color:#888;margin-top:2px">${itemNames}${totalCost?` · ${totalCost.toLocaleString()}원`:''}</div>
+      </div>`;
+    }
+  }).join('');
+}
+
+function saveMyVehicleType(id){
+  const type = document.getElementById('vehicle-type-input').value.trim();
+  if(!type) return;
+  db.ref('myVehicle/'+id).set({ type, updatedAt: new Date().toISOString() });
+}
+
+// ── 주유기록 폼 (사진/세차비/메모 없이 핵심 항목만) ──────────────────
+function showFuelForm(id){
+  const area = document.getElementById('vehicle-form-area');
+  area.innerHTML = `
+    <div style="background:#F0F4FF;border-radius:10px;padding:12px 14px">
+      <div style="font-size:13px;font-weight:700;color:#3B5BDB;margin-bottom:8px">⛽ 주유기록 추가</div>
+      <input type="text" id="fuel-station-input" placeholder="주유소 이름 (선택)" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
+      <input type="number" id="fuel-odometer-input" placeholder="누적주행거리 (km)" inputmode="numeric" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
+      <input type="number" id="fuel-amount-input" placeholder="주유금액 (원)" inputmode="numeric" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
+      <select id="fuel-type-input" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:6px;font-family:inherit">
+        <option value="휘발유">휘발유</option>
+        <option value="경유">경유</option>
+      </select>
+      <input type="number" id="fuel-liters-input" placeholder="주유량 (L)" inputmode="decimal" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:8px;font-family:inherit">
+      <div style="display:flex;gap:14px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#333"><input type="radio" name="fuel-fill-type" value="가득주유" checked> 가득주유</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#333"><input type="radio" name="fuel-fill-type" value="부분주유"> 부분주유</label>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="document.getElementById('vehicle-form-area').innerHTML=''" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#888;font-size:13px;font-weight:600;cursor:pointer">취소</button>
+        <button onclick="submitFuelLog('${id}')" style="flex:2;padding:9px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+      </div>
+      <div id="fuel-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
+    </div>
+  `;
+}
+
+function submitFuelLog(id){
+  const gasStation = document.getElementById('fuel-station-input').value.trim();
+  const odometer = parseFloat(document.getElementById('fuel-odometer-input').value);
+  const amount = parseFloat(document.getElementById('fuel-amount-input').value) || 0;
+  const fuelType = document.getElementById('fuel-type-input').value;
+  const liters = parseFloat(document.getElementById('fuel-liters-input').value);
+  const fillType = document.querySelector('input[name="fuel-fill-type"]:checked').value;
+  const statusEl = document.getElementById('fuel-submit-status');
+  if(!odometer || !liters){ statusEl.textContent = '누적주행거리와 주유량은 꼭 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
+
+  // 이전 기록(누적주행거리가 가장 큰 것) 조회해서 연비 계산: (이번-이전 거리)/이번 주유량
+  db.ref('fuelLogs/'+id).orderByChild('odometer').limitToLast(1).once('value').then(prevSnap=>{
+    let mpg = null;
+    const prevData = prevSnap.val();
+    if(prevData){
+      const prevOdo = Object.values(prevData)[0].odometer;
+      if(odometer > prevOdo) mpg = Math.round((odometer-prevOdo)/liters*10)/10;
+    }
+    const newLog = { date: new Date().toISOString(), gasStation, odometer, amount, fuelType, liters, fillType, mpg };
+    db.ref('fuelLogs/'+id).push(newLog).then(()=>{
+      statusEl.textContent = '✅ 저장 완료'+(mpg?` (연비 ${mpg}km/L)`:'');
+      statusEl.style.color = '#1D9E75';
+      setTimeout(()=>{ renderVehicleCard(); }, 800);
+    }).catch(err=>{
+      statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
+    });
+  });
+}
+
+// ── 정비기록 폼 (사진/장소추가 없이 핵심 항목만) ──────────────────
+let maintItemRowCount = 0;
+function showMaintForm(id){
+  maintItemRowCount = 0;
+  const area = document.getElementById('vehicle-form-area');
+  area.innerHTML = `
+    <div style="background:#FFF7F0;border-radius:10px;padding:12px 14px">
+      <div style="font-size:13px;font-weight:700;color:#B5590A;margin-bottom:8px">🔧 정비기록 추가</div>
+      <div style="display:flex;gap:14px;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#333"><input type="radio" name="maint-mode" value="정비소" checked> 정비소</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:13px;color:#333"><input type="radio" name="maint-mode" value="자가정비"> 자가정비</label>
+      </div>
+      <input type="number" id="maint-odometer-input" placeholder="누적주행거리 (km)" inputmode="numeric" style="width:100%;padding:8px 10px;border-radius:8px;border:1px solid #ccc;font-size:13px;margin-bottom:10px;font-family:inherit">
+      <div id="maint-items-area"></div>
+      <button onclick="addMaintItemRow()" style="width:100%;padding:8px;border-radius:8px;border:1px dashed #E27A00;background:#fff;color:#B5590A;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px">+ 항목 추가</button>
+      <div style="display:flex;gap:6px">
+        <button onclick="document.getElementById('vehicle-form-area').innerHTML=''" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#888;font-size:13px;font-weight:600;cursor:pointer">취소</button>
+        <button onclick="submitMaintLog('${id}')" style="flex:2;padding:9px;border-radius:8px;border:none;background:#B5590A;color:#fff;font-size:13px;font-weight:600;cursor:pointer">저장</button>
+      </div>
+      <div id="maint-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
+    </div>
+  `;
+  addMaintItemRow();
+}
+
+function addMaintItemRow(){
+  const itemsArea = document.getElementById('maint-items-area');
+  const rowId = 'maint-item-'+(maintItemRowCount++);
+  const optionsHtml = MAINTENANCE_ITEMS.map(name=>`<option value="${name}">${name}</option>`).join('');
+  const row = document.createElement('div');
+  row.id = rowId;
+  row.style.cssText = 'background:#fff;border-radius:8px;padding:10px;margin-bottom:8px;position:relative';
+  row.innerHTML = `
+    <button onclick="document.getElementById('${rowId}').remove()" style="position:absolute;top:6px;right:6px;background:none;border:none;color:#bbb;font-size:14px;cursor:pointer">✕</button>
+    <select class="maint-item-name" style="width:90%;padding:7px 8px;border-radius:6px;border:1px solid #ddd;font-size:13px;margin-bottom:6px;font-family:inherit">${optionsHtml}</select>
+    <input type="number" class="maint-item-cost" placeholder="지출금액 (원)" inputmode="numeric" style="width:100%;padding:7px 8px;border-radius:6px;border:1px solid #ddd;font-size:13px;margin-bottom:6px;font-family:inherit">
+    <input type="text" class="maint-item-memo" placeholder="메모 (선택)" style="width:100%;padding:7px 8px;border-radius:6px;border:1px solid #ddd;font-size:12px;font-family:inherit">
+  `;
+  itemsArea.appendChild(row);
+}
+
+function submitMaintLog(id){
+  const mode = document.querySelector('input[name="maint-mode"]:checked').value;
+  const odometer = parseFloat(document.getElementById('maint-odometer-input').value);
+  const statusEl = document.getElementById('maint-submit-status');
+  if(!odometer){ statusEl.textContent = '누적주행거리를 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  const rows = document.querySelectorAll('#maint-items-area > div');
+  const items = Array.from(rows).map(row=>({
+    name: row.querySelector('.maint-item-name').value,
+    cost: row.querySelector('.maint-item-cost').value || 0,
+    memo: row.querySelector('.maint-item-memo').value || ''
+  }));
+  if(items.length===0){ statusEl.textContent = '항목을 하나 이상 추가해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
+  db.ref('maintenanceLogs/'+id).push({ date: new Date().toISOString(), mode, odometer, items }).then(()=>{
+    statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
+    setTimeout(()=>{ renderVehicleCard(); }, 800);
+  }).catch(err=>{
+    statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
+  });
+}
+
+
 // 배민 API 연동이 안 되므로, 라이더 본인이 공식 사이트에서 확인하고 "확인했어요"를
 // 자체 기록하는 방식 + 보험 정보는 본인이 직접 입력하는 방식으로 구현합니다.
 function renderComplianceCard(){
@@ -4533,15 +4730,15 @@ function renderComplianceAlerts(lic, ins){
     else if(aptDaysLeft !== null && aptDaysLeft <= 30) warnings.push(`📅 적성검사 기한이 ${aptDaysLeft}일 남았어요. 미리 준비해주세요.`);
   }
 
-  if(!ins || !ins.expiryDate){
+  if(!ins || !ins.type){
     warnings.push('🛡️ 보험 정보가 등록되어 있지 않아요. 아래에서 입력해주세요.');
   } else if(!ins.autoRenew){
     const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
     if(daysLeft !== null && daysLeft < 0) warnings.push('🛡️ 보험이 이미 만료됐어요! 서둘러 갱신해주세요.');
     else if(daysLeft !== null && daysLeft <= 14) warnings.push(`🛡️ 보험이 ${daysLeft}일 후 만료돼요. 갱신을 준비해주세요.`);
   } else {
-    const daysLeft = computeInsuranceDaysLeft(ins.expiryDate);
-    if(daysLeft !== null && daysLeft < -3) warnings.push('🛡️ 자동갱신 보험인데 결제가 늦어지고 있을 수 있어요. 확인해주세요.');
+    const daysSinceConfirm = ins.lastConfirmedAt ? Math.floor((Date.now()-new Date(ins.lastConfirmedAt).getTime())/(1000*60*60*24)) : null;
+    if(daysSinceConfirm === null || daysSinceConfirm > 35) warnings.push('🛡️ 자동갱신 보험 이번 달 결제확인을 안 하셨어요. 확인해주세요.');
   }
 
   if(warnings.length === 0){ alertEl.innerHTML = ''; return; }
@@ -4584,7 +4781,7 @@ function renderComplianceBody(id, lic, ins){
     <div style="background:#F8F8F8;border-radius:10px;padding:12px 14px">
       <div style="font-size:13px;font-weight:700;color:#333;margin-bottom:4px">개인 유상운송보험 정보</div>
       <div style="font-size:11px;color:#888;margin-bottom:10px">보험증권을 보고 아래 정보를 입력해주세요. 만료 전에 미리 알려드려요.</div>
-      ${ins && ins.expiryDate ? renderInsuranceStatusCard(ins) : ''}
+      ${ins && ins.type ? renderInsuranceStatusCard(ins) : ''}
       <select id="insurance-type-input" style="width:100%;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;margin-bottom:6px;font-family:inherit">
         <option value="개인 유상운송보험" ${ins && ins.type==='개인 유상운송보험'?'selected':''}>개인 유상운송보험</option>
         <option value="시간제보험" ${ins && ins.type==='시간제보험'?'selected':''}>시간제보험(배민커넥트 가입)</option>
@@ -4598,9 +4795,13 @@ function renderComplianceBody(id, lic, ins){
           <input type="date" id="insurance-expiry-input" value="${ins && ins.expiryDate ? ins.expiryDate : ''}" style="flex:1;padding:9px;border-radius:8px;border:1px solid #ddd;font-size:13px;font-family:inherit">
         </div>
         <div style="font-size:11px;color:#aaa;margin-bottom:8px">↑ 보험증권의 "보험기간" 중 만료일(종료일)을 입력해주세요</div>
+        <button onclick="submitMyInsurance('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">보험 정보 저장</button>
       </div>
-      <div id="insurance-autorenew-note" style="display:${ins && ins.autoRenew ? 'block':'none'};font-size:11px;color:#aaa;margin-bottom:8px">↑ 자동갱신이라도 결제가 밀리면 보장이 끊길 수 있어요. 현재 계약이 시작된 날짜(또는 최근 갱신일)를 입력해두시면 이상 여부 확인에 참고할게요.</div>
-      <button onclick="submitMyInsurance('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">보험 정보 저장</button>
+      <div id="insurance-autorenew-wrap" style="display:${ins && ins.autoRenew ? 'block':'none'}">
+        <div style="font-size:11px;color:#aaa;margin-bottom:8px">↑ 자동갱신은 만료일 대신, 매달 결제가 잘 됐는지 본인이 직접 체크해주시면 돼요. 35일 넘게 확인 안 하면 알려드릴게요.</div>
+        <button onclick="submitMyInsurance('${id}')" style="width:100%;padding:9px;border-radius:8px;border:1px solid #9FE1CB;background:#fff;color:#0F6E56;font-size:13px;font-weight:600;cursor:pointer;margin-bottom:8px">보험종류만 먼저 저장</button>
+        <button onclick="confirmInsurancePaymentChecked('${id}')" style="width:100%;padding:9px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">✅ 이번 달 결제 확인했어요</button>
+      </div>
       <div id="insurance-submit-status" style="font-size:11px;color:#888;text-align:center;margin-top:6px"></div>
     </div>
   `;
@@ -4608,9 +4809,18 @@ function renderComplianceBody(id, lic, ins){
 
 function toggleInsuranceAutoRenewUI(checked){
   const wrap = document.getElementById('insurance-expiry-wrap');
-  const note = document.getElementById('insurance-autorenew-note');
+  const autoWrap = document.getElementById('insurance-autorenew-wrap');
   if(wrap) wrap.style.display = checked ? 'none' : 'block';
-  if(note) note.style.display = checked ? 'block' : 'none';
+  if(autoWrap) autoWrap.style.display = checked ? 'block' : 'none';
+}
+
+// 자동갱신 보험: 이번 달 결제 확인 자율신고 (운전면허 확인과 동일한 패턴)
+function confirmInsurancePaymentChecked(id){
+  const type = document.getElementById('insurance-type-input').value;
+  db.ref('insurance/'+id).update({ type, autoRenew: true, lastConfirmedAt: new Date().toISOString(), source: 'self' }).then(()=>{
+    alert('확인 감사합니다! 다음 달에 다시 확인 안내드릴게요.');
+    renderComplianceCard();
+  });
 }
 
 // 적성검사 기한 상태 카드 (보험 상태 카드와 동일한 톤의 D-day 표시)
@@ -4651,12 +4861,22 @@ function confirmLicenseChecked(id){
 
 function submitMyInsurance(id){
   const type = document.getElementById('insurance-type-input').value;
-  const expiryDate = document.getElementById('insurance-expiry-input').value;
   const autoRenew = document.getElementById('insurance-autorenew-input').checked;
   const statusEl = document.getElementById('insurance-submit-status');
-  if(!expiryDate){ statusEl.textContent = autoRenew ? '기준일을 입력해주세요' : '만료일을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
   statusEl.textContent = '저장 중...'; statusEl.style.color = '#888';
-  db.ref('insurance/'+id).set({ type, expiryDate, autoRenew, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
+  if(autoRenew){
+    // 자동갱신은 만료일이 필요 없고, 보험종류만 저장 (결제확인은 별도 버튼)
+    db.ref('insurance/'+id).update({ type, autoRenew: true, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
+      statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
+      renderComplianceCard();
+    }).catch(err=>{
+      statusEl.textContent = '저장 실패: '+err.message; statusEl.style.color = '#E24B4A';
+    });
+    return;
+  }
+  const expiryDate = document.getElementById('insurance-expiry-input').value;
+  if(!expiryDate){ statusEl.textContent = '만료일을 입력해주세요'; statusEl.style.color = '#E24B4A'; return; }
+  db.ref('insurance/'+id).set({ type, expiryDate, autoRenew: false, updatedAt: new Date().toISOString(), source: 'self' }).then(()=>{
     statusEl.textContent = '✅ 저장 완료'; statusEl.style.color = '#1D9E75';
     renderComplianceCard();
   }).catch(err=>{
@@ -5271,6 +5491,7 @@ function switchTab(name,btn){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
+  if(name==='today'){ renderVehicleCard(); }
   if(name==='record'){ renderWeek(); renderMyAcceptRate(); loadCumulCalls(); }
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
@@ -5432,6 +5653,8 @@ function init(){
   const settleLabelEl = document.getElementById('settlement-week-label');
   if(settleLabelEl) settleLabelEl.textContent = '이번 주 · ' + settleInfo.rangeLabel;
   renderSettlementLookupCard();
+  renderComplianceCard();
+  renderVehicleCard();
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
