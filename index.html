@@ -623,6 +623,11 @@ input[type=number]{-moz-appearance:textfield}
         📋 오늘 응모자 명단 보기 (당첨횟수 포함)
       </button>
       <div id="lottery-entrant-list" style="margin-bottom:8px"></div>
+      <button onclick="recomputeAllLotteryWinCounts()"
+        style="width:100%;padding:9px;border-radius:10px;border:1px solid #C7D5FF;background:#F0F4FF;color:#3B5BDB;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px">
+        🔁 당첨 이력 전체 재계산 (지금까지 쌓인 날짜별 기록 기준)
+      </button>
+      <div id="lottery-recompute-status" style="font-size:11px;color:#888;text-align:center;margin-bottom:8px"></div>
       <button onclick="resetLottery()"
         style="width:100%;padding:9px;border-radius:10px;border:1px solid #ddd;background:#f5f5f5;color:#aaa;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:14px">
         🔄 추첨 데이터 초기화 (테스트용)
@@ -2612,6 +2617,49 @@ function loadLottery(){
 }
 
 // 관리자 - 당첨자 추첨
+// 지금까지 쌓인 날짜별 당첨 기록(lottery/{날짜}/winners)을 전부 훑어서
+// 당첨 횟수(lottery/winCounts)를 처음부터 다시 정확하게 계산합니다.
+// (당첨 횟수 표시 기능을 나중에 추가해서, 그 이전 당첨 이력이 누락되어 있을 때 한 번 돌리는 용도)
+function recomputeAllLotteryWinCounts(){
+  const statusEl = document.getElementById('lottery-recompute-status');
+  if(statusEl){ statusEl.textContent = '지금까지 기록을 훑는 중...'; statusEl.style.color = '#888'; }
+
+  db.ref('lottery').once('value').then(snap=>{
+    const all = snap.val() || {};
+    const counts = {};
+    let dayCount = 0, winCount = 0;
+
+    Object.keys(all).forEach(key=>{
+      if(key === 'month' || key === 'winCounts') return; // 당첨자 원본 기록이 아닌 다른 용도의 노드는 건너뜀
+      const dayData = all[key];
+      if(!dayData || !dayData.winners) return;
+      dayCount++;
+      Object.values(dayData.winners).forEach(w=>{
+        if(!w || !w.name) return;
+        counts[w.name] = (counts[w.name]||0) + 1;
+        winCount++;
+      });
+    });
+
+    const updates = {};
+    Object.keys(counts).forEach(name=>{
+      updates['lottery/winCounts/'+name] = counts[name];
+    });
+
+    db.ref().update(updates).then(()=>{
+      if(statusEl){
+        statusEl.style.color = '#1D9E75';
+        statusEl.textContent = `✅ ${dayCount}일치 기록에서 총 ${winCount}건 당첨 확인, ${Object.keys(counts).length}명 당첨횟수 갱신 완료`;
+      }
+      showLotteryEntrantList();
+    }).catch(err=>{
+      if(statusEl){ statusEl.style.color = '#E24B4A'; statusEl.textContent = '저장 실패: '+err.message; }
+    });
+  }).catch(err=>{
+    if(statusEl){ statusEl.style.color = '#E24B4A'; statusEl.textContent = '불러오기 실패: '+err.message; }
+  });
+}
+
 function resetLottery(){
   if(!confirm('테스트 데이터를 초기화할까요?\n(오늘 응모자·당첨자·이번 달 당첨 기록 삭제)')) return;
   const dateKey = getLotteryDateKey();
