@@ -2960,9 +2960,10 @@ function parseSlotDataFromRows(rows){
   const header1 = rows[1];
 
   // 완료/거절/배차취소 "합계" 하위 컬럼 인덱스 찾기 (2단 헤더: 상단 항목명 + 하단 '합계')
+  // 8/12 이후 배민 쪽 헤더가 "거절"→"SLA거절"처럼 접두어가 붙는 경우가 있어서, 포함 여부로 찾습니다.
   function findGroupTotalIdx(groupName){
     for(let i=0;i<header0.length;i++){
-      if(header0[i]===groupName && header1[i]==='합계') return i;
+      if(header0[i] && header0[i].includes(groupName) && header1[i]==='합계') return i;
     }
     return -1;
   }
@@ -2970,7 +2971,7 @@ function parseSlotDataFromRows(rows){
   // 푸드 건수만으로 계산합니다 - 실제 지사 대시보드 수치와 대조해서 확인된 공식입니다)
   function findGroupFoodIdx(groupName){
     for(let i=0;i<header0.length;i++){
-      if(header0[i]===groupName && header1[i]==='푸드') return i;
+      if(header0[i] && header0[i].includes(groupName) && header1[i]==='푸드') return i;
     }
     return -1;
   }
@@ -3028,7 +3029,7 @@ function parseRiderRowsFromRows(rows){
 
   function findGroupTotalIdx(groupName){
     for(let i=0;i<header0.length;i++){
-      if(header0[i]===groupName && header1[i]==='합계') return i;
+      if(header0[i] && header0[i].includes(groupName) && header1[i]==='합계') return i;
     }
     return -1;
   }
@@ -3036,7 +3037,7 @@ function parseRiderRowsFromRows(rows){
   // 푸드 건수만으로 계산합니다 - 실제 지사 대시보드 수치와 대조해서 확인된 공식입니다)
   function findGroupFoodIdx(groupName){
     for(let i=0;i<header0.length;i++){
-      if(header0[i]===groupName && header1[i]==='푸드') return i;
+      if(header0[i] && header0[i].includes(groupName) && header1[i]==='푸드') return i;
     }
     return -1;
   }
@@ -5225,9 +5226,10 @@ function renderWeeklyGrid(){
 
         // Firebase 데이터
         const fbVal = fd[k] ? (fd[k][slotKeys[si]]||0) : 0;
-        // 로컬 처리건수 (직접 입력)
         const localVal = parseInt(lsGet('slot_processed_'+k+'_'+slotKeys[si]))||0;
-        const processed = localVal > 0 ? localVal : fbVal;
+        // 배민에서 업로드/붙여넣기한 실제 데이터가 있으면 그게 항상 우선.
+        // 로컬 처리건수(직접 입력)는 아직 그날 데이터가 없을 때만 임시로 사용합니다.
+        const processed = fbVal > 0 ? fbVal : localVal;
 
         const r = calcSlotBonus(processed, target);
         totalBonus += r.bonus;
@@ -5270,10 +5272,10 @@ function renderWeeklyGrid(){
           const k=dates[di];
           const d=new Date(start); d.setUTCDate(start.getUTCDate()+di);
           const kd=toKST(d); const dayK=DAY_KEY[kd.getUTCDay()]; const isT=k===todayK;
-          const target=t1[si][dayK]*9;
+          const target=t1[si][dayK]*getSetCount();
           const fbVal=fd[k]?(fd[k][slotKeys[si]]||0):0;
           const localVal=parseInt(lsGet('slot_processed_'+k+'_'+slotKeys[si]))||0;
-          const processed=localVal>0?localVal:fbVal;
+          const processed=fbVal>0?fbVal:localVal;
           const r=calcSlotBonus(processed,target);
           const rateStr=processed>0?Math.round(r.rate)+'%':'-';
           const bgColor=r.rate>=150?'#0a7a5a':r.rate>=140?'#1D9E75':r.rate>=130?'#2EC4A0':r.rate>=120?'#7EDEC8':r.rate>=110?'#B2EDE3':r.rate>=100?'#D6F5EE':'#f5f5f5';
