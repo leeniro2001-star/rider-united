@@ -4900,10 +4900,12 @@ function submitAdmin(){
         closeAdmin();
         renderBranch(data, 0);
         updateBranchDateLabel();
+        renderWeeklyGrid();
       } catch(err){
         console.error('화면 갱신 오류:', err);
         closeAdmin();
         loadBranch();
+        renderWeeklyGrid();
       }
     }).catch(e=>{
       console.error('Firebase 저장 오류:', e);
