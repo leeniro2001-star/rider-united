@@ -1862,11 +1862,6 @@ function renderBranch(data, offset){
     const statusColor=isAchieved?'#1D9E75':'#EF9F27';
     const statusText=isAchieved?'✅ 달성':'🔶 진행중';
     const overNote='';
-    // 새로 달성된 슬롯 감지 (오늘만)
-    if(offset===0 && isAchieved && !prevAchievedSlots[slot.key] && data){
-      setTimeout(()=>showSlotAchieve(slot.name, slot.color), 300);
-    }
-    if(offset===0) prevAchievedSlots[slot.key] = isAchieved;
     // 현재 진행중 슬롯이고 미달성이면 깜빡임
     const isBlinking = isCur && !isAchieved;
     html+=`<div class="slot-item${isBlinking?' slot-blinking':''}" style="${isCur?'background:#F8FDF9;border-radius:10px;padding:12px;margin:4px -4px':''}">
