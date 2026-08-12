@@ -427,43 +427,6 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-record" class="screen">
   <div style="margin-top:4px">
 
-    <!-- 누적콜 현황 -->
-    <div class="card" id="cumul-card">
-      <div class="card-title">🏆 내 누적콜 현황</div>
-      <div id="cumul-register-area"></div>
-      <div id="cumul-display" style="display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <div>
-            <div style="font-size:28px;font-weight:700;color:#1D9E75" id="cumul-total">0콜</div>
-            <div style="font-size:12px;color:#888;margin-top:2px" id="cumul-cycle">현재 사이클</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:12px;color:#888">다음 목표</div>
-            <div style="font-size:16px;font-weight:700;color:#E24B4A" id="cumul-next">1000콜</div>
-            <div style="font-size:12px;color:#888" id="cumul-remain">1000콜 남음</div>
-          </div>
-        </div>
-        <div style="background:#eee;border-radius:6px;height:10px;overflow:hidden;margin-bottom:8px">
-          <div id="cumul-bar" style="height:100%;background:linear-gradient(90deg,#1D9E75,#2EC4A0);border-radius:6px;transition:width 0.5s;width:0%"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:#888;margin-bottom:10px">
-          <span id="ms-1000">1000콜<br>💰3만</span>
-          <span id="ms-2000" style="text-align:center">2000콜<br>💰3만</span>
-          <span id="ms-3000" style="text-align:center">3000콜<br>💰3만</span>
-          <span id="ms-4000" style="text-align:center">4000콜<br>💰3만</span>
-          <span id="ms-5000" style="text-align:right">5000콜<br>💰10만</span>
-        </div>
-        <div style="font-size:10px;color:#aaa;text-align:center">📋 사장님이 올린 주간 정산 자료 기준 자동 집계 (7/1주부터)</div>
-      </div>
-    </div>
-
-    <div class="week-nav">
-      <button class="nav-btn" onclick="changeWeek(-1)"><i class="ti ti-chevron-left"></i></button>
-      <span class="week-label" id="week-label"></span>
-      <button class="nav-btn" onclick="changeWeek(1)"><i class="ti ti-chevron-right"></i></button>
-    </div>
-    <div class="week-sum-grid" id="week-summary"></div>
-
     <!-- 내 수락률 조회 (사장님이 올린 자료 기준 자동 집계) -->
     <div class="card" id="my-accept-card">
       <div class="card-title">📊 내 수락률 조회</div>
@@ -471,7 +434,6 @@ input[type=number]{-moz-appearance:textfield}
       <div id="my-accept-result"></div>
     </div>
 
-    <div id="week-days"></div>
   </div>
 </div>
 
@@ -707,47 +669,6 @@ input[type=number]{-moz-appearance:textfield}
         </button>
       </div>
 
-      <!-- 🔬 보너스 제도 시뮬레이터 -->
-      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:600">🔬 보너스 제도 시뮬레이터 (위 주간 정산 화면과 같은 주 기준)</div>
-      <div style="background:#F0F4FF;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #C7D5FF">
-        <div style="font-size:11px;color:#3B5BDB;font-weight:600;margin-bottom:8px">일일미션 새 단가 입력 (현재 위에서 보고 계신 주 기준으로 비교합니다)</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
-          <div><label style="font-size:11px;color:#3B5BDB">30건↑</label><input type="number" id="sim-tier-30" placeholder="8000" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #C7D5FF;font-size:12px;box-sizing:border-box"></div>
-          <div><label style="font-size:11px;color:#3B5BDB">40건↑</label><input type="number" id="sim-tier-40" placeholder="16000" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #C7D5FF;font-size:12px;box-sizing:border-box"></div>
-          <div><label style="font-size:11px;color:#3B5BDB">50건↑</label><input type="number" id="sim-tier-50" placeholder="24000" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #C7D5FF;font-size:12px;box-sizing:border-box"></div>
-          <div><label style="font-size:11px;color:#3B5BDB">60건↑</label><input type="number" id="sim-tier-60" placeholder="32000" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #C7D5FF;font-size:12px;box-sizing:border-box"></div>
-          <div><label style="font-size:11px;color:#3B5BDB">70건↑</label><input type="number" id="sim-tier-70" placeholder="40000" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid #C7D5FF;font-size:12px;box-sizing:border-box"></div>
-        </div>
-        <button onclick="runBonusSimulator()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#3B5BDB;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
-          🔬 기존 vs 변경 비교하기
-        </button>
-        <div id="bonus-sim-result" style="margin-top:10px"></div>
-      </div>
-
-      <!-- ⚡ 깜짝미션 -->
-      <div style="font-size:13px;color:#666;margin-bottom:8px;font-weight:600">⚡ 깜짝미션 (특정 요일·시간대 추가 보상)</div>
-      <div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:14px;border:1px solid #FED7AA">
-        <div id="surprise-mission-list" style="margin-bottom:10px"></div>
-        <div style="font-size:11px;color:#9A5B13;font-weight:600;margin-bottom:6px">새 깜짝미션 추가</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          <select id="sm-day-select" style="padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
-          <div style="display:flex;gap:4px;align-items:center">
-            <select id="sm-start-select" style="flex:1;padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
-            <span style="font-size:11px;color:#9A5B13">~</span>
-            <select id="sm-end-select" style="flex:1;padding:7px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit"></select>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
-          <input type="number" id="sm-target-input" placeholder="목표 건수 (예: 10)" style="padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit">
-          <input type="number" id="sm-price-input" placeholder="건당 보상(원) (예: 500)" style="padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit">
-        </div>
-        <input type="text" id="sm-desc-input" placeholder="기사님께 보여질 설명 (예: 토요일 저녁 5~8시 10건↑ 건당 500원 추가지급)" style="width:100%;padding:7px 10px;border-radius:8px;border:1px solid #FED7AA;font-size:12px;font-family:inherit;margin-bottom:8px;box-sizing:border-box">
-        <button onclick="addSurpriseMission()" style="width:100%;padding:9px;border-radius:8px;border:none;background:#EA8C1E;color:#fff;font-size:13px;font-weight:700;cursor:pointer">
-          ⚡ 깜짝미션 추가
-        </button>
-        <div style="font-size:10px;color:#aaa;margin-top:6px">추가하면 지금까지 올리신 요일 자료에 바로 반영되고 자동으로 다시 게시돼요. 기사님들께 알리려면 위 "공지 등록"에도 따로 올려주세요.</div>
-      </div>
-
       <div style="height:1px;background:#f0f0f0;margin:14px 0"></div>
       <button class="btn-reset" onclick="closeAdmin()">닫기</button>
     </div>
@@ -804,23 +725,38 @@ const BRANCH_CONFIG = {
   // 기본 세트수 (지사현황 목표치 계산에 쓰이는 배율)
   defaultSetCount: 9,
 
-  // 4구간 슬롯별 요일별 목표치 (세트수 곱하기 전, 1세트 기준)
+  // 4구간 슬롯별 요일별 목표치 (세트수 곱하기 전, 1세트 기준) - 8/12 SLA 변경 반영
   slots: [
-    {key:'lunch',    name:'점심피크',   time:'평일 10:00~12:59 / 주말 10:00~13:59', color:'#EF9F27', targets:{월:22,화:22,수:22,목:22,금:25,토:31,일:32}},
-    {key:'afternoon',name:'오후논피크', time:'평일 13:00~16:59 / 주말 14:00~16:59', color:'#378ADD', targets:{월:21,화:21,수:21,목:21,금:22,토:23,일:24}},
-    {key:'evening',  name:'저녁피크',   time:'17:00~19:59',                        color:'#E24B4A', targets:{월:32,화:32,수:32,목:32,금:34,토:38,일:37}},
-    {key:'night',    name:'심야논피크', time:'20:00~23:59',                        color:'#534AB7', targets:{월:25,화:25,수:25,목:25,금:29,토:28,일:27}}
+    {key:'lunch',    name:'아침점심피크', time:'평일 09:00~12:59 / 주말 09:00~13:59', color:'#EF9F27', targets:{월:19,화:19,수:19,목:19,금:21,토:27,일:29}},
+    {key:'afternoon',name:'오후논피크',   time:'평일 13:00~16:59 / 주말 14:00~16:59', color:'#378ADD', targets:{월:18,화:18,수:18,목:18,금:21,토:22,일:22}},
+    {key:'evening',  name:'저녁피크',     time:'17:00~19:59',                         color:'#E24B4A', targets:{월:30,화:30,수:30,목:30,금:32,토:36,일:35}},
+    {key:'night',    name:'심야논피크',   time:'20:00~23:59',                         color:'#534AB7', targets:{월:23,화:23,수:23,목:23,금:26,토:25,일:24}}
   ],
 
-  // 지사 초과보너스: 처리건수/목표건수 비율 구간별 건당 단가 (100~150% 구간)
+  // 지사 초과보너스: 처리건수/목표건수 비율 구간별 건당 단가 (100~150% 구간) - 8/12 이후 단가 역전 반영
   slotBonusTiers: [
-    {from:100, to:110, price:315},
-    {from:110, to:120, price:280},
+    {from:100, to:110, price:175},
+    {from:110, to:120, price:210},
     {from:120, to:130, price:245},
-    {from:130, to:140, price:210},
-    {from:140, to:150, price:175},
+    {from:130, to:140, price:280},
+    {from:140, to:150, price:315},
   ],
   slotBonusCapPercent: 150, // 이 비율 초과분은 미지급
+
+  // 퍼스트제도안: 09시~다음날1시 인정건수 기준 주간 보너스
+  // 151개(=baseThreshold+1)부터 개당 basePricePerCall원, 무제한 지급 + 구간별 추가 보너스(가장 높은 구간 하나만 적용)
+  firstSystemTiers: {
+    recognizedStartHour: 9,   // 인정 시작 시각(09시)
+    recognizedEndHour: 25,    // 인정 종료 시각(25시=다음날 01시)
+    baseThreshold: 150,       // 151번째 콜부터 지급 시작
+    basePricePerCall: 1000,
+    extraTiers: [
+      {minTotal:100, won:10000},
+      {minTotal:200, won:20000},
+      {minTotal:300, won:30000},
+      {minTotal:400, won:100000},
+    ],
+  },
 
   // 일일미션보너스: 완료건수 구간별 지급액 (하루 기준)
   dailyMissionTiers: [
@@ -1098,18 +1034,16 @@ function renderResult(rec){
   const achieved = BONUS_TABLE.find(b=>rec.complete>=b.min);
   const rows = [...BONUS_TABLE].reverse().map(b=>{
     const ok=rec.complete>=b.min;
-    const isNext=!achieved&&b.min===BONUS_TABLE[BONUS_TABLE.length-1].min;
-    return `<div class="bonus-row ${ok?'done':isNext?'next-t':''}">
+    return `<div class="bonus-row ${ok?'done':''}">
       <span class="bonus-tier">${ok?'✓ ':''}${b.min}건 이상</span>
-      <span class="bonus-amount">${b.won.toLocaleString()}원</span>
     </div>`;
   }).join('');
   const brEl = document.getElementById('bonus-rows'); if(brEl) brEl.innerHTML = rows;
   if(achieved){
     document.getElementById('bonus-result').innerHTML=`
-      <div class="bonus-achieved" onclick="showConfetti(${achieved.won},${rec.complete})">
+      <div class="bonus-achieved" onclick="showConfetti(${rec.complete})">
         <div class="bonus-achieved-label">🎉 터치해보세요!</div>
-        <div class="bonus-achieved-val">${achieved.won.toLocaleString()}원</div>
+        <div class="bonus-achieved-val">${rec.complete}건 완료!</div>
       </div>`;
   } else {
     const need = BONUS_TABLE[BONUS_TABLE.length-1].min - rec.complete;
@@ -1786,9 +1720,11 @@ function changeWeek(dir){ weekOffset+=dir; renderWeek(); renderMyAcceptRate(); }
 
 // 지사현황
 function getCurrentSlot(){
-  const n=toKST(new Date()); const h=n.getUTCHours();
-  if(h>=10&&h<13) return SLOTS[0];
-  if(h>=13&&h<17) return SLOTS[1];
+  const n=toKST(new Date()); const h=n.getUTCHours(); const dow=n.getUTCDay(); // 0=일,6=토
+  const isWeekend = dow===0 || dow===6;
+  const lunchEnd = isWeekend ? 14 : 13; // 주말 09~13:59(즉 14시 전), 평일 09~12:59(즉 13시 전)
+  if(h>=9&&h<lunchEnd) return SLOTS[0];
+  if(h>=lunchEnd&&h<17) return SLOTS[1];
   if(h>=17&&h<20) return SLOTS[2];
   if(h>=20&&h<24) return SLOTS[3];
   return null;
@@ -3161,23 +3097,26 @@ function sumHourlyRange(hourly, startHour, endHour){
   return sum;
 }
 
+function calcFirstSystemBonus(count){
+  const cfg = BRANCH_CONFIG.firstSystemTiers;
+  const base = Math.max(0, count - cfg.baseThreshold) * cfg.basePricePerCall;
+  const extra = (cfg.extraTiers.slice().reverse().find(t=>count>=t.minTotal) || {won:0}).won;
+  return base + extra;
+}
+
 function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, weekKey){
-  // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
-  // surpriseMissions: [{dayLabel, startHour, endHour, target, unitPrice, description}, ...] (선택, 관리자가 설정한 깜짝미션)
-  // priorCumulMap: { '아이디' 또는 'name:이름' -> 이번 주 이전까지의 누적콜 } (선택, 1000콜 마일스톤 보너스 계산용)
-  // weekKey: 이 주의 시작일('2026-08-12' 형식) - 8/12 SLA 변경 전/후 단가를 자동으로 구분하는 데 사용
-  const GOALS = BRANCH_CONFIG.dailyMissionTiers.map(t=>t.min);
-  const TIER_BONUS = {}; BRANCH_CONFIG.dailyMissionTiers.forEach(t=>TIER_BONUS[t.min]=t.won);
-  surpriseMissions = surpriseMissions || [];
+  // dayArrays: [{dayLabel:'수요일', riders:[{id,name,phone,complete,night,hourly},...]}, ...] (최대 7개, 없는 요일은 생략 가능)
+  // priorCumulMap: { '아이디' 또는 'name:이름' -> 이번 주 이전까지의 누적콜 } (누적콜 마일스톤 보너스 계산용)
+  // weekKey: 이 주의 시작일('2026-08-12' 형식)
+  // 퍼스트제도안: 09시~다음날1시(설정값) 인정건수 기준으로 주간 보너스를 계산합니다.
   priorCumulMap = priorCumulMap || {};
-  const afterSLA = weekKey && weekKey >= BRANCH_CONFIG.slaChangeWeekKey;
-  const attendTiers = afterSLA ? BRANCH_CONFIG.attendBonusTiersAfterSLA : BRANCH_CONFIG.attendBonusTiers;
-  const nightTiers = afterSLA ? BRANCH_CONFIG.nightBonusTiersAfterSLA : BRANCH_CONFIG.nightBonusTiers;
+  const startH = BRANCH_CONFIG.firstSystemTiers.recognizedStartHour;
+  const endH = BRANCH_CONFIG.firstSystemTiers.recognizedEndHour;
 
   // 같은 사람을 "이름+전화번호"로 먼저 묶습니다 (아이디만 보고 묶으면, 어떤 날짜 파일에는
   // 아이디가 비어있거나 다르게 기록된 경우 같은 사람이 두 명으로 쪼개질 위험이 있어서
   // 훨씬 안정적인 이름+전화번호를 기준으로 묶고, 그 중 하나라도 있는 아이디를 대표로 사용합니다)
-  const riders = {}; // key -> {name, phone, id, days:[{dayLabel, complete, night}]}
+  const riders = {}; // key -> {name, phone, id, days:[{dayLabel, complete, night, hourly}]}
 
   dayArrays.forEach(({dayLabel, riders: dayRiders})=>{
     dayRiders.forEach(r=>{
@@ -3191,67 +3130,40 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, wee
 
   const result = [];
   Object.values(riders).forEach(rider=>{
-    let weekTotal = 0, missionDays = 0, dailyMissionSum = 0, nightTotal = 0;
+    let weekTotal = 0, weekTotalRecognized = 0;
     let acceptCompleteSum = 0, acceptDenomSum = 0;
     const breakdown = [];
     const dailyAccept = [];
     rider.days.forEach(d=>{
-      nightTotal += d.night;
-
       // 수락률(지사현황 탭과 동일 방식: 완료/(완료+거절+배차취소), SLA 10~24시 기준)
       const denom = d.completeSla + d.reject + d.cancel;
       const dayRate = denom > 0 ? Math.round(d.completeSla/denom*1000)/10 : null;
       acceptCompleteSum += d.completeSla; acceptDenomSum += denom;
       dailyAccept.push({ dayLabel:d.dayLabel, complete:d.completeSla, reject:d.reject, cancel:d.cancel, rate:dayRate });
 
-      if(d.complete <= 0){
-        breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier:0, won:0});
-        return;
-      }
       weekTotal += d.complete;
-      const tier = GOALS.slice().reverse().find(g => d.complete >= g) || 0;
-      const won = tier ? TIER_BONUS[tier] : 0;
-      if(tier){ missionDays++; dailyMissionSum += won; }
-      breakdown.push({dayLabel:d.dayLabel, complete:d.complete, tier, won});
+      const recognized = sumHourlyRange(d.hourly, startH, endH);
+      weekTotalRecognized += recognized;
+      breakdown.push({dayLabel:d.dayLabel, complete:d.complete, recognized});
     });
 
     const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
+    const firstBonus = calcFirstSystemBonus(weekTotalRecognized);
 
-    const eligible = weekTotal >= BRANCH_CONFIG.weeklyGate.minWeekTotal && missionDays >= BRANCH_CONFIG.weeklyGate.minMissionDays;
-    const mission = eligible ? dailyMissionSum : 0;
-    const attend = eligible ? (attendTiers.find(t=>missionDays>=t.minDays)||{won:0}).won : 0;
-    const vol = eligible ? (BRANCH_CONFIG.volumeBonusTiers.find(t=>weekTotal>=t.minTotal)||{won:0}).won : 0;
-    const night = (nightTiers.find(t=>nightTotal>=t.minCount)||{won:0}).won;
-
-    // 깜짝미션 계산: 지정한 요일·시간대의 완료건수가 목표 이상이면 건수×건당보상 지급
-    let surpriseBonus = 0;
-    const surpriseDetails = [];
-    surpriseMissions.forEach(m=>{
-      const dayData = rider.days.find(d => d.dayLabel === m.dayLabel);
-      const hourly = dayData ? dayData.hourly : [];
-      const count = sumHourlyRange(hourly, m.startHour, m.endHour);
-      const achieved = count >= m.target;
-      const reward = achieved ? count * m.unitPrice : 0;
-      surpriseBonus += reward;
-      surpriseDetails.push({ description:m.description, dayLabel:m.dayLabel, count, target:m.target, achieved, reward });
-    });
-
-    const total = mission + attend + vol + night + surpriseBonus;
-
-    // 누적콜 마일스톤 보너스: 이번 주 반영 전/후 누적콜 사이에 새로 넘은 1000단위가 있으면 지급
+    // 누적콜 마일스톤 보너스: 이번 주 반영 전/후 누적콜 사이에 새로 넘은 1000단위가 있으면 지급 (전체 완료건수 기준, 시간대 무관)
     const cumulKey = rider.id || ('name:'+rider.name);
     const priorCumul = priorCumulMap[cumulKey] || 0;
     const newCumul = priorCumul + weekTotal;
     const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul, weekKey);
 
-    const totalWithMilestone = total + cumulMilestoneBonus;
+    const total = firstBonus + cumulMilestoneBonus;
 
     result.push({
       name: rider.name, phone: rider.phone, id: rider.id,
-      weekTotal, missionDays, nightTotal,
-      breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails,
+      weekTotal, weekTotalRecognized,
+      breakdown, firstBonus,
       cumulMilestoneBonus, cumulMilestoneDetails, priorCumul, newCumul,
-      total: totalWithMilestone, eligible,
+      total, eligible: weekTotalRecognized >= 151,
       dailyAccept, acceptRate
     });
   });
@@ -3663,9 +3575,9 @@ function downloadSettlementPayoutCSV(){
   const settlement = window.__settlementAdminAllRiders;
   if(!settlement || settlement.length===0){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
 
-  const rows = [['User ID','이름','미션달성일수','주간완료건수','일일미션','개근보너스','물량보너스','심야보너스','깜짝미션','누적콜마일스톤','총보너스']];
+  const rows = [['User ID','이름','주간완료건수(전체)','주간인정건수(9시~다음날1시)','주간보너스','누적콜마일스톤','총보너스']];
   settlement.slice().sort((a,b)=>b.total-a.total).forEach(r=>{
-    rows.push([r.id||'', r.name, r.missionDays||0, r.weekTotal||0, r.mission, r.attend, r.vol, r.night, r.surpriseBonus||0, r.cumulMilestoneBonus||0, r.total]);
+    rows.push([r.id||'', r.name, r.weekTotal||0, r.weekTotalRecognized||0, r.firstBonus||0, r.cumulMilestoneBonus||0, r.total]);
   });
 
   const csv = '\uFEFF' + rows.map(row => row.map(v => {
@@ -3685,92 +3597,13 @@ function downloadSettlementPayoutCSV(){
   URL.revokeObjectURL(url);
 }
 
-// 🔬 보너스 제도 시뮬레이터: 위 화면에서 보고 있는 주(week)의 게시된 실제 데이터를 그대로 가져와서,
-// 일일미션 단가만 새 값으로 바꿔서 재계산 후 기존과 비교합니다. (다른 항목-개근/물량/심야/깜짝미션/누적마일스톤-은 그대로 유지)
-function runBonusSimulator(){
-  const resultEl = document.getElementById('bonus-sim-result');
-  if(!resultEl) return;
-
-  const readTier = (id, fallback) => {
-    const v = document.getElementById(id).value;
-    return v.trim() !== '' ? parseInt(v) : fallback;
-  };
-  const newTiers = [
-    {min:30, won:readTier('sim-tier-30', BRANCH_CONFIG.dailyMissionTiers[0].won)},
-    {min:40, won:readTier('sim-tier-40', BRANCH_CONFIG.dailyMissionTiers[1].won)},
-    {min:50, won:readTier('sim-tier-50', BRANCH_CONFIG.dailyMissionTiers[2].won)},
-    {min:60, won:readTier('sim-tier-60', BRANCH_CONFIG.dailyMissionTiers[3].won)},
-    {min:70, won:readTier('sim-tier-70', BRANCH_CONFIG.dailyMissionTiers[4].won)},
-  ];
-
-  resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:12px">불러오는 중...</div>';
-
-  const info = getSettlementWeekInfo(settlementAdminWeekOffset);
-  db.ref('settlement/'+info.weekKey).once('value').then(snap=>{
-    const data = snap.val();
-    if(!data || !data.riders){
-      resultEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:12px;padding:12px">이 주에 게시된 정산 자료가 없습니다. 먼저 정산 계산하기/게시하기를 해주세요</div>';
-      return;
-    }
-
-    const riders = Object.values(data.riders);
-    const compared = riders.map(r=>{
-      // 일일미션을 새 단가로 재계산 (같은 날짜의 같은 완료건수·같은 달성 여부 기준, 단가만 교체)
-      let newMission = 0;
-      (r.breakdown||[]).forEach(d=>{
-        if(!d.tier || d.tier<=0) return; // 미달성일은 그대로 0
-        const tierDef = newTiers.slice().reverse().find(t=>d.complete>=t.min);
-        newMission += tierDef ? tierDef.won : 0;
-      });
-      const oldMission = r.eligible ? r.mission : 0; // 참고: mission은 이미 eligible 반영된 값
-      const newMissionFinal = r.eligible ? newMission : 0;
-      const newTotal = newMissionFinal + r.attend + r.vol + r.night + (r.surpriseBonus||0) + (r.cumulMilestoneBonus||0);
-      return { name:r.name, oldTotal:r.total, newTotal, diff:newTotal-r.total, oldMission, newMission:newMissionFinal };
-    }).filter(r=>r.oldTotal>0 || r.newTotal>0); // 보너스 대상자만
-
-    compared.sort((a,b)=>b.oldTotal-a.oldTotal);
-
-    const totalOld = compared.reduce((s,r)=>s+r.oldTotal,0);
-    const totalNew = compared.reduce((s,r)=>s+r.newTotal,0);
-
-    resultEl.innerHTML = `
-      <div style="background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:#888">기존 총 보너스 지출</span><span style="font-weight:700">${totalOld.toLocaleString()}원</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span style="color:#888">변경 후 총 보너스 지출</span><span style="font-weight:700;color:#3B5BDB">${totalNew.toLocaleString()}원</span></div>
-        <div style="height:1px;background:#eee;margin:6px 0"></div>
-        <div style="display:flex;justify-content:space-between;font-size:14px"><span style="font-weight:700">차이(절감액)</span><span style="font-weight:800;color:${totalOld-totalNew>=0?'#1D9E75':'#E24B4A'}">${(totalOld-totalNew).toLocaleString()}원</span></div>
-      </div>
-      <div style="font-size:11px;color:#3B5BDB;font-weight:600;margin-bottom:6px">기사님별 변화 (${compared.length}명, 기존 보너스 높은 순)</div>
-      <div style="max-height:340px;overflow-y:auto;background:#fff;border-radius:8px">
-        ${compared.map(r=>`
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:0.5px solid #f0f0f0;font-size:12px">
-            <span style="color:#333">${r.name}</span>
-            <span style="display:flex;gap:8px;align-items:center">
-              <span style="color:#aaa;text-decoration:line-through">${r.oldTotal.toLocaleString()}</span>
-              <span style="color:#333">→</span>
-              <span style="font-weight:700;color:#3B5BDB">${r.newTotal.toLocaleString()}원</span>
-              <span style="font-size:10px;color:${r.diff<0?'#E24B4A':'#1D9E75'};min-width:56px;text-align:right">${r.diff>=0?'+':''}${r.diff.toLocaleString()}</span>
-            </span>
-          </div>
-        `).join('')}
-      </div>
-    `;
-  }).catch(err=>{
-    resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:12px;padding:12px">불러오기 실패: ${err.message}</div>`;
-  });
-}
-
 function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
   const bonusRiders = settlement.filter(r=>r.total>0);
   window.__settlementAdminPreviewRiders = bonusRiders;
   window.__settlementAdminAllRiders = settlement;
 
   const totalPayout = settlement.reduce((s,r)=>s+r.total, 0);
-  const totalMission = settlement.reduce((s,r)=>s+r.mission, 0);
-  const totalAttend = settlement.reduce((s,r)=>s+r.attend, 0);
-  const totalVol = settlement.reduce((s,r)=>s+r.vol, 0);
-  const totalNight = settlement.reduce((s,r)=>s+r.night, 0);
-  const totalSurprise = settlement.reduce((s,r)=>s+(r.surpriseBonus||0), 0);
+  const totalFirstBonus = settlement.reduce((s,r)=>s+r.firstBonus, 0);
   const totalMilestone = settlement.reduce((s,r)=>s+(r.cumulMilestoneBonus||0), 0);
 
   return `
@@ -3778,7 +3611,7 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
       📥 보너스 지급 명세서 CSV 다운로드 (전체 ${settlement.length}명)
     </button>
     <button onclick="downloadHourlyBreakdownCSV()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #C7D5FF;background:#F0F4FF;color:#3B5BDB;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:10px">
-      ⏰ 시간대별(09~24시 / 00~09시) 완료건수 CSV 다운로드
+      ⏰ 시간대별 완료건수 CSV 다운로드
     </button>
     <div style="display:flex;gap:6px;margin-bottom:10px">
       <input type="text" id="settlement-admin-search-input" placeholder="특정 기사님 이름으로 확인 (0원인 분도 검색 가능)"
@@ -3836,21 +3669,9 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
     <div style="background:#1a3a4a;border-radius:10px;padding:14px 16px;margin-bottom:8px">
       <div style="font-size:12px;color:#9DBEEA;font-weight:600;margin-bottom:4px">💰 이번 주 지사 전체 보너스 지출 총액</div>
       <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:10px">${totalPayout.toLocaleString()}<span style="font-size:14px;font-weight:700">원</span></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:10px;color:#9DBEEA">
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;font-size:10px;color:#9DBEEA">
         <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
-          <div>일일미션</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalMission.toLocaleString()}원</div>
-        </div>
-        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
-          <div>개근</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalAttend.toLocaleString()}원</div>
-        </div>
-        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
-          <div>물량</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalVol.toLocaleString()}원</div>
-        </div>
-        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
-          <div>심야</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalNight.toLocaleString()}원</div>
-        </div>
-        <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
-          <div>깜짝미션</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalSurprise.toLocaleString()}원</div>
+          <div>주간 보너스(퍼스트제도)</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalFirstBonus.toLocaleString()}원</div>
         </div>
         <div style="text-align:center;background:rgba(255,255,255,0.08);border-radius:6px;padding:6px 2px">
           <div>누적마일스톤</div><div style="font-size:12px;font-weight:700;color:#fff;margin-top:2px">${totalMilestone.toLocaleString()}원</div>
@@ -3997,36 +3818,26 @@ function mergeSettlementAdminEntries(idxCsv){
   const entries = indices.map(i => all[i]).filter(Boolean);
   if(entries.length < 2) return;
 
-  const GOALS = BRANCH_CONFIG.dailyMissionTiers.map(t=>t.min);
-  const TIER_BONUS = {}; BRANCH_CONFIG.dailyMissionTiers.forEach(t=>TIER_BONUS[t.min]=t.won);
-
-  // 요일별 완료건수를 다시 모음 (겹치는 요일이 있으면 혹시 몰라 더함)
-  const dayMap = {};
+  // 요일별 완료건수/인정건수를 다시 모음 (겹치는 요일이 있으면 혹시 몰라 더함)
+  const dayMap = {}, recognizedMap = {};
   entries.forEach(e => e.breakdown.forEach(b => {
     dayMap[b.dayLabel] = (dayMap[b.dayLabel]||0) + b.complete;
+    recognizedMap[b.dayLabel] = (recognizedMap[b.dayLabel]||0) + (b.recognized||0);
   }));
-  const nightTotal = entries.reduce((s,e)=>s+e.nightTotal, 0);
   const name = entries[0].name;
   const phone = entries.map(e=>e.phone).find(p=>p) || '';
   const id = entries.map(e=>e.id).find(v=>v) || '';
 
-  let weekTotal = 0, missionDays = 0, dailyMissionSum = 0;
+  let weekTotal = 0, weekTotalRecognized = 0;
   const breakdown = SETTLEMENT_DAY_LABELS.filter(d => dayMap[d] !== undefined).map(dayLabel=>{
     const complete = dayMap[dayLabel];
-    if(complete <= 0) return {dayLabel, complete, tier:0, won:0};
+    const recognized = recognizedMap[dayLabel] || 0;
     weekTotal += complete;
-    const tier = GOALS.slice().reverse().find(g => complete >= g) || 0;
-    const won = tier ? TIER_BONUS[tier] : 0;
-    if(tier){ missionDays++; dailyMissionSum += won; }
-    return {dayLabel, complete, tier, won};
+    weekTotalRecognized += recognized;
+    return {dayLabel, complete, recognized};
   });
 
-  const eligible = weekTotal >= BRANCH_CONFIG.weeklyGate.minWeekTotal && missionDays >= BRANCH_CONFIG.weeklyGate.minMissionDays;
-  const mission = eligible ? dailyMissionSum : 0;
-  const attend = eligible ? (BRANCH_CONFIG.attendBonusTiers.find(t=>missionDays>=t.minDays)||{won:0}).won : 0;
-  const vol = eligible ? (BRANCH_CONFIG.volumeBonusTiers.find(t=>weekTotal>=t.minTotal)||{won:0}).won : 0;
-  const night = (BRANCH_CONFIG.nightBonusTiers.find(t=>nightTotal>=t.minCount)||{won:0}).won;
-  const total = mission + attend + vol + night;
+  const firstBonus = calcFirstSystemBonus(weekTotalRecognized);
 
   // 수락률 데이터도 합쳐서 다시 계산 (겹치는 요일 있으면 합산)
   const acceptDayMap = {};
@@ -4045,18 +3856,14 @@ function mergeSettlementAdminEntries(idxCsv){
   });
   const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
 
-  // 깜짝미션 보너스도 합쳐서 유지 (쪼개진 조각 중 하나에만 있었을 수 있으므로 합산)
-  const surpriseBonus = entries.reduce((s,e)=>s+(e.surpriseBonus||0), 0);
-  const surpriseDetails = entries.reduce((arr,e)=>arr.concat(e.surpriseDetails||[]), []);
-
   // 누적콜 마일스톤 보너스도 합쳐진 weekTotal 기준으로 다시 계산 (이전 누적은 조각들 중 하나의 값을 그대로 사용 - 같은 사람이라 동일해야 함)
   const priorCumul = entries.map(e=>e.priorCumul||0).find(v=>v>0) || 0;
   const newCumul = priorCumul + weekTotal;
   const { bonus: cumulMilestoneBonus, details: cumulMilestoneDetails } = computeMilestoneBonusCrossed(priorCumul, newCumul, getSettlementWeekInfo(settlementAdminWeekOffset).weekKey);
 
-  const totalWithSurprise = total + surpriseBonus + cumulMilestoneBonus;
+  const total = firstBonus + cumulMilestoneBonus;
 
-  const merged = { name, phone, id, weekTotal, missionDays, nightTotal, breakdown, mission, attend, vol, night, surpriseBonus, surpriseDetails, cumulMilestoneBonus, cumulMilestoneDetails, priorCumul, newCumul, total: totalWithSurprise, eligible, dailyAccept, acceptRate };
+  const merged = { name, phone, id, weekTotal, weekTotalRecognized, breakdown, firstBonus, cumulMilestoneBonus, cumulMilestoneDetails, priorCumul, newCumul, total, eligible: weekTotalRecognized>=151, dailyAccept, acceptRate };
 
   // 기존 쪼개진 항목들을 제거하고 합쳐진 항목 하나로 교체
   const remaining = all.filter(r => !entries.includes(r));
@@ -4224,42 +4031,31 @@ function reopenSettlementResult(targetId){
 }
 
 function renderSettlementBreakdown(r, closeTargetId, reopenCall){
-  const tierLabel = (t)=> t ? `${t}건↑` : '미달성';
+  const cfg = BRANCH_CONFIG.firstSystemTiers;
   const rows = r.breakdown.map(b=>`
     <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
-      <span style="color:#666">${b.dayLabel} <span style="color:#bbb;font-size:11px">(${b.complete}건 · ${tierLabel(b.tier)})</span></span>
-      <span style="font-weight:600;color:${b.won>0?'#1D9E75':'#bbb'}">${b.won.toLocaleString()}원</span>
+      <span style="color:#666">${b.dayLabel} <span style="color:#bbb;font-size:11px">(전체 ${b.complete}건 · 인정 ${b.recognized}건)</span></span>
     </div>
   `).join('');
 
-  let gateNote = '';
-  if(!r.eligible){
-    let msg;
-    if(r.weekTotal < 150){
-      msg = `🚀 조금만 더 힘내요! 주간 보너스는 150건부터 시작이에요.<br>지금 <b>${r.weekTotal}건</b> 타셨으니 <b>${150-r.weekTotal}건</b>만 더 타면 보너스 대상이 됩니다!`;
-    } else if(r.missionDays === 0){
-      msg = `🔥 주 150건은 이미 넘기셨어요! 이제 하루 30건 이상 타는 날이 <b>3일</b>만 있으면 주간 보너스를 받으실 수 있어요. 화이팅!`;
-    } else {
-      msg = `🔥 미션(30건↑) <b>${r.missionDays}일</b> 달성하셨네요! <b>${3-r.missionDays}일</b>만 더 채우시면 주간 보너스 받으실 수 있어요. 조금만 더 힘내주세요!`;
-    }
-    gateNote = `<div style="font-size:12px;color:#9A5B13;line-height:1.6;margin:8px 0;padding:10px 12px;background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px">${msg}</div>`;
+  const count = r.weekTotalRecognized;
+  let statusNote;
+  if(count <= cfg.baseThreshold){
+    statusNote = `🚀 조금만 더 힘내요! 주간 보너스는 <b>${cfg.baseThreshold+1}건</b>부터 시작이에요.<br>지금 <b>${count}건</b> 타셨으니 <b>${cfg.baseThreshold+1-count}건</b>만 더 타면 보너스 대상이 됩니다!`;
   } else {
-    // 이미 주간보너스 대상 - 다음 단계(개근/물량) 향한 응원 문구
-    const tips = [];
-    if(r.missionDays < 6){
-      tips.push(`💪 미션 <b>${r.missionDays}일</b> 달성 중! <b>${6-r.missionDays}일</b>만 더 채우면 개근보너스(2만원)까지 받으실 수 있어요`);
-    }
-    const nextVol = r.weekTotal < 350 ? 350 : r.weekTotal < 400 ? 400 : r.weekTotal < 450 ? 450 : 0;
-    if(nextVol > 0){
-      const volBonus = nextVol===350?20000:nextVol===400?30000:50000;
-      tips.push(`📦 물량보너스까지 <b>${nextVol-r.weekTotal}건</b> 남았어요! 조금만 더 타시면 <b>${volBonus.toLocaleString()}원</b> 추가로 받으실 수 있어요`);
-    }
-    if(tips.length > 0){
-      gateNote = `<div style="font-size:12px;color:#0F6E56;line-height:1.6;margin:8px 0;padding:10px 12px;background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px">${tips.join('<br>')}</div>`;
+    const nextTier = cfg.extraTiers.find(t=>count < t.minTotal);
+    const parts = [`🎉 지금까지 <b>${count}건</b> 타셨어요! 이번 주 보너스는 <b>${r.firstBonus.toLocaleString()}원</b>입니다.`];
+    if(nextTier){
+      parts.push(`<b>${nextTier.minTotal-count}건</b> 더 타시면 <b>${nextTier.minTotal}건 추가보너스(+${nextTier.won.toLocaleString()}원)</b> 대상이에요!`);
     } else {
-      gateNote = `<div style="font-size:12px;color:#0F6E56;line-height:1.6;margin:8px 0;padding:10px 12px;background:#F0FBF7;border:1px solid #9FE1CB;border-radius:8px">🎉 이번 주 모든 보너스 조건을 다 채우셨어요! 정말 고생 많으셨습니다</div>`;
+      parts.push(`🏆 최고 구간(400건 이상)까지 도달하셨어요! 정말 대단합니다`);
     }
+    statusNote = parts.join('<br>');
   }
+  const noteColor = count <= cfg.baseThreshold ? '#9A5B13' : '#0F6E56';
+  const noteBg = count <= cfg.baseThreshold ? '#FFF7ED' : '#F0FBF7';
+  const noteBorder = count <= cfg.baseThreshold ? '#FED7AA' : '#9FE1CB';
+  const gateNote = `<div style="font-size:12px;color:${noteColor};line-height:1.6;margin:8px 0;padding:10px 12px;background:${noteBg};border:1px solid ${noteBorder};border-radius:8px">${statusNote}</div>`;
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
@@ -4268,28 +4064,15 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
         ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
-        <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 완료</span>
-        <span style="font-size:28px;font-weight:800;color:#fff;line-height:1">${r.weekTotal}<span style="font-size:15px;font-weight:700">건</span></span>
+        <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 인정건수(09시~다음날1시)</span>
+        <span style="font-size:28px;font-weight:800;color:#fff;line-height:1">${count}<span style="font-size:15px;font-weight:700">건</span></span>
       </div>
       ${gateNote}
       <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px">
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">일별 미션보너스</div>
+        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">일별 완료건수</div>
         ${rows}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>일일미션 합계</span><span style="font-weight:600;color:${r.mission>0?'#1D9E75':'#bbb'}">${r.mission.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>개근보너스 <span style="font-size:11px;color:#888">(미션달성 ${r.missionDays}일)</span></span><span style="font-weight:600;color:${r.attend>0?'#1D9E75':'#bbb'}">${r.attend.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>물량보너스</span><span style="font-weight:600;color:${r.vol>0?'#1D9E75':'#bbb'}">${r.vol.toLocaleString()}원</span></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>심야보너스 <span style="font-size:11px;color:#888">(${r.nightTotal}건)</span></span><span style="font-weight:600;color:${r.night>0?'#1D9E75':'#bbb'}">${r.night.toLocaleString()}원</span></div>
-      ${(r.surpriseDetails && r.surpriseDetails.length>0) ? `
-      <div style="background:#FFF7ED;border-radius:8px;padding:8px 10px;margin:8px 0">
-        <div style="font-size:11px;color:#9A5B13;font-weight:600;margin-bottom:4px">⚡ 깜짝미션</div>
-        ${r.surpriseDetails.map(sd=>`
-          <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
-            <span style="color:${sd.achieved?'#333':'#bbb'}">${sd.description} <span style="color:#aaa;font-size:10px">(${sd.count}/${sd.target}건)</span></span>
-            <span style="font-weight:700;color:${sd.achieved?'#EA8C1E':'#bbb'}">${sd.achieved?sd.reward.toLocaleString()+'원':'미달성'}</span>
-          </div>
-        `).join('')}
-      </div>` : ''}
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>주간 보너스 <span style="font-size:11px;color:#888">(151건부터 개당1,000원 + 구간보너스)</span></span><span style="font-weight:600;color:${r.firstBonus>0?'#1D9E75':'#bbb'}">${r.firstBonus.toLocaleString()}원</span></div>
       ${(r.cumulMilestoneDetails && r.cumulMilestoneDetails.length>0) ? `
       <div style="background:#F0F4FF;border-radius:8px;padding:8px 10px;margin:8px 0">
         <div style="font-size:11px;color:#3B5BDB;font-weight:600;margin-bottom:4px">🏆 누적콜 마일스톤 달성! (누적 ${r.priorCumul.toLocaleString()}→${r.newCumul.toLocaleString()}콜)</div>
@@ -5512,7 +5295,7 @@ function switchTab(name,btn){
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
   if(name==='today'){ renderVehicleCard(); }
-  if(name==='record'){ renderWeek(); renderMyAcceptRate(); loadCumulCalls(); }
+  if(name==='record'){ renderMyAcceptRate(); }
   if(name==='branch') loadBranch();
   if(name==='stats') renderStats();
   if(name==='mission'){ loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); renderComplianceCard(); }
@@ -5564,7 +5347,7 @@ function showLotteryConfetti(prizeName){
   setTimeout(()=>document.getElementById('confetti-overlay').classList.remove('show'),4000);
 }
 
-function showConfetti(won,complete){
+function showConfetti(complete){
   const tier=complete>=70?70:complete>=60?60:complete>=50?50:complete>=40?40:30;
   const cel=CELEBRATION[tier];
   document.getElementById('msg-bike-display').textContent=cel.bikeEmoji;
@@ -5573,7 +5356,7 @@ function showConfetti(won,complete){
   document.getElementById('msg-title').textContent=cel.title;
   document.getElementById('msg-title').style.color=cel.color;
   document.getElementById('msg-sub').textContent=cel.sub;
-  document.getElementById('msg-bonus').textContent=won.toLocaleString()+'원 획득!';
+  document.getElementById('msg-bonus').textContent=complete+'건 완료!';
   document.getElementById('msg-bonus').style.color=cel.color;
   document.getElementById('confetti-msg').querySelector('.msg-close').style.background=cel.color;
   document.getElementById('confetti-msg').classList.add('show');
