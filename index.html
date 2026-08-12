@@ -5184,12 +5184,7 @@ function renderWeeklyGrid(){
     const kdStart = toKST(start); const kdEnd = toKST(endD);
     rangeEl.textContent = `${kdStart.getUTCMonth()+1}/${kdStart.getUTCDate()} ~ ${kdEnd.getUTCMonth()+1}/${kdEnd.getUTCDate()}`;
   }
-  const t1 = [
-    {월:22,화:22,수:22,목:22,금:25,토:31,일:32},
-    {월:21,화:21,수:21,목:21,금:22,토:23,일:24},
-    {월:32,화:32,수:32,목:32,금:34,토:38,일:37},
-    {월:25,화:25,수:25,목:25,금:29,토:28,일:27}
-  ];
+  const t1 = SLOTS.map(s => s.targets);
   const dates = [];
   for(let i=0;i<7;i++){
     const d=new Date(start);
