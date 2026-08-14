@@ -3071,9 +3071,14 @@ function parseRiderRowsFromRows(rows){
     }
     return -1;
   }
+  // 그룹 제목 줄(예: "SLA 슬롯별 배달완료")이 맨 윗줄을 차지해서 실제 시간대명이
+  // 한 줄 아래로 밀려있는 경우도 있어서, 두 번째 줄도 같이 확인합니다.
   function findSingleIdx(name){
     for(let i=0;i<header0.length;i++){
       if(header0[i]===name) return i;
+    }
+    for(let i=0;i<header1.length;i++){
+      if(header1[i]===name) return i;
     }
     return -1;
   }
