@@ -1188,6 +1188,33 @@ function renderMyAcceptRate(){
       </div>`;
     }).join('');
     const avgColor = rider.acceptRate==null?'#1a1a1a':rider.acceptRate>=80?'#1D9E75':rider.acceptRate>=60?'#BA7517':'#E24B4A';
+
+    // 거절 가능 건수 계산: 지금까지 누적된 완료/거절/취소를 기준으로,
+    // 앞으로 몇 건을 더 거절해도 수락률 80%를 유지할 수 있는지 계산합니다.
+    // 완료/(완료+거절+취소+X) >= 0.8  ->  X <= (0.2*완료 - 0.8*(거절+취소)) / 0.8
+    let sumComplete=0, sumBad=0;
+    rider.dailyAccept.forEach(a=>{
+      if(a.rate!=null){ sumComplete += a.complete||0; sumBad += (a.reject||0)+(a.cancel||0); }
+    });
+    let rejectAllowanceHtml = '';
+    if(sumComplete+sumBad > 0){
+      const rawAllowance = (0.2*sumComplete - 0.8*sumBad) / 0.8;
+      const allowance = Math.floor(rawAllowance + 1e-9);
+      const isBelow80 = allowance < 0;
+      const allowColor = isBelow80 ? '#E24B4A' : (allowance<=2 ? '#BA7517' : '#1D9E75');
+      const allowBg = isBelow80 ? '#FFF5F5' : (allowance<=2 ? '#FFFBF0' : '#F0FBF7');
+      rejectAllowanceHtml = `
+        <div style="background:${allowBg};border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div>
+            <div style="font-size:12px;color:${allowColor};font-weight:600">🎯 지금부터 거절 가능 건수 (80% 유지 기준)</div>
+            <div style="font-size:10px;color:#aaa;margin-top:2px">누적 완료 ${sumComplete}건 · 거절+취소 ${sumBad}건 기준</div>
+          </div>
+          <div style="font-size:22px;font-weight:800;color:${allowColor};white-space:nowrap;margin-left:8px">${isBelow80?'0건':allowance+'건'}</div>
+        </div>
+        ${isBelow80?'<div style="font-size:11px;color:#E24B4A;text-align:center;margin-top:6px">이미 80% 아래로 내려갔어요. 완료를 늘려야 다시 올라갑니다</div>':''}
+      `;
+    }
+
     resultEl.innerHTML = `
       <div style="margin-bottom:8px">
         ${rows}
@@ -1196,6 +1223,7 @@ function renderMyAcceptRate(){
         <span style="font-size:12px;color:#0F6E56;font-weight:600">이 주 평균 수락률</span>
         <span style="font-size:20px;font-weight:800;color:${avgColor}">${rider.acceptRate!=null?rider.acceptRate+'%':'-'}</span>
       </div>
+      ${rejectAllowanceHtml}
     `;
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
