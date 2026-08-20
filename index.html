@@ -3635,7 +3635,11 @@ function downloadSettlementPayoutCSV(){
   const settlement = window.__settlementAdminAllRiders;
   if(!settlement || settlement.length===0){ alert('먼저 정산 계산하기를 눌러주세요'); return; }
 
-  const rows = [['User ID','이름','주간완료건수(전체)','주간인정건수(9시~다음날1시)','주간보너스','총보너스']];
+  const cfg = BRANCH_CONFIG.firstSystemTiers;
+  const endHourLabel = cfg.recognizedEndHour > 24 ? `다음날${cfg.recognizedEndHour-24}시` : `${cfg.recognizedEndHour}시`;
+  const recognizedColLabel = `주간인정건수(${cfg.recognizedStartHour}시~${endHourLabel})`;
+
+  const rows = [['User ID','이름','주간완료건수(전체)',recognizedColLabel,'주간보너스','총보너스']];
   settlement.slice().sort((a,b)=>b.total-a.total).forEach(r=>{
     rows.push([r.id||'', r.name, r.weekTotal||0, r.weekTotalRecognized||0, r.firstBonus||0, r.total]);
   });
