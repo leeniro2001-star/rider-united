@@ -196,78 +196,14 @@ input[type=number]{-moz-appearance:textfield}
   <div style="margin-top:4px">
 
     <!-- 공지사항 -->
-    <div id="notice-banner" style="display:none;background:#FFF3CD;border-radius:10px;padding:10px 14px;margin-bottom:10px;border:1.5px solid #FFE082">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:18px;flex-shrink:0">📢</span>
-        <div id="notice-text" style="font-size:14px;font-weight:600;color:#533f03;line-height:1.5"></div>
-      </div>
-    </div>
-
-    <!-- 오늘 입력 카드 -->
-    <div class="card" style="padding:10px">
-
-      <!-- 수락률 우상단 -->
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <span style="font-size:12px;font-weight:600;color:#333">오늘 입력</span>
-        <span style="font-size:12px;font-weight:600" id="accept-label">수락률 -</span>
-      </div>
-
-      <!-- 카운터 3열 -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:8px">
-        <div style="background:#F0FBF7;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">완료</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
-            <button onclick="adjust('complete',-1)" style="width:26px;height:26px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
-            <input type="number" id="cnt-complete" value="0" min="0" inputmode="numeric"
-              onchange="setVal('complete',this.value)" oninput="setVal('complete',this.value)"
-              style="width:40px;font-size:26px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#1D9E75;padding:0">
-            <button class="cnt-btn plus-complete" onclick="adjust('complete',1)" style="width:26px;height:26px;border-radius:50%;border:none;background:#1D9E75;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
-          </div>
-        </div>
-        <div style="background:#FFF5F5;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">거절</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
-            <button onclick="adjust('reject',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
-            <input type="number" id="cnt-reject" value="0" min="0" inputmode="numeric"
-              onchange="setVal('reject',this.value)" oninput="setVal('reject',this.value)"
-              style="width:36px;font-size:22px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#E24B4A;padding:0">
-            <button onclick="adjust('reject',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
-          </div>
-        </div>
-        <div style="background:#FFFBF0;border-radius:8px;padding:6px;text-align:center">
-          <div style="font-size:13px;font-weight:600;color:#666;margin-bottom:4px">배차취소</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:3px">
-            <button onclick="adjust('cancel',-1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>
-            <input type="number" id="cnt-cancel" value="0" min="0" inputmode="numeric"
-              onchange="setVal('cancel',this.value)" oninput="setVal('cancel',this.value)"
-              style="width:36px;font-size:22px;font-weight:700;text-align:center;border:none;background:none;font-family:inherit;color:#BA7517;padding:0">
-            <button onclick="adjust('cancel',1)" style="width:24px;height:24px;border-radius:50%;border:1px solid #ddd;background:#fff;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>
-          </div>
+    <div id="notice-banner" style="display:none;background:#FFF3CD;border-radius:14px;padding:18px 18px;margin-bottom:14px;border:2px solid #FFD54F;box-shadow:0 2px 10px rgba(255,193,7,0.25)">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <span style="font-size:30px;flex-shrink:0;line-height:1">📢</span>
+        <div>
+          <div style="font-size:12px;font-weight:800;color:#9A5B13;letter-spacing:0.5px;margin-bottom:4px">공지사항</div>
+          <div id="notice-text" style="font-size:17px;font-weight:700;color:#533f03;line-height:1.6"></div>
         </div>
       </div>
-
-      <!-- 완료/수락률/거절/배차취소 요약 (작게) -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px">
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:11px;color:#888;font-weight:600">완료</div>
-          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="res-complete">0</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:11px;color:#888;font-weight:600">수락률</div>
-          <div style="font-size:18px;font-weight:700;color:#1D9E75" id="res-accept">-</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:11px;color:#888;font-weight:600">거절</div>
-          <div style="font-size:18px;font-weight:700;color:#E24B4A" id="res-reject">0</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:5px 2px">
-          <div style="font-size:11px;color:#888;font-weight:600">배차취소</div>
-          <div style="font-size:18px;font-weight:700;color:#BA7517" id="res-cancel">0</div>
-        </div>
-      </div>
-
-      <div id="today-result" style="display:none"></div>
-      <div id="bonus-result" style="margin-top:4px"></div>
     </div>
 
     <!-- 🎟️ 오늘의 행운 추첨 -->
@@ -425,57 +361,6 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 
 
-<!-- 통계 탭 -->
-<div id="screen-stats" class="screen">
-  <div style="margin-top:4px">
-
-    <!-- 전체 기사님 누적콜 현황 (관리자만 볼 수 있음) -->
-    <div class="card" id="admin-cumul-ranking-card" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="card-title" style="margin:0">🏆 전체 기사님 누적콜 현황</div>
-        <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
-      </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">7/1주부터 게시된 정산 자료 기준 자동 합산 (누적 1000콜마다 3만원 보너스)</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;cursor:pointer;padding:8px 10px;background:#F8F8F8;border-radius:8px" onclick="toggleAdminCollapsible('admin-cumul-ranking-list','admin-cumul-ranking-arrow')">
-        <span style="font-size:12px;font-weight:700;color:#555">전체 명단 보기</span>
-        <span id="admin-cumul-ranking-arrow" style="font-size:12px;color:#555;font-weight:600">▼ 펼치기</span>
-      </div>
-      <div id="admin-cumul-ranking-list" style="display:none;max-height:400px;overflow-y:auto"></div>
-      <button onclick="downloadCumulRankingCSV()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid #C7D5FF;background:#F0F4FF;color:#3B5BDB;font-size:12px;font-weight:700;cursor:pointer">
-        📥 누적콜 현황 CSV 다운로드 (마일스톤 분석용)
-      </button>
-    </div>
-
-    <!-- 시간외(0~9시) 콜 현황 (관리자만 볼 수 있음, 주간 보너스 정산에 올린 자료 기준) -->
-    <div class="card" id="admin-offhours-card" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="card-title" style="margin:0">🌙 시간외(0~9시) 콜 현황</div>
-        <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
-      </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">주간 보너스 정산에 올리신 요일별 자료 기준 (자정~오전 9시대, SLA 시간외 구간)</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <button onclick="changeOffHoursWeekOffset(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer"><i class="ti ti-chevron-left"></i></button>
-        <span id="admin-offhours-week-label" style="font-size:12px;color:#888">-</span>
-        <button onclick="changeOffHoursWeekOffset(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer"><i class="ti ti-chevron-right"></i></button>
-      </div>
-      <div id="admin-offhours-days" style="margin-bottom:8px"></div>
-      <div style="background:#F0F0FF;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:#534AB7;font-weight:600">주간 누적 시간외 콜</span>
-        <span id="admin-offhours-total" style="font-size:20px;font-weight:800;color:#534AB7">-</span>
-      </div>
-    </div>
-
-    <!-- 주간 현황판 -->
-    <div class="card">
-      <div class="card-title">📊 이번 주 주간 현황판</div>
-      <div style="overflow-x:auto">
-        <div id="stats-weekly-grid" style="min-width:280px"></div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 <!-- 탭바 -->
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('today',this)"><i class="ti ti-layout-dashboard"></i>현황</button>
@@ -483,7 +368,6 @@ input[type=number]{-moz-appearance:textfield}
   <button class="tab-btn" id="branch-tab-btn" onclick="switchTab('branch',this)">
     <i class="ti ti-building-store"></i>지사현황
   </button>
-  <button class="tab-btn" onclick="switchTab('stats',this)"><i class="ti ti-chart-bar"></i>통계</button>
   <button class="tab-btn" onclick="switchTab('record',this)"><i class="ti ti-calendar"></i>기록</button>
 </nav>
 
@@ -735,19 +619,14 @@ const BRANCH_CONFIG = {
   ],
   slotBonusCapPercent: 150, // 이 비율 초과분은 미지급
 
-  // 퍼스트제도안: 06시~다음날3시 인정건수 기준 주간 보너스
-  // 151개(=baseThreshold+1)부터 개당 basePricePerCall원, 무제한 지급 + 구간별 추가 보너스(가장 높은 구간 하나만 적용)
+  // 퍼스트제도안: 09시~24시(배민 SLA 시간대) 인정건수 기준 주간 보너스
+  // 131개(=baseThreshold+1)부터 개당 basePricePerCall원, 무제한 지급
   firstSystemTiers: {
-    recognizedStartHour: 6,   // 인정 시작 시각(06시)
-    recognizedEndHour: 27,    // 인정 종료 시각(27시=다음날 03시)
-    baseThreshold: 150,       // 151번째 콜부터 지급 시작
-    basePricePerCall: 1000,
-    extraTiers: [
-      {minTotal:100, won:10000},
-      {minTotal:200, won:20000},
-      {minTotal:300, won:30000},
-      {minTotal:400, won:100000},
-    ],
+    recognizedStartHour: 9,   // 인정 시작 시각(09시, 배민 SLA 기준)
+    recognizedEndHour: 24,    // 인정 종료 시각(24시, 배민 SLA 기준)
+    baseThreshold: 130,       // 131번째 콜부터 지급 시작
+    basePricePerCall: 1500,
+    extraTiers: [],
   },
 
   // 일일미션보너스: 완료건수 구간별 지급액 (하루 기준)
@@ -853,13 +732,13 @@ let cnt = {complete:0, reject:0, cancel:0};
 
 function adjust(type, delta){
   cnt[type] = Math.max(0, cnt[type]+delta);
-  document.getElementById('cnt-'+type).value = cnt[type];
+  const el = document.getElementById('cnt-'+type); if(el) el.value = cnt[type];
   autoSave();
 }
 
 function setVal(type, val){
   cnt[type] = Math.max(0, parseInt(val)||0);
-  document.getElementById('cnt-'+type).value = cnt[type];
+  const el = document.getElementById('cnt-'+type); if(el) el.value = cnt[type];
   autoSave();
 }
 
@@ -932,8 +811,8 @@ function autoSave(){
 function resetToday(){
   if(!confirm('오늘 데이터를 초기화할까요?')) return;
   cnt = {complete:0, reject:0, cancel:0};
-  ['complete','reject','cancel'].forEach(t => document.getElementById('cnt-'+t).textContent=0);
-  document.getElementById('today-result').style.display = 'none';
+  const trEl = document.getElementById('today-result');
+  if(trEl) trEl.style.display = 'none';
   localStorage.removeItem('ru_'+todayKey());
 }
 
@@ -1031,15 +910,18 @@ function renderResult(rec){
     </div>`;
   }).join('');
   const brEl = document.getElementById('bonus-rows'); if(brEl) brEl.innerHTML = rows;
-  if(achieved){
-    document.getElementById('bonus-result').innerHTML=`
-      <div class="bonus-achieved" onclick="showConfetti(${rec.complete})">
-        <div class="bonus-achieved-label">🎉 터치해보세요!</div>
-        <div class="bonus-achieved-val">${rec.complete}건 완료!</div>
-      </div>`;
-  } else {
-    const need = BONUS_TABLE[BONUS_TABLE.length-1].min - rec.complete;
-    document.getElementById('bonus-result').innerHTML=`<div style="margin-top:8px;text-align:center;color:#BA7517;font-size:13px;font-weight:500">30건까지 ${need}건 더 필요</div>`;
+  const bonusResultEl = document.getElementById('bonus-result');
+  if(bonusResultEl){
+    if(achieved){
+      bonusResultEl.innerHTML=`
+        <div class="bonus-achieved" onclick="showConfetti(${rec.complete})">
+          <div class="bonus-achieved-label">🎉 터치해보세요!</div>
+          <div class="bonus-achieved-val">${rec.complete}건 완료!</div>
+        </div>`;
+    } else {
+      const need = BONUS_TABLE[BONUS_TABLE.length-1].min - rec.complete;
+      bonusResultEl.innerHTML=`<div style="margin-top:8px;text-align:center;color:#BA7517;font-size:13px;font-weight:500">30건까지 ${need}건 더 필요</div>`;
+    }
   }
 }
 
@@ -4090,23 +3972,32 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
   `).join('');
 
   const count = r.weekTotalRecognized;
+  const remaining = Math.max(0, cfg.baseThreshold + 1 - count);
   let statusNote;
   if(count <= cfg.baseThreshold){
-    statusNote = `🚀 조금만 더 힘내요! 주간 보너스는 <b>${cfg.baseThreshold+1}건</b>부터 시작이에요.<br>지금 <b>${count}건</b> 타셨으니 <b>${cfg.baseThreshold+1-count}건</b>만 더 타면 보너스 대상이 됩니다!`;
+    statusNote = `🚀 조금만 더 힘내요! 주간 보너스는 <b>${cfg.baseThreshold+1}건</b>부터 시작이에요.<br>지금 <b>${count}건</b> 타셨어요.`;
   } else {
-    const nextTier = cfg.extraTiers.find(t=>count < t.minTotal);
-    const parts = [`🎉 지금까지 <b>${count}건</b> 타셨어요! 이번 주 보너스는 <b>${r.firstBonus.toLocaleString()}원</b>입니다.`];
-    if(nextTier){
-      parts.push(`<b>${nextTier.minTotal-count}건</b> 더 타시면 <b>${nextTier.minTotal}건 추가보너스(+${nextTier.won.toLocaleString()}원)</b> 대상이에요!`);
-    } else {
-      parts.push(`🏆 최고 구간(400건 이상)까지 도달하셨어요! 정말 대단합니다`);
-    }
-    statusNote = parts.join('<br>');
+    statusNote = `🎉 지금까지 <b>${count}건</b> 타셨어요! 이번 주 보너스는 <b>${r.firstBonus.toLocaleString()}원</b>입니다.<br>한 건 더 탈 때마다 <b>+${cfg.basePricePerCall.toLocaleString()}원</b>씩 계속 쌓여요!`;
   }
   const noteColor = count <= cfg.baseThreshold ? '#9A5B13' : '#0F6E56';
   const noteBg = count <= cfg.baseThreshold ? '#FFF7ED' : '#F0FBF7';
   const noteBorder = count <= cfg.baseThreshold ? '#FED7AA' : '#9FE1CB';
-  const gateNote = `<div style="font-size:12px;color:${noteColor};line-height:1.6;margin:8px 0;padding:10px 12px;background:${noteBg};border:1px solid ${noteBorder};border-radius:8px">${statusNote}</div>`;
+  const gateNote = `<div style="font-size:13px;color:${noteColor};line-height:1.7;margin:8px 0;padding:12px 14px;background:${noteBg};border:1px solid ${noteBorder};border-radius:8px;font-weight:500">${statusNote}</div>`;
+
+  // 주간보너스 남은건수: 다음 1,500원을 받기까지 남은 건수(문턱 전) / 이미 받고 있으면 "다음 건까지"
+  const remainingBanner = count <= cfg.baseThreshold
+    ? `
+      <div style="background:linear-gradient(135deg,#FF7A45,#FF9A62);border-radius:12px;padding:16px 14px;margin-bottom:10px;text-align:center;box-shadow:0 2px 8px rgba(255,122,69,0.35)">
+        <div style="font-size:13px;color:#FFF0E8;font-weight:700;margin-bottom:4px">🔥 보너스까지 남은 건수</div>
+        <div style="font-size:32px;font-weight:900;color:#fff;line-height:1.1">${remaining}<span style="font-size:16px;font-weight:700">건</span></div>
+        <div style="font-size:12px;color:#FFF0E8;margin-top:4px">이것만 더 타면 보너스 시작!</div>
+      </div>`
+    : `
+      <div style="background:linear-gradient(135deg,#0F6E56,#1D9E75);border-radius:12px;padding:16px 14px;margin-bottom:10px;text-align:center;box-shadow:0 2px 8px rgba(15,110,86,0.35)">
+        <div style="font-size:13px;color:#D6F5E8;font-weight:700;margin-bottom:4px">💰 지금 쌓인 보너스</div>
+        <div style="font-size:32px;font-weight:900;color:#fff;line-height:1.1">${r.firstBonus.toLocaleString()}<span style="font-size:16px;font-weight:700">원</span></div>
+        <div style="font-size:12px;color:#D6F5E8;margin-top:4px">한 건 더 탈 때마다 +${cfg.basePricePerCall.toLocaleString()}원씩 계속!</div>
+      </div>`;
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
@@ -4115,9 +4006,10 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
         ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
-        <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 인정건수(06시~다음날3시)</span>
+        <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 인정건수(09시~24시)</span>
         <span style="font-size:28px;font-weight:800;color:#fff;line-height:1">${count}<span style="font-size:15px;font-weight:700">건</span></span>
       </div>
+      ${remainingBanner}
       ${gateNote}
       <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px">
         <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">일별 완료건수</div>
@@ -5336,7 +5228,6 @@ function switchTab(name,btn){
   if(name==='today'){ renderVehicleCard(); }
   if(name==='record'){ renderMyAcceptRate(); }
   if(name==='branch') loadBranch();
-  if(name==='stats') renderStats();
   if(name==='mission'){ loadNightCalls(); updateBonusCalc(loadTodayRec()); renderSettlementLookupCard(); renderComplianceCard(); }
 }
 
@@ -5500,13 +5391,6 @@ function init(){
   const saved=lsGet(todayKey());
   if(saved){
     cnt.complete=saved.complete||0; cnt.reject=saved.reject||0; cnt.cancel=saved.cancel||0;
-    document.getElementById('cnt-complete').value=cnt.complete;
-    document.getElementById('cnt-reject').value=cnt.reject;
-    document.getElementById('cnt-cancel').value=cnt.cancel;
-    if(saved.delivery){
-      const delivEl = document.getElementById('today-delivery');
-      if(delivEl) delivEl.value = saved.delivery;
-    }
     renderResult(saved);
     updateTodayIncome(saved);
     updateBonusCalc(saved);
