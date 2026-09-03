@@ -3614,7 +3614,7 @@ function renderSettlementAdminPreviewHTML(settlement, uploadedDaysLabel){
     <div style="background:#1a3a4a;border-radius:10px;padding:14px 16px;margin-bottom:8px">
       <div style="font-size:12px;color:#9DBEEA;font-weight:600;margin-bottom:4px">💰 이번 주 지사 전체 보너스 지출 총액</div>
       <div style="font-size:26px;font-weight:800;color:#fff;margin-bottom:2px">${totalPayout.toLocaleString()}<span style="font-size:14px;font-weight:700">원</span></div>
-      <div style="font-size:11px;color:#9DBEEA">전원 퍼스트제도(151건부터 개당1,000원+구간보너스) 기준</div>
+      <div style="font-size:11px;color:#9DBEEA">전원 퍼스트제도(${BRANCH_CONFIG.firstSystemTiers.baseThreshold+1}건부터 개당${BRANCH_CONFIG.firstSystemTiers.basePricePerCall.toLocaleString()}원) 기준</div>
     </div>
   `;
 }
@@ -3966,8 +3966,13 @@ function reopenSettlementResult(targetId){
 function renderSettlementBreakdown(r, closeTargetId, reopenCall){
   const cfg = BRANCH_CONFIG.firstSystemTiers;
   const rows = r.breakdown.map(b=>`
-    <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid #f0f0f0;font-size:12px">
-      <span style="color:#666">${b.dayLabel} <span style="color:#bbb;font-size:11px">(전체 ${b.complete}건 · 인정 ${b.recognized}건)</span></span>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid #f0f0f0">
+      <span style="color:#333;font-size:15px;font-weight:700">${b.dayLabel}</span>
+      <span style="font-size:15px;font-weight:700">
+        <span style="color:#D97706">전체 ${b.complete}건</span>
+        <span style="color:#ccc;margin:0 3px">·</span>
+        <span style="color:#0F6E56">인정 ${b.recognized}건</span>
+      </span>
     </div>
   `).join('');
 
@@ -4012,10 +4017,10 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
       ${remainingBanner}
       ${gateNote}
       <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:8px">
-        <div style="font-size:11px;color:#888;font-weight:600;margin-bottom:4px">일별 완료건수</div>
+        <div style="font-size:13px;color:#555;font-weight:700;margin-bottom:6px">일별 완료건수</div>
         ${rows}
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>주간 보너스 <span style="font-size:11px;color:#888">(151건부터 개당1,000원 + 구간보너스)</span></span><span style="font-weight:600;color:${r.firstBonus>0?'#1D9E75':'#bbb'}">${r.firstBonus.toLocaleString()}원</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>주간 보너스 <span style="font-size:11px;color:#888">(${cfg.baseThreshold+1}건부터 개당${cfg.basePricePerCall.toLocaleString()}원)</span></span><span style="font-weight:600;color:${r.firstBonus>0?'#1D9E75':'#bbb'}">${r.firstBonus.toLocaleString()}원</span></div>
       <div style="height:1px;background:#d0eed8;margin:8px 0"></div>
       <div style="display:flex;justify-content:space-between;font-size:16px"><span style="font-weight:700;color:#0F6E56">총 보너스</span><span style="font-weight:800;color:#1D9E75;font-size:19px">${r.total.toLocaleString()}원</span></div>
     </div>
