@@ -3080,7 +3080,7 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, wee
 
   const result = [];
   Object.values(riders).forEach(rider=>{
-    let weekTotal = 0, weekTotalRecognized = 0;
+    let weekTotal = 0, weekTotalRecognized = 0, eveningMissionCount = 0;
     let acceptCompleteSum = 0, acceptDenomSum = 0;
     const breakdown = [];
     const dailyAccept = [];
@@ -3095,6 +3095,9 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, wee
       const recognized = sumHourlyRange(d.hourly, startH, endH);
       weekTotalRecognized += recognized;
       breakdown.push({dayLabel:d.dayLabel, complete:d.complete, recognized});
+
+      // 지사 자체 저녁미션: 17시~21:59분(=17시~22시 반열림구간) 인정건수 누적
+      eveningMissionCount += sumHourlyRange(d.hourly, 17, 22);
     });
 
     const acceptRate = acceptDenomSum > 0 ? Math.round(acceptCompleteSum/acceptDenomSum*1000)/10 : null;
@@ -3106,7 +3109,8 @@ function computeWeeklySettlement(dayArrays, surpriseMissions, priorCumulMap, wee
       weekTotal, weekTotalRecognized,
       breakdown, firstBonus,
       total, eligible: weekTotalRecognized >= 151,
-      dailyAccept, acceptRate
+      dailyAccept, acceptRate,
+      eveningMissionCount
     });
   });
 
@@ -4011,22 +4015,55 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
         <div style="font-size:12px;color:#D6F5E8;margin-top:4px">한 건 더 탈 때마다 +${cfg.basePricePerCall.toLocaleString()}원씩 계속!</div>
       </div>`;
 
-  // 지사 내 순위(10위 이내만 표시)
+  // 지사 내 순위(10위 이내만 표시) - 크고 눈에 띄게
+  const rankMessages = {
+    1:'압도적 1등이에요! 이 기세 그대로!', 2:'거의 다 왔어요, 1등 코앞!', 3:'톱3 안정권! 최고예요!',
+  };
+  const rankMsg = rankMessages[r.rank] || '조금만 더 힘내면 순위가 쑥쑥 올라가요!';
   const rankBadge = (r.rank && r.rank <= 10)
-    ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF3CD;border:1px solid #FFD54F;border-radius:20px;padding:3px 10px;margin-top:4px">
-         <span style="font-size:13px">🏆</span><span style="font-size:12px;font-weight:800;color:#9A5B13">지사 전체 ${r.rank}등</span>
+    ? `<div style="background:linear-gradient(135deg,#FFB300,#FF8F00);border-radius:12px;padding:12px 14px;margin-top:6px;box-shadow:0 2px 8px rgba(255,143,0,0.4)">
+         <div style="display:flex;align-items:center;gap:8px">
+           <span style="font-size:26px;line-height:1">🏆</span>
+           <div>
+             <div style="font-size:20px;font-weight:900;color:#fff;line-height:1.2">지사 전체 ${r.rank}등</div>
+             <div style="font-size:12px;color:#FFF3D6;font-weight:600;margin-top:1px">${rankMsg}</div>
+           </div>
+         </div>
        </div>`
     : '';
+
+  // 지사 자체 저녁미션(수~화, 17시~21:59, 90건 달성시 2만원)
+  const EVENING_MISSION_TARGET = 90;
+  const EVENING_MISSION_WON = 20000;
+  const eveningCount = r.eveningMissionCount || 0;
+  const eveningRemaining = Math.max(0, EVENING_MISSION_TARGET - eveningCount);
+  const eveningDone = eveningCount >= EVENING_MISSION_TARGET;
+  const eveningPct = Math.min(100, Math.round(eveningCount/EVENING_MISSION_TARGET*100));
+  const eveningCard = `
+    <div style="background:${eveningDone ? '#F0FBF7' : '#FFF7ED'};border:1px solid ${eveningDone ? '#9FE1CB' : '#FED7AA'};border-radius:10px;padding:12px 14px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:13px;font-weight:800;color:${eveningDone ? '#0F6E56' : '#9A5B13'}">🌆 저녁미션(17시~21:59, 90건 달성 시 2만원)</span>
+      </div>
+      <div style="background:#fff;border-radius:6px;height:10px;overflow:hidden;margin-bottom:6px">
+        <div style="background:${eveningDone ? 'linear-gradient(90deg,#1D9E75,#34C88F)' : 'linear-gradient(90deg,#FF9A45,#FFB86B)'};height:100%;width:${eveningPct}%;border-radius:6px"></div>
+      </div>
+      <div style="font-size:13px;font-weight:700;color:${eveningDone ? '#0F6E56' : '#9A5B13'}">
+        ${eveningDone
+          ? `🎉 ${eveningCount}건 달성! 2만원 보너스 확정!`
+          : `현재 <b>${eveningCount}건</b> · <b>${eveningRemaining}건</b> 더 타면 2만원 달성!`}
+      </div>
+    </div>`;
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div>
-          <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span><br>
+        <div style="flex:1">
+          <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span>
           ${rankBadge}
         </div>
-        ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>` : ''}
+        ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;flex-shrink:0;margin-left:8px">✕</button>` : ''}
       </div>
+      ${eveningCard}
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
         <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 인정건수(09시~24시)</span>
         <span style="font-size:28px;font-weight:800;color:#fff;line-height:1">${count}<span style="font-size:15px;font-weight:700">건</span></span>
