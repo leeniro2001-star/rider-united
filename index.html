@@ -3829,9 +3829,16 @@ function publishSettlement(){
   if(!confirm(`${info.rangeLabel} 주간 정산 결과를 게시할까요?\n(전체 기사님이 본인 아이디로 등록 후 조회할 수 있게 됩니다)`)) return;
 
   const ridersMap = {};
+  // 인정건수(weekTotalRecognized) 기준으로 순위 계산 후 저장
+  const ranked = lastComputedSettlement.slice().sort((a,b)=>(b.weekTotalRecognized||0)-(a.weekTotalRecognized||0));
+  const rankById = {};
+  ranked.forEach((r,idx)=>{
+    const key = r.id || ('name:'+r.name);
+    rankById[key] = idx+1; // 1등부터 시작
+  });
   lastComputedSettlement.forEach(r=>{
     const key = r.id || ('name:'+r.name);
-    ridersMap[key] = r;
+    ridersMap[key] = {...r, rank: rankById[key]};
   });
 
   const offHoursByDay = computeOffHoursByDay();
@@ -4004,11 +4011,21 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
         <div style="font-size:12px;color:#D6F5E8;margin-top:4px">한 건 더 탈 때마다 +${cfg.basePricePerCall.toLocaleString()}원씩 계속!</div>
       </div>`;
 
+  // 지사 내 순위(10위 이내만 표시)
+  const rankBadge = (r.rank && r.rank <= 10)
+    ? `<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF3CD;border:1px solid #FFD54F;border-radius:20px;padding:3px 10px;margin-top:4px">
+         <span style="font-size:13px">🏆</span><span style="font-size:12px;font-weight:800;color:#9A5B13">지사 전체 ${r.rank}등</span>
+       </div>`
+    : '';
+
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span>
-        ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit">✕</button>` : ''}
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <span style="font-size:15px;font-weight:700;color:#0F6E56">${r.name} 기사님</span><br>
+          ${rankBadge}
+        </div>
+        ${closeTargetId ? `<button onclick="collapseSettlementResult('${closeTargetId}', ${!!reopenCall})" style="border:none;background:#E5F3EC;color:#0F6E56;width:22px;height:22px;border-radius:50%;font-size:13px;line-height:1;cursor:pointer;font-family:inherit;flex-shrink:0">✕</button>` : ''}
       </div>
       <div style="display:flex;align-items:center;justify-content:center;gap:8px;background:#0F6E56;border-radius:10px;padding:14px 10px;margin-bottom:10px">
         <span style="font-size:13px;color:#BFEAD9;font-weight:600">이번 주 인정건수(09시~24시)</span>
