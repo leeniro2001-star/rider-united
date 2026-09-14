@@ -4020,7 +4020,7 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
     1:'압도적 1등이에요! 이 기세 그대로!', 2:'거의 다 왔어요, 1등 코앞!', 3:'톱3 안정권! 최고예요!',
   };
   const rankMsg = rankMessages[r.rank] || '조금만 더 힘내면 순위가 쑥쑥 올라가요!';
-  const rankBadge = (r.rank && r.rank <= 10)
+  const rankBadge = (r.rank && r.rank <= 20)
     ? `<div style="background:linear-gradient(135deg,#FFB300,#FF8F00);border-radius:12px;padding:12px 14px;margin-top:6px;box-shadow:0 2px 8px rgba(255,143,0,0.4)">
          <div style="display:flex;align-items:center;gap:8px">
            <span style="font-size:26px;line-height:1">🏆</span>
