@@ -400,6 +400,22 @@ input[type=number]{-moz-appearance:textfield}
         </div>
         <button onclick="saveSetCount()" style="width:100%;margin-top:10px;padding:8px;border-radius:8px;border:none;background:#1D9E75;color:#fff;font-size:13px;font-weight:600;cursor:pointer">세트수 저장</button>
       </div>
+
+      <!-- 저녁미션 온/오프 설정 -->
+      <div style="background:#FFF7ED;border-radius:10px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:600;color:#9A5B13;margin-bottom:8px">🌆 저녁미션(17~21:59, 90건+2만원) 표시 설정</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:12px;color:#555" id="evening-mission-status-label">현재 상태: 불러오는 중...</div>
+            <div style="font-size:11px;color:#888">끄면 기사님 마이페이지에서 저녁미션 카드가 안 보입니다</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
+            <input type="checkbox" id="evening-mission-toggle" onchange="saveEveningMissionToggle(this.checked)" style="opacity:0;width:0;height:0">
+            <span id="evening-mission-toggle-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:26px;transition:0.2s"></span>
+            <span id="evening-mission-toggle-knob" style="position:absolute;height:20px;width:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></span>
+          </label>
+        </div>
+      </div>
       <div style="font-size:13px;color:#666;margin-bottom:14px">슬롯별 현재 완료 건수를 입력하세요</div>
 
       <!-- 배민 운행자료 업로드 자동입력 -->
@@ -1924,6 +1940,41 @@ function loadSetCount(){
   });
 }
 
+// ── 저녁미션 온/오프 ─────────────────────────────────────
+let eveningMissionEnabled = true; // 기본값: 켜짐
+
+function updateEveningMissionToggleUI(){
+  const track = document.getElementById('evening-mission-toggle-track');
+  const knob = document.getElementById('evening-mission-toggle-knob');
+  const cb = document.getElementById('evening-mission-toggle');
+  const label = document.getElementById('evening-mission-status-label');
+  if(cb) cb.checked = eveningMissionEnabled;
+  if(track) track.style.background = eveningMissionEnabled ? '#1D9E75' : '#ccc';
+  if(knob) knob.style.left = eveningMissionEnabled ? '25px' : '3px';
+  if(label) label.textContent = '현재 상태: ' + (eveningMissionEnabled ? '켜짐 (기사님들에게 표시됨)' : '꺼짐 (기사님들에게 안 보임)');
+}
+
+function saveEveningMissionToggle(checked){
+  eveningMissionEnabled = checked;
+  db.ref('branch/config/eveningMissionEnabled').set(checked);
+  lsSet('evening_mission_enabled', checked);
+  updateEveningMissionToggleUI();
+}
+
+function loadEveningMissionConfig(){
+  db.ref('branch/config/eveningMissionEnabled').once('value').then(snap=>{
+    if(snap.val() !== null){
+      eveningMissionEnabled = !!snap.val();
+      lsSet('evening_mission_enabled', eveningMissionEnabled);
+    } else {
+      // 저장된 값이 없으면 로컬 캐시나 기본값(true) 사용
+      const cached = lsGet('evening_mission_enabled');
+      if(cached !== null && cached !== undefined) eveningMissionEnabled = cached;
+    }
+    updateEveningMissionToggleUI();
+  });
+}
+
 function showAdmin(){
   document.getElementById('admin-overlay').classList.add('open');
   // 비번 없이 바로 입력 화면
@@ -1932,6 +1983,7 @@ function showAdmin(){
   // 세트수 표시 업데이트
   const scEl = document.getElementById('set-count-display');
   if(scEl) scEl.textContent = getSetCount();
+  updateEveningMissionToggleUI();
   // 주간 보너스 정산 업로드 슬롯 초기화 (저장해둔 임시 자료가 있으면 자동 복원됨)
   settlementAdminWeekOffset = 0;
   lastComputedSettlement = null;
@@ -4032,14 +4084,14 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
        </div>`
     : '';
 
-  // 지사 자체 저녁미션(수~화, 17시~21:59, 90건 달성시 2만원)
+  // 지사 자체 저녁미션(수~화, 17시~21:59, 90건 달성시 2만원) - 관리자가 껐으면 표시 안 함
   const EVENING_MISSION_TARGET = 90;
   const EVENING_MISSION_WON = 20000;
   const eveningCount = r.eveningMissionCount || 0;
   const eveningRemaining = Math.max(0, EVENING_MISSION_TARGET - eveningCount);
   const eveningDone = eveningCount >= EVENING_MISSION_TARGET;
   const eveningPct = Math.min(100, Math.round(eveningCount/EVENING_MISSION_TARGET*100));
-  const eveningCard = `
+  const eveningCard = !eveningMissionEnabled ? '' : `
     <div style="background:${eveningDone ? '#F0FBF7' : '#FFF7ED'};border:1px solid ${eveningDone ? '#9FE1CB' : '#FED7AA'};border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <span style="font-size:13px;font-weight:800;color:${eveningDone ? '#0F6E56' : '#9A5B13'}">🌆 저녁미션(17시~21:59, 90건 달성 시 2만원)</span>
@@ -4053,6 +4105,7 @@ function renderSettlementBreakdown(r, closeTargetId, reopenCall){
           : `현재 <b>${eveningCount}건</b> · <b>${eveningRemaining}건</b> 더 타면 2만원 달성!`}
       </div>
     </div>`;
+
 
   return `
     <div style="background:#F0FBF7;border-radius:10px;padding:12px 14px;border:1px solid #9FE1CB">
@@ -5437,6 +5490,7 @@ function init(){
   loadCumulCalls();
   loadNightCalls();
   loadSetCount();
+  loadEveningMissionConfig();
   loadLotteryScheduleConfig().then(()=>{ loadLottery(); });
   checkLotteryReminder();
   setInterval(checkLotteryReminder, 60000); // 1분마다 추첨 임박 여부 확인
