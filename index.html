@@ -336,9 +336,12 @@ input[type=number]{-moz-appearance:textfield}
 
 
 <!-- 권역지도 확대보기 오버레이 -->
-<div id="region-map-zoom-overlay" onclick="closeRegionMapZoom()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;align-items:center;justify-content:center;padding:16px;overflow:auto">
-  <img id="region-map-zoom-img" src="" alt="수성C 권역 지도 확대" style="max-width:100%;max-height:100%;border-radius:8px">
-  <button onclick="closeRegionMapZoom()" style="position:fixed;top:14px;right:16px;width:40px;height:40px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:20px;cursor:pointer">✕</button>
+<div id="region-map-zoom-overlay" style="display:none;position:fixed;inset:0;background:#000;z-index:3000;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pinch-zoom pan-x pan-y">
+  <div style="min-width:100%;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:40px 0 80px">
+    <img id="region-map-zoom-img" src="" alt="수성C 권역 지도 확대" style="width:1700px;max-width:none;border-radius:0;display:block">
+  </div>
+  <button onclick="closeRegionMapZoom()" style="position:fixed;top:14px;right:16px;width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,0.25);color:#fff;font-size:22px;font-weight:700;cursor:pointer;z-index:3001">✕</button>
+  <div style="position:fixed;top:18px;left:16px;background:rgba(255,255,255,0.15);color:#fff;font-size:12px;padding:6px 10px;border-radius:8px;z-index:3001">손가락으로 확대/이동해서 보세요</div>
 </div>
 
 <!-- 탭바 -->
@@ -1941,14 +1944,21 @@ function openRegionMapZoom(){
   const zoomImg = document.getElementById('region-map-zoom-img');
   if(!srcImg || !overlay || !zoomImg) return;
   zoomImg.src = srcImg.src;
-  overlay.style.display = 'flex';
+  overlay.style.display = 'block';
+  overlay.scrollTop = 0;
+  overlay.scrollLeft = 0;
   document.body.style.overflow = 'hidden';
+  // 평소엔 화면이 안 움직이게 막아뒀는데, 지도 볼 때만 손가락으로 확대(핀치줌)할 수 있게 풀어줍니다
+  const vp = document.querySelector('meta[name="viewport"]');
+  if(vp) vp.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes');
 }
 function closeRegionMapZoom(){
   const overlay = document.getElementById('region-map-zoom-overlay');
   if(!overlay) return;
   overlay.style.display = 'none';
   document.body.style.overflow = '';
+  const vp = document.querySelector('meta[name="viewport"]');
+  if(vp) vp.setAttribute('content','width=device-width, initial-scale=1.0, maximum-scale=1.0');
 }
 
 function saveEveningMissionToggle(checked){
