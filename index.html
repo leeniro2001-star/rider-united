@@ -250,71 +250,30 @@ input[type=number]{-moz-appearance:textfield}
 <div id="screen-branch" class="screen">
   <div style="margin-top:4px">
 
-    <!-- 날짜 네비게이션 -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <button onclick="changeBranchDate(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
-      <span style="font-size:14px;font-weight:600;color:#1a1a1a" id="branch-date-label">오늘</span>
-      <button onclick="changeBranchDate(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
+    <!-- 관리자 모드가 아닐 때 보이는 안내 -->
+    <div class="card" id="branch-locked-notice" style="text-align:center;padding:30px 16px;color:#999">
+      <div style="font-size:30px;margin-bottom:8px">🔒</div>
+      <div style="font-size:14px;font-weight:600">관리자 전용 화면입니다</div>
     </div>
 
-    <!-- 지사 전체 완료/거절/배차취소/수락률 요약 -->
-    <div class="card" id="branch-accept-card">
-      <div class="card-title">📊 지사 전체 오늘 현황</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:4px">
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
-          <div style="font-size:9px;color:#aaa">완료</div>
-          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-total-complete">-</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
-          <div style="font-size:9px;color:#aaa">거절</div>
-          <div style="font-size:16px;font-weight:700;color:#E24B4A" id="branch-total-reject">-</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
-          <div style="font-size:9px;color:#aaa">배차취소</div>
-          <div style="font-size:16px;font-weight:700;color:#BA7517" id="branch-total-cancel">-</div>
-        </div>
-        <div style="text-align:center;background:#F8F8F8;border-radius:6px;padding:8px 2px">
-          <div style="font-size:9px;color:#aaa">수락률</div>
-          <div style="font-size:16px;font-weight:700;color:#1D9E75" id="branch-accept-rate">-</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 심야 알림 배너 -->
-    <div id="night-banner" style="display:none;border-radius:12px;padding:12px 16px;margin-bottom:10px;text-align:center">
-      <div id="night-banner-msg" style="font-size:14px;font-weight:600;line-height:1.6"></div>
-    </div>
-
-    <div class="card" id="current-slot-card">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <div style="font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:4px">현재 슬롯</div>
-          <div style="font-size:18px;font-weight:700" id="cur-slot-name">-</div>
-          <div style="font-size:12px;color:#888;margin-top:2px" id="cur-slot-time">-</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:11px;color:#999;margin-bottom:4px">마지막 업데이트</div>
-          <div style="font-size:12px;color:#1D9E75;font-weight:500" id="last-update">-</div>
-        </div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title">오늘 슬롯별 현황</div>
-      <div id="slot-list"><div class="empty-state"><i class="ti ti-refresh"></i><p>데이터 불러오는 중...</p></div></div>
-    </div>
-    <div class="card" id="weekly-grid-card" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="card-title" style="margin:0" id="weekly-grid-title">이번 주 28슬롯 현황</div>
+    <!-- 🔒 기사님별 수락률 (관리자 전용, 주간 보너스 정산에 올린 자료 기준) -->
+    <div class="card" id="admin-accept-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div class="card-title" style="margin:0;font-size:16px;font-weight:800;text-transform:none;letter-spacing:normal">📊 기사님별 수락률</div>
         <span style="font-size:10px;color:#E24B4A;background:#FFF0F0;padding:2px 6px;border-radius:4px">🔒 관리자</span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <button onclick="changeWeeklyGridOffset(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
-        <span style="font-size:12px;color:#888" id="weekly-grid-range">-</span>
-        <button onclick="changeWeeklyGridOffset(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <button onclick="changeAdminAcceptWeek(-1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-left"></i></button>
+        <span style="font-size:13px;font-weight:600;color:#1a1a1a" id="admin-accept-week-label">이번 주</span>
+        <button onclick="changeAdminAcceptWeek(1)" style="background:#fff;border:0.5px solid #ddd;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit"><i class="ti ti-chevron-right"></i></button>
       </div>
-      <div style="overflow-x:auto">
-        <div id="weekly-grid" style="min-width:280px"></div>
+      <div id="admin-accept-summary" style="display:none;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+      <div id="admin-accept-sort" style="display:none;gap:6px;margin-bottom:8px">
+        <button id="admin-accept-sort-asc" onclick="setAdminAcceptSort('asc')" style="flex:1;padding:7px;border-radius:8px;border:1px solid #1D9E75;background:#1D9E75;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">낮은 순</button>
+        <button id="admin-accept-sort-desc" onclick="setAdminAcceptSort('desc')" style="flex:1;padding:7px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#555;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">높은 순</button>
       </div>
+      <div id="admin-accept-list"></div>
+      <div style="font-size:10px;color:#aaa;margin-top:10px;line-height:1.5">주간 보너스 정산에 올린 요일별 자료 기준 · 푸드 완료 ÷ (푸드 완료+거절+배차취소) · 기사님을 누르면 요일별 수락률이 보여요</div>
     </div>
     <button class="btn-admin" id="admin-btn" onclick="showAdmin()" style="display:none"><i class="ti ti-settings"></i> 관리자 업데이트</button>
   </div>
@@ -1816,23 +1775,135 @@ function updateBranchDateLabel(){
     : branchDateOffset === -1
     ? `어제 (${d.getUTCMonth()+1}/${d.getUTCDate()})`
     : `${d.getUTCMonth()+1}월 ${d.getUTCDate()}일(${DAY_KR[d.getUTCDay()]})`;
-  document.getElementById('branch-date-label').textContent = label;
+  const _lblEl = document.getElementById('branch-date-label');
+  if(_lblEl) _lblEl.textContent = label;
 }
 
 function loadBranch(){
-  updateBranchDateLabel();
-  const k = getBranchDateKey(branchDateOffset);
-  // 기존 리스너 해제
-  if(branchListener){
-    firebase.database().ref('branch/daily/').off();
+  // 슬롯별 현황은 다른 관리앱에서 10분 단위로 보기 때문에 이 앱에서는 제거했습니다.
+  // 지사현황 탭은 이제 관리자 모드에서 "기사님별 수락률"만 보여줍니다.
+  renderAdminAccept();
+}
+
+// ── 관리자 전용: 기사님별 수락률 (주간 보너스 정산에 올린 자료 기준) ──────────
+let adminAcceptWeekOffset = 0;
+let adminAcceptSort = 'asc';      // asc = 낮은 순(관리가 필요한 분이 위로), desc = 높은 순
+let adminAcceptRiders = [];       // 불러온 기사님 목록
+
+function adminAcceptEsc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function adminAcceptColor(rate){ return rate>=80 ? '#1D9E75' : rate>=60 ? '#BA7517' : '#E24B4A'; }
+function adminAcceptBg(rate){ return rate>=80 ? '#F0FBF7' : rate>=60 ? '#FFFBF0' : '#FFF5F5'; }
+
+function changeAdminAcceptWeek(delta){
+  if(adminAcceptWeekOffset + delta > 0) return; // 미래 주는 없음
+  adminAcceptWeekOffset += delta;
+  renderAdminAccept();
+}
+function setAdminAcceptSort(mode){
+  adminAcceptSort = mode;
+  const asc = document.getElementById('admin-accept-sort-asc');
+  const desc = document.getElementById('admin-accept-sort-desc');
+  const on = 'border:1px solid #1D9E75;background:#1D9E75;color:#fff';
+  const off = 'border:1px solid #ddd;background:#fff;color:#555';
+  const base = 'flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;';
+  if(asc) asc.style.cssText = base + (mode==='asc'?on:off);
+  if(desc) desc.style.cssText = base + (mode==='desc'?on:off);
+  renderAdminAcceptList();
+}
+function toggleAdminAcceptDetail(i){
+  const el = document.getElementById('admin-accept-detail-'+i);
+  if(el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderAdminAccept(){
+  const card = document.getElementById('admin-accept-card');
+  const listEl = document.getElementById('admin-accept-list');
+  const labelEl = document.getElementById('admin-accept-week-label');
+  const summaryEl = document.getElementById('admin-accept-summary');
+  const sortEl = document.getElementById('admin-accept-sort');
+  if(!card || !listEl || card.style.display === 'none') return;
+
+  const info = getSettlementWeekInfo(adminAcceptWeekOffset);
+  if(labelEl) labelEl.textContent = (adminAcceptWeekOffset===0?'이번 주':adminAcceptWeekOffset<0?`지난 ${-adminAcceptWeekOffset}주`:'') + ' · ' + info.rangeLabel;
+  listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:14px">불러오는 중...</div>';
+  if(summaryEl) summaryEl.style.display = 'none';
+  if(sortEl) sortEl.style.display = 'none';
+
+  db.ref('settlement/'+info.weekKey+'/riders').once('value').then(snap=>{
+    const ridersObj = snap.val();
+    if(!ridersObj){
+      adminAcceptRiders = [];
+      listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">이 주에는 아직 올린 정산 자료가 없습니다</div>';
+      return;
+    }
+    adminAcceptRiders = Object.values(ridersObj).map(r=>{
+      const days = Array.isArray(r.dailyAccept) ? r.dailyAccept : [];
+      let complete=0, reject=0, cancel=0;
+      days.forEach(a=>{ complete += a.complete||0; reject += a.reject||0; cancel += a.cancel||0; });
+      return { name:r.name||'', rate:(r.acceptRate==null?null:r.acceptRate), complete, reject, cancel, days };
+    });
+
+    // 요약: 지사 전체 수락률(완료 합계 ÷ 전체 합계), 집계된 기사님 수, 80% 미만 인원
+    const withRate = adminAcceptRiders.filter(r=>r.rate!=null);
+    const sumComplete = withRate.reduce((s,r)=>s+r.complete,0);
+    const sumDenom = withRate.reduce((s,r)=>s+r.complete+r.reject+r.cancel,0);
+    const branchRate = sumDenom>0 ? Math.round(sumComplete/sumDenom*1000)/10 : null;
+    const lowCount = withRate.filter(r=>r.rate<80).length;
+    if(summaryEl){
+      const box = (label,val,color)=>`<div style="text-align:center;background:#F8F8F8;border-radius:8px;padding:8px 2px">
+        <div style="font-size:10px;color:#999">${label}</div>
+        <div style="font-size:17px;font-weight:800;color:${color}">${val}</div></div>`;
+      summaryEl.innerHTML =
+        box('지사 수락률', branchRate!=null?branchRate+'%':'-', branchRate!=null?adminAcceptColor(branchRate):'#aaa') +
+        box('집계 기사님', withRate.length+'명', '#333') +
+        box('80% 미만', lowCount+'명', lowCount>0?'#E24B4A':'#1D9E75');
+      summaryEl.style.display = 'grid';
+    }
+    if(sortEl) sortEl.style.display = 'flex';
+    renderAdminAcceptList();
+  }).catch(err=>{
+    listEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${adminAcceptEsc(err.message)}</div>`;
+  });
+}
+
+function renderAdminAcceptList(){
+  const listEl = document.getElementById('admin-accept-list');
+  if(!listEl) return;
+  const withRate = adminAcceptRiders.map((r,i)=>({...r,_i:i})).filter(r=>r.rate!=null);
+  const noData = adminAcceptRiders.filter(r=>r.rate==null);
+  withRate.sort((a,b)=> adminAcceptSort==='asc' ? (a.rate-b.rate || b.reject+b.cancel-(a.reject+a.cancel)) : (b.rate-a.rate || b.complete-a.complete));
+
+  if(withRate.length === 0){
+    listEl.innerHTML = '<div style="text-align:center;color:#aaa;font-size:13px;padding:16px">수락률 데이터가 있는 기사님이 없습니다</div>';
+    return;
   }
-  // 오늘이면 실시간, 과거면 1회만 조회
-  const ref = db.ref('branch/daily/'+k);
-  if(branchDateOffset === 0){
-    branchListener = ref.on('value', snap => { renderBranch(snap.val(), branchDateOffset); });
-  } else {
-    ref.once('value').then(snap => { renderBranch(snap.val(), branchDateOffset); });
+  let html = withRate.map(r=>{
+    const color = adminAcceptColor(r.rate), bg = adminAcceptBg(r.rate);
+    const dayRows = r.days.map(a=>{
+      const has = a.rate!=null;
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 2px;font-size:12px;border-top:0.5px solid #eee">
+        <span style="color:#555;font-weight:600">${adminAcceptEsc(a.dayLabel)}</span>
+        <span style="color:#999">${has?`완료 ${a.complete||0} · 거절 ${a.reject||0} · 취소 ${a.cancel||0}`:'집계 전'}</span>
+        <span style="font-weight:800;color:${has?adminAcceptColor(a.rate):'#ccc'};min-width:46px;text-align:right">${has?a.rate+'%':'-'}</span>
+      </div>`;
+    }).join('');
+    return `<div style="background:${bg};border-radius:10px;margin-bottom:6px;border-left:4px solid ${color};overflow:hidden">
+      <div onclick="toggleAdminAcceptDetail(${r._i})" style="display:flex;align-items:center;padding:10px 12px;cursor:pointer">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:#333">${adminAcceptEsc(r.name)}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px"><span style="color:#1D9E75;font-weight:600">완료 ${r.complete}</span> · <span style="color:#E24B4A;font-weight:600">거절 ${r.reject}</span> · <span style="color:#BA7517;font-weight:600">취소 ${r.cancel}</span></div>
+        </div>
+        <div style="font-size:20px;font-weight:800;color:${color};margin-left:8px;white-space:nowrap">${r.rate}%</div>
+      </div>
+      <div id="admin-accept-detail-${r._i}" style="display:none;padding:2px 12px 8px;background:rgba(255,255,255,0.7)">${dayRows||'<div style="font-size:12px;color:#aaa;padding:6px 0">요일별 자료가 없습니다</div>'}</div>
+    </div>`;
+  }).join('');
+  if(noData.length > 0){
+    html += `<div style="font-size:11px;color:#aaa;margin-top:8px;line-height:1.6">푸드 콜 기록이 없어 수락률 집계가 안 된 기사님 ${noData.length}명: ${noData.map(r=>adminAcceptEsc(r.name)).join(', ')}</div>`;
   }
+  listEl.innerHTML = html;
 }
 
 // 이번 주(수~화) 지사 평균 수락률: 요일별로 저장된 완료/거절/배차취소를 모아서
@@ -5553,18 +5624,20 @@ function adminLogoTap(){
     logoTapCount = 0;
     const btn = document.getElementById('admin-btn');
     if(!btn) return;
-    const wCard = document.getElementById('weekly-grid-card');
+    const aCard = document.getElementById('admin-accept-card');
+    const lockEl = document.getElementById('branch-locked-notice');
     const cCard = document.getElementById('admin-cumul-ranking-card');
     const oCard = document.getElementById('admin-offhours-card');
     if(btn.style.display === 'none'){
       btn.style.display = 'flex';
-      if(wCard) wCard.style.display = 'block';
+      if(lockEl) lockEl.style.display = 'none';
+      if(aCard){ aCard.style.display = 'block'; renderAdminAccept(); }
       if(cCard){ cCard.style.display = 'block'; renderAdminCumulRanking(); }
       if(oCard){ oCard.style.display = 'block'; renderAdminOffHours(); }
-      renderWeeklyGrid();
     } else {
       btn.style.display = 'none';
-      if(wCard) wCard.style.display = 'none';
+      if(lockEl) lockEl.style.display = 'block';
+      if(aCard) aCard.style.display = 'none';
       if(cCard) cCard.style.display = 'none';
       if(oCard) oCard.style.display = 'none';
     }
