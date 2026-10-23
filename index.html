@@ -1069,6 +1069,12 @@ function renderMyAcceptRate(){
         <span style="font-size:20px;font-weight:800;color:${avgColor}">${rider.acceptRate!=null?rider.acceptRate+'%':'-'}</span>
       </div>
       ${rejectAllowanceHtml}
+      <div style="margin-top:12px;text-align:center">
+        <div style="display:inline-block;max-width:100%;box-sizing:border-box;background:#E60012;border:2px solid #fff;outline:2px solid #E60012;border-radius:8px;padding:6px 18px;box-shadow:0 2px 6px rgba(230,0,18,0.35)">
+          <span style="font-size:clamp(24px,8.5vw,34px);font-weight:900;color:#fff;letter-spacing:-1px;line-height:1.15;white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,0.25)">주간 수락률 80%</span>
+        </div>
+        <div style="font-size:16px;font-weight:800;color:#E60012;margin-top:8px">꼭 지켜주세요!</div>
+      </div>
     `;
   }).catch(err=>{
     resultEl.innerHTML = `<div style="text-align:center;color:#E24B4A;font-size:13px;padding:16px">불러오기 실패: ${err.message}</div>`;
